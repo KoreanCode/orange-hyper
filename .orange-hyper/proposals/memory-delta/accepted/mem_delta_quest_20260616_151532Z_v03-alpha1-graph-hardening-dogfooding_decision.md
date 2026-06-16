@@ -31,7 +31,7 @@ This completed L3 Quest may be useful for future implementation work in this pro
 - Evidence: npm run check:readme-sync passed
 - Evidence: git diff --check passed
 - Evidence: node bin/orange.js --help passed
-- Evidence: npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache passed
+- Evidence: npm pack --dry-run with an explicit temporary npm cache passed
 
 ## Suggested Node
 

@@ -30,8 +30,8 @@ This completed L3 Quest may be useful for future implementation work in this pro
 - Evidence: npm test passed: 19 tests
 - Evidence: git diff --check passed
 - Evidence: node bin/orange.js --help passed
-- Evidence: npm pack --dry-run passed with --cache /private/tmp/orange-hyper-npm-cache after default npm cache EPERM
-- Evidence: local CLI smoke passed in /private/tmp/orange-hyper-smoke.wsOt2a: init, quest new, route, capsule, identity build, doctor
+- Evidence: npm pack --dry-run passed with an explicit temporary npm cache after default npm cache EPERM
+- Evidence: local CLI smoke passed in a temporary workspace: init, quest new, route, capsule, identity build, doctor
 
 ## Suggested Node
 

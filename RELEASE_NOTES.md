@@ -1,5 +1,33 @@
 # Release Notes
 
+## v0.3.0-alpha.3
+
+Publish Pipeline Trusted Publishing release.
+
+- Package version is `0.3.0-alpha.3`.
+- README version remains `0.3-doc.3`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Publish pipeline moved to GitHub Actions trusted publishing.
+- Official npm publish now runs from the `push` tag `v*` workflow with
+  `id-token: write`, npm registry setup, full release checks, package dry-run,
+  and `npm publish` without `NODE_AUTH_TOKEN` as the default path.
+- Alpha tags matching `v*-alpha.*` publish with npm dist-tag `alpha`; stable
+  tags matching `vX.Y.Z` publish with npm dist-tag `latest`.
+- Local `npm publish` is not the official release path because local terminals
+  may not have an npm provenance OIDC provider. Emergency local publish can use
+  `NPM_CONFIG_PROVENANCE=false`, but that bypass is not the official release
+  path.
+- Public Memory State Audit now keeps `.orange-hyper/` dogfooding evidence
+  bounded to shared project memory: config, completed Quests, accepted Memory
+  Delta Proposals, and graph provenance.
+- `orange doctor` now warns if local/generated/private `.orange-hyper` state is
+  tracked by Git, warns on private-looking local paths in public memory, and
+  errors on token/secret/env/auth-like strings before commit.
+- Existing dogfooding memory evidence no longer stores local absolute temporary
+  paths; accepted proposal hashes were refreshed to preserve graph provenance.
+- No MCP, hooks, subagents, role evolution, auto planner, or auto execution loop
+  behavior is introduced.
+
 ## v0.3.0-alpha.1
 
 Graph Quality Hardening and real-repo dogfooding release.

@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CONFIG_VERSION, ORANGE_GITIGNORE, normalizeConfigProjectIdentity, projectIdentityFromConfig } from "./config.js";
+import { spawnSync } from "node:child_process";
+import {
+  CONFIG_VERSION,
+  ORANGE_GITIGNORE,
+  ROOT_GITIGNORE_REQUIRED_LINES,
+  normalizeConfigProjectIdentity,
+  projectIdentityFromConfig
+} from "./config.js";
 import { stringifyFrontmatter } from "./frontmatter.js";
 import { validateGraphReadModel } from "./graph.js";
 import {
@@ -89,6 +96,8 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   checkExists(paths.graphIndex, "file", "graph/index.json", errors, checks, addDiagnostic);
   checkExists(paths.graphEdges, "file", "graph/edges.jsonl", errors, checks, addDiagnostic);
   checkExists(paths.routeTrace, "file", "traces/route.jsonl", errors, checks);
+
+  checkRootGitignorePolicy(cwd, checks, addDiagnostic);
 
   if (fs.existsSync(paths.config)) {
     try {
@@ -356,6 +365,8 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   checks.push(...graphReadModel.checks);
   mergeDiagnostics(diagnostics, graphReadModel.diagnostics);
 
+  checkPublicMemoryState(cwd, paths, checks, addDiagnostic);
+
   return {
     ok: errors.length === 0,
     errors,
@@ -372,6 +383,168 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
       diagnostics: boundaryDiagnostics
     }
   };
+}
+
+const PRIVATE_STATE_PREFIXES = [
+  ".orange-hyper/capsules/",
+  ".orange-hyper/traces/",
+  ".orange-hyper/identity/",
+  ".orange-hyper/local/",
+  ".orange-hyper/proposals/memory-delta/pending/",
+  ".orange-hyper/proposals/memory-delta/rejected/"
+];
+
+const PRIVATE_LOOKING_PATTERNS = [
+  { label: "/Users/", regex: /\/Users\/[^\s"'`)]+/ },
+  { label: "/private/tmp/", regex: /\/private\/tmp\/[^\s"'`)]+/ },
+  { label: "npm debug log", regex: /(?:^|[\/\s])npm-debug\.log[^\s"'`)]*/i }
+];
+
+const SECRET_LIKE_PATTERNS = [
+  { label: ".env", regex: /(^|[^A-Za-z0-9_])\.env(?:$|[^A-Za-z0-9_])/i },
+  { label: "NODE_AUTH_TOKEN", regex: /\bNODE_AUTH_TOKEN\b/i },
+  { label: "NPM_TOKEN", regex: /\bNPM_TOKEN\b/i },
+  { label: "npm token", regex: /\bnpm[_ -]?token\b/i },
+  { label: "token", regex: /\btoken\b/i },
+  { label: "secret", regex: /\bsecret\b/i },
+  { label: "auth", regex: /\bauth(?:entication|orization)?\b/i }
+];
+
+function checkRootGitignorePolicy(cwd, checks, addDiagnostic) {
+  const gitignorePath = path.join(cwd, ".gitignore");
+  if (!fs.existsSync(gitignorePath)) {
+    return;
+  }
+  const lines = fs.readFileSync(gitignorePath, "utf8").split(/\r?\n/);
+  for (const expected of ROOT_GITIGNORE_REQUIRED_LINES) {
+    if (!lines.includes(expected)) {
+      addDiagnostic(
+        "warning",
+        "PUBLIC_MEMORY_GITIGNORE_POLICY",
+        `root .gitignore missing independent line ${expected}`,
+        "Keep root .gitignore line-based so public shared memory can be tracked while local/generated/private .orange-hyper state stays ignored."
+      );
+    }
+  }
+  checks.push("root .gitignore public memory policy checked");
+}
+
+function checkPublicMemoryState(cwd, paths, checks, addDiagnostic) {
+  checkTrackedPrivateState(cwd, checks, addDiagnostic);
+  checkPublicMemoryContent(cwd, paths, checks, addDiagnostic);
+}
+
+function checkTrackedPrivateState(cwd, checks, addDiagnostic) {
+  const tracked = trackedOrangeFiles(cwd);
+  if (!tracked) {
+    return;
+  }
+  checks.push("public memory git tracking checked");
+  for (const file of tracked) {
+    const normalized = normalizeRelativePath(file);
+    if (!PRIVATE_STATE_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+      continue;
+    }
+    addDiagnostic(
+      "warning",
+      "PUBLIC_MEMORY_TRACKED_PRIVATE_STATE",
+      `${normalized} is tracked by Git but should remain local/generated/private state`,
+      "Remove tracked private .orange-hyper state from Git. Commit only config, completed quests, accepted proposals, and graph provenance that pass public memory audit."
+    );
+  }
+}
+
+function trackedOrangeFiles(cwd) {
+  const result = spawnSync("git", ["ls-files", "--", ".orange-hyper"], {
+    cwd,
+    encoding: "utf8"
+  });
+  if (result.status !== 0) {
+    return null;
+  }
+  return result.stdout.split(/\r?\n/).filter(Boolean);
+}
+
+function checkPublicMemoryContent(cwd, paths, checks, addDiagnostic) {
+  for (const filePath of publicMemoryFiles(paths)) {
+    const relative = normalizeRelativePath(path.relative(cwd, filePath));
+    const lines = fs.readFileSync(filePath, "utf8").split(/\r?\n/);
+    lines.forEach((line, index) => {
+      const privateMatch = firstPatternMatch(line, PRIVATE_LOOKING_PATTERNS);
+      if (privateMatch) {
+        addDiagnostic(
+          "warning",
+          "PUBLIC_MEMORY_PRIVATE_PATH",
+          `${relative}:${index + 1} contains private-looking ${privateMatch.label}: ${privateMatch.value}`,
+          "Public memory should keep reusable project knowledge, not local absolute paths or generated debug-log paths."
+        );
+      }
+      const secretMatch = firstPatternMatch(line, SECRET_LIKE_PATTERNS);
+      if (secretMatch) {
+        addDiagnostic(
+          "error",
+          "PUBLIC_MEMORY_SECRET_LIKE_CONTENT",
+          `${relative}:${index + 1} contains secret-like keyword ${secretMatch.label}`,
+          "Remove credentials, .env references, auth markers, npm tokens, and token/secret-like strings from public memory before committing."
+        );
+      }
+    });
+  }
+  checks.push("public memory content audit checked");
+}
+
+function publicMemoryFiles(paths) {
+  return [
+    ...existingFiles([paths.config]),
+    ...markdownFiles(paths.completedQuests),
+    ...markdownFiles(paths.acceptedMemoryDeltaProposals),
+    ...recursiveFiles(paths.graph)
+  ];
+}
+
+function existingFiles(filePaths) {
+  return filePaths.filter((filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isFile());
+}
+
+function markdownFiles(dir) {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith(".md"))
+    .map((name) => path.join(dir, name))
+    .filter((filePath) => fs.statSync(filePath).isFile());
+}
+
+function recursiveFiles(dir) {
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const filePath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      return recursiveFiles(filePath);
+    }
+    return entry.isFile() ? [filePath] : [];
+  });
+}
+
+function firstPatternMatch(line, patterns) {
+  for (const pattern of patterns) {
+    const match = line.match(pattern.regex);
+    if (match) {
+      return {
+        label: pattern.label,
+        value: match[0].trim()
+      };
+    }
+  }
+  return null;
+}
+
+function normalizeRelativePath(filePath) {
+  return filePath.split(path.sep).join("/");
 }
 
 function checkExists(target, kind, label, errors, checks, addDiagnostic) {

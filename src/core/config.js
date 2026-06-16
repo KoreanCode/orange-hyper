@@ -15,6 +15,22 @@ export const ORANGE_GITIGNORE = [
   ""
 ].join("\n");
 
+export const ROOT_GITIGNORE_REQUIRED_LINES = [
+  ".DS_Store",
+  "node_modules/",
+  "dist/",
+  "build/",
+  "coverage/",
+  ".env",
+  ".env.*",
+  ".orange-hyper/capsules/",
+  ".orange-hyper/traces/",
+  ".orange-hyper/identity/",
+  ".orange-hyper/local/",
+  ".orange-hyper/proposals/memory-delta/pending/",
+  ".orange-hyper/proposals/memory-delta/rejected/"
+];
+
 const LEGACY_ORANGE_GITIGNORE_BLOCKERS = new Set([
   "proposals",
   "proposals/",

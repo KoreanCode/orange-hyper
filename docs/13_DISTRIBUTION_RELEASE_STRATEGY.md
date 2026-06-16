@@ -198,15 +198,14 @@ npm dist-tag:
 
 ```text
 latest: 안정 버전
-next: 다음 minor beta
-canary: commit 단위 실험 버전
+alpha: v*-alpha.* prerelease
 ```
 
-예시:
+Git tag와 npm dist-tag 매핑:
 
-```bash
-npm publish --tag next
-npm publish --tag latest
+```text
+vX.Y.Z-alpha.N -> npm publish --tag alpha
+vX.Y.Z         -> npm publish
 ```
 
 ## 4. 릴리즈 게이트
@@ -230,6 +229,8 @@ npm publish --tag latest
 
 ```bash
 npm test
+npm run typecheck
+npm run check:readme-sync
 git diff --check
 node bin/orange.js --help
 node bin/orange.js init
@@ -248,7 +249,20 @@ npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
 
 ## 5. CI/CD 제안
 
-GitHub Actions 단계:
+공식 npm publish는 로컬 터미널이 아니라 GitHub Actions Trusted Publishing
+경로에서 수행한다. `package.json`은 `publishConfig.provenance: true`를
+유지하므로, 로컬 Mac 터미널에서 `npm publish --tag alpha`를 직접 실행하면
+npm provenance에 필요한 OIDC provider가 없어 실패할 수 있다.
+
+긴급하게 로컬 publish가 꼭 필요할 때는 다음처럼 provenance를 끌 수 있다.
+다만 이 방식은 공식 release path가 아니며, 기본 배포 경로로 문서화하거나
+반복 사용하지 않는다.
+
+```bash
+NPM_CONFIG_PROVENANCE=false npm publish --tag alpha
+```
+
+GitHub Actions publish workflow:
 
 ```text
 pull_request:
@@ -261,14 +275,26 @@ pull_request:
   - generated fixture diff check
 
 push tag v*:
+  - checkout
+  - setup node 24 with registry-url https://registry.npmjs.org
   - install
   - test
-  - build
-  - npm publish
-  - github release
+  - typecheck
+  - check README sync
+  - whitespace check
+  - CLI smoke
+  - package dry-run
+  - publish through npm Trusted Publishing/OIDC
 ```
 
-초기에는 완전 자동 release보다 manual approval이 낫다.
+`v*-alpha.*` tag는 npm `alpha` dist-tag로 publish한다. 일반
+`vX.Y.Z` tag는 npm 기본 dist-tag인 `latest`로 publish한다.
+
+Trusted Publishing/OIDC publish에서는 `NODE_AUTH_TOKEN`을 기본 경로로
+요구하지 않는다. npm registry에서 GitHub Actions workflow를 trusted
+publisher로 연결하고, workflow permission에 `id-token: write`를 둔다.
+
+초기에는 완전 자동 release보다 tag 생성 전 manual approval이 낫다.
 
 권장:
 

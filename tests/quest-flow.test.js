@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { JSON_CONTRACT_VERSION, main } from "../src/cli/index.js";
 import { generateCapsule } from "../src/core/capsule.js";
-import { initWorkspace, ORANGE_GITIGNORE, readConfig } from "../src/core/config.js";
+import { initWorkspace, ORANGE_GITIGNORE, ROOT_GITIGNORE_REQUIRED_LINES, readConfig } from "../src/core/config.js";
 import { stringifyFrontmatter } from "../src/core/frontmatter.js";
 import { runDoctor } from "../src/core/doctor.js";
 import {
@@ -33,6 +33,13 @@ function assertOrangeGitignorePolicy(source) {
   }
   assert.equal(lines.includes("proposals/"), false);
   assert.equal(lines.includes("/proposals/"), false);
+}
+
+function assertIndependentGitignoreLines(source, expectedLines, label) {
+  const lines = source.trimEnd().split(/\r?\n/);
+  for (const expected of expectedLines) {
+    assert.ok(lines.includes(expected), `${label} should include independent line ${expected}`);
+  }
 }
 
 test("init creates the v0.2 storage structure", () => {
@@ -128,6 +135,42 @@ test("init policy keeps accepted proposals shareable while local state stays ign
     assert.ok(ORANGE_GITIGNORE.includes(`${localPath}\n`));
   }
   assert.equal(ORANGE_GITIGNORE.includes("proposals/memory-delta/accepted/"), false);
+});
+
+test("repository gitignore files keep public memory policy as independent lines", () => {
+  assertIndependentGitignoreLines(
+    fs.readFileSync(path.join(process.cwd(), ".gitignore"), "utf8"),
+    ROOT_GITIGNORE_REQUIRED_LINES,
+    "root .gitignore"
+  );
+  assertOrangeGitignorePolicy(fs.readFileSync(path.join(process.cwd(), ".orange-hyper", ".gitignore"), "utf8"));
+});
+
+test("gitignore policy ignores local state while accepted memory and graph stay shareable", () => {
+  const cwd = tempWorkspace();
+  fs.writeFileSync(path.join(cwd, ".gitignore"), `${ROOT_GITIGNORE_REQUIRED_LINES.join("\n")}\n`);
+  initWorkspace(cwd);
+  const init = spawnSync("git", ["init"], { cwd, encoding: "utf8" });
+  assert.equal(init.status, 0);
+
+  for (const localPath of [
+    ".orange-hyper/capsules/current.md",
+    ".orange-hyper/traces/route.jsonl",
+    ".orange-hyper/identity/orange-hyper.html",
+    ".orange-hyper/local/state.json",
+    ".orange-hyper/proposals/memory-delta/pending/example.md",
+    ".orange-hyper/proposals/memory-delta/rejected/example.md"
+  ]) {
+    assertGitIgnored(cwd, localPath, true);
+  }
+  for (const publicPath of [
+    ".orange-hyper/config.json",
+    ".orange-hyper/quests/completed/example.md",
+    ".orange-hyper/proposals/memory-delta/accepted/example.md",
+    ".orange-hyper/graph/index.json"
+  ]) {
+    assertGitIgnored(cwd, publicPath, false);
+  }
 });
 
 test("init backfills missing v0.2/v0.3 storage without overwriting legacy config identity", () => {
@@ -886,6 +929,53 @@ test("doctor catches memory proposal source quest and status problems", () => {
   const result = runDoctor(cwd);
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /source_quest not found: quest_missing/);
+});
+
+test("doctor warns when private .orange-hyper state is tracked by Git", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const init = spawnSync("git", ["init"], { cwd, encoding: "utf8" });
+  assert.equal(init.status, 0);
+  const add = spawnSync("git", ["add", "-f", ".orange-hyper/capsules/current.md"], {
+    cwd,
+    encoding: "utf8"
+  });
+  assert.equal(add.status, 0);
+
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, true);
+  const diagnostic = result.diagnostics.warnings.find((item) => item.code === "PUBLIC_MEMORY_TRACKED_PRIVATE_STATE");
+  assert.ok(diagnostic);
+  assert.match(diagnostic.message, /\.orange-hyper\/capsules\/current\.md is tracked by Git/);
+});
+
+test("doctor audits public memory for private paths and secret-like keywords", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const quest = createQuest(cwd, "audit public memory content before commit", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, quest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: [
+      "local smoke passed in /Users/example/orange-hyper-smoke",
+      "removed NPM_TOKEN from release notes"
+    ]
+  });
+  const proposal = proposeMemoryDelta(cwd, quest.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  acceptMemoryDelta(cwd, proposal.data.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z")
+  });
+
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics.warnings.some((item) => item.code === "PUBLIC_MEMORY_PRIVATE_PATH"), true);
+  assert.equal(result.diagnostics.errors.some((item) => item.code === "PUBLIC_MEMORY_SECRET_LIKE_CONTENT"), true);
+  assert.match(result.warnings.join("\n"), /contains private-looking \/Users\//);
+  assert.match(result.errors.join("\n"), /contains secret-like keyword NPM_TOKEN/);
 });
 
 test("doctor catches proposal source quest project mismatch", () => {
@@ -1808,6 +1898,18 @@ function runOrange(args, cwd) {
     cwd,
     encoding: "utf8"
   });
+}
+
+function assertGitIgnored(cwd, filePath, expectedIgnored) {
+  const result = spawnSync("git", ["check-ignore", "-q", filePath], {
+    cwd,
+    encoding: "utf8"
+  });
+  if (expectedIgnored) {
+    assert.equal(result.status, 0, `${filePath} should be ignored`);
+  } else {
+    assert.notEqual(result.status, 0, `${filePath} should not be ignored`);
+  }
 }
 
 function captureIo() {

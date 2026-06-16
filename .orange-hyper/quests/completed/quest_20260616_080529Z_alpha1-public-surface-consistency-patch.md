@@ -29,8 +29,8 @@ verification_evidence:
   - "npm test passed: 19 tests"
   - "git diff --check passed"
   - "node bin/orange.js --help passed"
-  - "npm pack --dry-run passed with --cache /private/tmp/orange-hyper-npm-cache after default npm cache EPERM"
-  - "local CLI smoke passed in /private/tmp/orange-hyper-smoke.wsOt2a: init, quest new, route, capsule, identity build, doctor"
+  - "npm pack --dry-run passed with an explicit temporary npm cache after default npm cache EPERM"
+  - "local CLI smoke passed in a temporary workspace: init, quest new, route, capsule, identity build, doctor"
 unverified_reason: ""
 completed_at: 2026-06-16T08:09:23.787Z
 project_id: project_921341cf-feb0-4009-8da6-e1d0c8131e6f
@@ -87,5 +87,5 @@ Orange route: L3 · P3 · T2 · V3 · A0 · M0 · MB3
 - Evidence: npm test passed: 19 tests
 - Evidence: git diff --check passed
 - Evidence: node bin/orange.js --help passed
-- Evidence: npm pack --dry-run passed with --cache /private/tmp/orange-hyper-npm-cache after default npm cache EPERM
-- Evidence: local CLI smoke passed in /private/tmp/orange-hyper-smoke.wsOt2a: init, quest new, route, capsule, identity build, doctor
+- Evidence: npm pack --dry-run passed with an explicit temporary npm cache after default npm cache EPERM
+- Evidence: local CLI smoke passed in a temporary workspace: init, quest new, route, capsule, identity build, doctor

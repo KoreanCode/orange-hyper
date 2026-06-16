@@ -75,11 +75,16 @@ external source memory import는 future feature다. v0.2.x에서는
 자동 memory proposal을 구현하지 않는다. 명시적 `orange` command 없이 외부 문서,
 unrelated pasted reports, 다른 repo 문서를 project memory로 취급하지 않는다.
 
-### 2.1.2 Shared Memory State Policy
+### 2.1.2 Public Memory State Policy
 
 v0.3.0-alpha.1에서 shared memory state는 fresh clone에서도 accepted graph
 provenance를 재검증할 수 있어야 한다. accepted graph node와 그
 `source_proposal` accepted proposal은 같은 repo state로 공유되어야 한다.
+
+공개 repo에서 `.orange-hyper/` 전체를 무조건 공유하지 않는다. 공유 가능한 것은
+review를 거쳐 accepted memory가 된 project knowledge와 그 provenance뿐이다.
+local/generated/private state는 ignore하고, public repo에는 `orange doctor`의
+public memory audit을 통과한 state만 commit한다.
 
 Git에 남길 수 있는 `.orange-hyper/` state:
 
@@ -103,6 +108,11 @@ Git에 남길 수 있는 `.orange-hyper/` state:
 proposal provenance를 커밋하거나 accepted proposal file을 복원하는 것이다.
 Pending/rejected proposal은 기본적으로 local review queue지만, accepted proposal은
 accepted graph node와 함께 공유되는 project memory다.
+
+`project_id`는 secret이 아니다. 다만 local absolute path, generated debug log
+path, credential, `.env`, token, secret, auth, npm token 계열 문자열은 public
+memory에 commit하지 않는다. `doctor`는 public memory 파일의 private-looking
+path는 warning으로, token/secret/env/auth 계열 문자열은 error로 보고한다.
 
 Proposal 저장 구조:
 

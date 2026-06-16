@@ -21,7 +21,7 @@ verification_evidence:
   - "npm run check:readme-sync passed"
   - "git diff --check passed"
   - "node bin/orange.js --help passed"
-  - "npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache passed"
+  - "npm pack --dry-run with an explicit temporary npm cache passed"
 unverified_reason: ""
 completed_at: 2026-06-16T15:15:53.889Z
 ---
@@ -63,4 +63,4 @@ Orange route: L3 · P3 · T2 · V3 · A0 · M0 · MB3
 - Evidence: npm run check:readme-sync passed
 - Evidence: git diff --check passed
 - Evidence: node bin/orange.js --help passed
-- Evidence: npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache passed
+- Evidence: npm pack --dry-run with an explicit temporary npm cache passed

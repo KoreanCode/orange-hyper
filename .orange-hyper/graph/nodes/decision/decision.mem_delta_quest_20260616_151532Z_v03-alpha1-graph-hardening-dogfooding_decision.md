@@ -13,7 +13,7 @@ accepted_at: 2026-06-16T15:16:08.320Z
 origin: memory-delta-proposal
 source_proposal: mem_delta_quest_20260616_151532Z_v03-alpha1-graph-hardening-dogfooding_decision
 source_quest: quest_20260616_151532Z_v03-alpha1-graph-hardening-dogfooding
-source_proposal_hash: 2cd6191552cbf7fd112d779e8561954b815a480896242c843bfafce962eec28a
+source_proposal_hash: ddb376b4f5c6027f96d8f6c4ae50ebb759c617f35fe956d124550566497ebfd4
 provenance:
   project_id: project_921341cf-feb0-4009-8da6-e1d0c8131e6f
   project_name: orange-hyper
@@ -23,7 +23,7 @@ provenance:
   accepted_at: 2026-06-16T15:16:08.320Z
   node_type: decision
   origin: memory-delta-proposal
-  source_proposal_hash: 2cd6191552cbf7fd112d779e8561954b815a480896242c843bfafce962eec28a
+  source_proposal_hash: ddb376b4f5c6027f96d8f6c4ae50ebb759c617f35fe956d124550566497ebfd4
 ---
 
 # Suggested Memory Node
@@ -40,7 +40,7 @@ Before v0.4 hook work, v0.3 graph usability must be dogfooded in the real orange
 - Evidence: npm run check:readme-sync passed
 - Evidence: git diff --check passed
 - Evidence: node bin/orange.js --help passed
-- Evidence: npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache passed
+- Evidence: npm pack --dry-run with an explicit temporary npm cache passed
 
 ## Source Proposal
 
