@@ -80,6 +80,9 @@ CLI는 최종 사용자 경험이 아니라 Seed Kernel interface입니다.
 - CLI commands must remain deterministic and adapter-friendly.
 - Natural-language workflows should call the kernel, not duplicate its state logic.
 
+The full adapter JSON envelope, command id, stdout/stderr, and exit-code
+contract is defined in [`docs/16_ADAPTER_CONTRACT.md`](docs/16_ADAPTER_CONTRACT.md).
+
 v0.1에서 포함하는 CLI 표면은 다음 범위로 제한합니다.
 
 ```bash

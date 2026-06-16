@@ -16,6 +16,21 @@ export const EXIT_CODES = {
   internal: 4
 };
 
+export const JSON_CONTRACT_VERSION = "0.1";
+
+const COMMAND_IDS = {
+  capsule: "capsule.build",
+  doctor: "doctor.run",
+  identity: {
+    build: "identity.build"
+  },
+  quest: {
+    done: "quest.done",
+    new: "quest.new"
+  },
+  route: "route.show"
+};
+
 export async function main(argv = process.argv.slice(2), env = {}) {
   const cwd = env.cwd || process.cwd();
   const io = env.io || {
@@ -49,7 +64,7 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     const selector = args.flags.quest || args.positionals[0];
     const capsule = generateCapsule(cwd, selector);
     if (args.flags.json) {
-      writeJson(io, jsonOk("capsule", formatCapsuleJson(cwd, capsule)));
+      writeJson(io, jsonOk(COMMAND_IDS.capsule, formatCapsuleJson(cwd, capsule)));
       return;
     }
     write(io, `Wrote ${path.relative(cwd, capsule.filePath)}`);
@@ -61,9 +76,9 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     const result = runDoctor(cwd);
     if (args.flags.json) {
       if (result.ok) {
-        writeJson(io, jsonOk("doctor", result));
+        writeJson(io, jsonOk(COMMAND_IDS.doctor, result));
       } else {
-        writeJson(io, jsonError("doctor", {
+        writeJson(io, jsonError(COMMAND_IDS.doctor, {
           code: "DOCTOR_FAILED",
           message: `Orange doctor found ${result.errors.length} problem(s).`,
           hint: "Run `orange doctor` without --json for human-readable diagnostics.",
@@ -112,7 +127,7 @@ async function questCommand(cwd, io, argv) {
       expectedVerification: asArray(args.flags.verify)
     });
     if (args.flags.json) {
-      writeJson(io, jsonOk("quest new", formatQuestNewJson(cwd, quest)));
+      writeJson(io, jsonOk(COMMAND_IDS.quest.new, formatQuestNewJson(cwd, quest)));
       return;
     }
     write(io, `Created quest: ${quest.id}`);
@@ -166,7 +181,7 @@ async function questCommand(cwd, io, argv) {
       unverifiedReason: args.flags.unverified
     });
     if (args.flags.json) {
-      writeJson(io, jsonOk("quest done", formatQuestDoneJson(cwd, completed)));
+      writeJson(io, jsonOk(COMMAND_IDS.quest.done, formatQuestDoneJson(cwd, completed)));
       return;
     }
     write(io, `Completed ${completed.data.id}`);
@@ -189,7 +204,7 @@ async function identityCommand(cwd, io, argv) {
   const args = parseArgs(rest);
   const identity = buildIdentityPlaceholder(cwd);
   if (args.flags.json) {
-    writeJson(io, jsonOk("identity build", formatIdentityJson(cwd, identity, args)));
+    writeJson(io, jsonOk(COMMAND_IDS.identity.build, formatIdentityJson(cwd, identity, args)));
     return;
   }
   write(io, `Wrote ${path.relative(cwd, identity.filePath)}`);
@@ -221,7 +236,7 @@ async function routeCommand(cwd, io, argv) {
   });
   const trace = appendRouteTrace(cwd, rawRequest, contract, { questId });
   if (args.flags.json) {
-    writeJson(io, jsonOk("route", { trace, contract }));
+    writeJson(io, jsonOk(COMMAND_IDS.route, { trace, contract }));
     return;
   }
   write(io, formatRouteLine(contract));
@@ -329,16 +344,20 @@ export function isJsonMode(argv = []) {
 
 export function commandName(argv = []) {
   const [command, subcommand] = argv;
-  if (!command) {
-    return "unknown";
+  if (!command || command.startsWith("--")) {
+    return "unknown.command";
   }
-  if (command === "quest" && subcommand) {
-    return `quest ${subcommand}`;
+  const commandId = COMMAND_IDS[command];
+  if (!commandId) {
+    return `${command}.unknown`;
   }
-  if (command === "identity" && subcommand) {
-    return `identity ${subcommand}`;
+  if (typeof commandId === "string") {
+    return commandId;
   }
-  return command;
+  if (!subcommand || subcommand.startsWith("--")) {
+    return `${command}.unknown`;
+  }
+  return commandId[subcommand] || `${command}.${subcommand}`;
 }
 
 export function jsonErrorFor(error, argv = []) {
@@ -366,6 +385,7 @@ export function exitCodeForError(error) {
 function jsonOk(command, data) {
   return {
     ok: true,
+    contract_version: JSON_CONTRACT_VERSION,
     command,
     data
   };
@@ -374,6 +394,7 @@ function jsonOk(command, data) {
 function jsonError(command, error) {
   const payload = {
     ok: false,
+    contract_version: JSON_CONTRACT_VERSION,
     command,
     error: {
       code: error.code,

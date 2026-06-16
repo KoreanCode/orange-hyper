@@ -20,7 +20,8 @@ Successful JSON output uses this envelope:
 ```json
 {
   "ok": true,
-  "command": "quest new",
+  "contract_version": "0.1",
+  "command": "quest.new",
   "data": {}
 }
 ```
@@ -30,7 +31,8 @@ Structured failures use this envelope:
 ```json
 {
   "ok": false,
-  "command": "quest done",
+  "contract_version": "0.1",
+  "command": "quest.done",
   "error": {
     "code": "USER_INPUT_ERROR",
     "message": "Completion requires --evidence or --unverified.",
@@ -39,8 +41,30 @@ Structured failures use this envelope:
 }
 ```
 
-In JSON mode, adapters should read stdout as JSON. Human-readable diagnostics are
-reserved for non-JSON command usage.
+`contract_version` is the adapter-facing JSON contract version. It is currently
+`"0.1"` and appears in both success and failure envelopes.
+
+`command` uses dot notation. The v0.1 Seed Kernel command ids are:
+
+- `quest.new`
+- `route.show`
+- `capsule.build`
+- `quest.done`
+- `doctor.run`
+- `identity.build`
+
+Unknown JSON-mode failures still use a dot-shaped command id such as
+`unknown.command` or `<command>.unknown`.
+
+## stdout/stderr Policy
+
+- `--json` success: stdout JSON, stderr empty, exit 0.
+- `--json` failure: stdout JSON error envelope, stderr empty, exit non-zero.
+- Human success: stdout human output, exit 0.
+- Human failure: stderr human error, exit non-zero.
+
+Adapters should read stdout as JSON only in `--json` mode. Human-readable
+diagnostics are reserved for non-JSON command usage.
 
 ## Command Examples
 
@@ -53,7 +77,8 @@ orange quest new "Implement adapter JSON contract" --layer L2 --json
 ```json
 {
   "ok": true,
-  "command": "quest new",
+  "contract_version": "0.1",
+  "command": "quest.new",
   "data": {
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
@@ -95,7 +120,8 @@ orange route --quest quest_20260616_000000Z_implement-adapter-json-contract --js
 ```json
 {
   "ok": true,
-  "command": "route",
+  "contract_version": "0.1",
+  "command": "route.show",
   "data": {
     "trace": {
       "trace_id": "route_20260616_000100Z",
@@ -142,11 +168,12 @@ orange capsule --quest quest_20260616_000000Z_implement-adapter-json-contract --
 ```json
 {
   "ok": true,
-  "command": "capsule",
+  "contract_version": "0.1",
+  "command": "capsule.build",
   "data": {
     "capsule": {
       "file": ".orange-hyper/capsules/current.md",
-      "content": "# Orange Hyper Current Capsule\n\nGenerated: 2026-06-16T00:02:00.000Z\n..."
+      "content": "# Orange Hyper Current Capsule\n\nGenerated: 2026-06-16T00:02:00.000Z\nSource quest: .orange-hyper/quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md\n\n## Quest\n\n- ID: quest_20260616_000000Z_implement-adapter-json-contract\n- Title: Implement adapter JSON contract\n- Status: active\n- Output contract: implementation\n- Quest policy: recommended\n\n## Route Contract\n\nOrange route: L2 · P2 · T2 · V2 · A0 · M0 · MB2\n\n## Request\n\nImplement adapter JSON contract\n\n## Constraints\n\n- Not specified.\n\n## Unknowns\n\n- Not specified.\n\n## Verification\n\n- Expected level: V2\n- Not specified.\n\n## Working Notes\n\n- Keep the work bounded to this capsule unless the user changes the request.\n- Do not treat this capsule as an automatic execution plan.\n"
     },
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
@@ -174,7 +201,8 @@ orange quest done quest_20260616_000000Z_implement-adapter-json-contract --evide
 ```json
 {
   "ok": true,
-  "command": "quest done",
+  "contract_version": "0.1",
+  "command": "quest.done",
   "data": {
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
@@ -205,12 +233,25 @@ orange doctor --json
 ```json
 {
   "ok": true,
-  "command": "doctor",
+  "contract_version": "0.1",
+  "command": "doctor.run",
   "data": {
     "ok": true,
     "errors": [],
     "warnings": [],
-    "checks": [".orange-hyper root exists"]
+    "checks": [
+      ".orange-hyper root exists",
+      "config.json exists",
+      ".orange-hyper/.gitignore exists",
+      "quests/active exists",
+      "quests/completed exists",
+      "capsules/current.md exists",
+      "traces/route.jsonl exists",
+      "config.json parses",
+      ".orange-hyper/.gitignore policy checked",
+      "quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md parses",
+      "traces/route.jsonl has 1 entry"
+    ]
   }
 }
 ```
@@ -221,7 +262,8 @@ diagnostics machine-readable:
 ```json
 {
   "ok": false,
-  "command": "doctor",
+  "contract_version": "0.1",
+  "command": "doctor.run",
   "error": {
     "code": "DOCTOR_FAILED",
     "message": "Orange doctor found 1 problem(s).",
@@ -229,9 +271,22 @@ diagnostics machine-readable:
   },
   "data": {
     "ok": false,
-    "errors": ["broken quest failed to parse: Missing YAML frontmatter."],
+    "errors": [
+      ".orange-hyper/quests/active/broken.md failed to parse: Missing YAML frontmatter."
+    ],
     "warnings": [],
-    "checks": []
+    "checks": [
+      ".orange-hyper root exists",
+      "config.json exists",
+      ".orange-hyper/.gitignore exists",
+      "quests/active exists",
+      "quests/completed exists",
+      "capsules/current.md exists",
+      "traces/route.jsonl exists",
+      "config.json parses",
+      ".orange-hyper/.gitignore policy checked",
+      "traces/route.jsonl has 0 entries"
+    ]
   }
 }
 ```
@@ -245,12 +300,13 @@ orange identity build --json
 ```json
 {
   "ok": true,
-  "command": "identity build",
+  "contract_version": "0.1",
+  "command": "identity.build",
   "data": {
     "file": ".orange-hyper/identity/orange-hyper.html",
     "summary": {
       "projectName": "orange-hyper",
-      "activeCount": 1,
+      "activeCount": 0,
       "completedCount": 1,
       "verifiedCount": 1,
       "unverifiedCount": 0,

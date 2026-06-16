@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { main } from "../src/cli/index.js";
+import { JSON_CONTRACT_VERSION, main } from "../src/cli/index.js";
 import { generateCapsule } from "../src/core/capsule.js";
 import { initWorkspace } from "../src/core/config.js";
 import { stringifyFrontmatter } from "../src/core/frontmatter.js";
@@ -180,8 +180,7 @@ test("quest new --json prints valid JSON without human-readable output", async (
   await main(["quest", "new", "--json", "implement JSON quest creation output"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "quest new");
+  assertJsonEnvelope(payload, true, "quest.new");
   assert.match(payload.data.quest.id, /^quest_/);
   assert.equal(payload.data.quest.file, `.orange-hyper/quests/active/${payload.data.quest.id}.md`);
   assert.equal(payload.data.next.route, `orange route --quest ${payload.data.quest.id}`);
@@ -201,8 +200,7 @@ test("route --json prints valid JSON without human-readable output", async () =>
   await main(["route", "--quest", created.id, "--json"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "route");
+  assertJsonEnvelope(payload, true, "route.show");
   assert.equal(payload.data.trace.quest_id, created.id);
   assert.equal(payload.data.trace.contract.route, payload.data.contract.route);
   assert.equal(payload.data.contract.output_contract, created.data.output_contract);
@@ -246,8 +244,7 @@ test("capsule --json prints valid JSON without human-readable output", async () 
   await main(["capsule", "--quest", created.id, "--json"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "capsule");
+  assertJsonEnvelope(payload, true, "capsule.build");
   assert.equal(payload.data.capsule.file, ".orange-hyper/capsules/current.md");
   assert.equal(payload.data.quest.id, created.id);
   assert.match(payload.data.capsule.content, /build selected JSON capsule/);
@@ -370,8 +367,7 @@ test("quest done --json prints completed quest information as valid JSON", async
   await main(["quest", "done", created.id, "--evidence", "git diff --check passed", "--evidence-file", "verification.txt", "--json"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "quest done");
+  assertJsonEnvelope(payload, true, "quest.done");
   assert.equal(payload.data.quest.id, created.id);
   assert.equal(payload.data.quest.status, "completed");
   assert.equal(payload.data.quest.verification_status, "verified");
@@ -388,8 +384,7 @@ test("doctor --json prints ok true diagnostics as valid JSON", async () => {
   await main(["doctor", "--json"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "doctor");
+  assertJsonEnvelope(payload, true, "doctor.run");
   assert.equal(payload.data.ok, true);
   assert.deepEqual(payload.data.errors, []);
   assert.doesNotMatch(raw, /^Orange doctor/m);
@@ -404,8 +399,7 @@ test("doctor --json prints ok false diagnostics and exits non-zero for invalid s
   assert.equal(result.status, 2);
   assert.equal(result.stderr, "");
   const payload = parseJsonOnly(result.stdout);
-  assert.equal(payload.ok, false);
-  assert.equal(payload.command, "doctor");
+  assertJsonEnvelope(payload, false, "doctor.run");
   assert.equal(payload.error.code, "DOCTOR_FAILED");
   assert.equal(payload.data.ok, false);
   assert.match(payload.data.errors.join("\n"), /Missing YAML frontmatter/);
@@ -442,8 +436,7 @@ test("identity build --json prints generated html path and summary", async () =>
   await main(["identity", "build", "--json"], { cwd, io });
   const raw = output.join("");
   const payload = parseJsonOnly(raw);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.command, "identity build");
+  assertJsonEnvelope(payload, true, "identity.build");
   assert.equal(payload.data.file, ".orange-hyper/identity/orange-hyper.html");
   assert.equal(payload.data.summary.projectName, "identity-json-demo");
   assert.equal(payload.data.summary.completedCount, 1);
@@ -461,10 +454,29 @@ test("JSON mode failures print machine-readable errors and exit non-zero", () =>
   assert.equal(result.status, 1);
   assert.equal(result.stderr, "");
   const payload = parseJsonOnly(result.stdout);
-  assert.equal(payload.ok, false);
-  assert.equal(payload.command, "quest done");
+  assertJsonEnvelope(payload, false, "quest.done");
   assert.equal(payload.error.code, "USER_INPUT_ERROR");
   assert.match(payload.error.message, /requires --evidence or --unverified/);
+});
+
+test("all JSON success envelopes include contract version and dot command ids", () => {
+  const cwd = tempWorkspace();
+  assert.equal(runOrange(["init"], cwd).status, 0);
+
+  const created = assertJsonCommand(
+    runOrange(["quest", "new", "--json", "implement adapter contract freeze"], cwd),
+    "quest.new"
+  );
+  const questId = created.data.quest.id;
+
+  assertJsonCommand(runOrange(["route", "--quest", questId, "--json"], cwd), "route.show");
+  assertJsonCommand(runOrange(["capsule", "--quest", questId, "--json"], cwd), "capsule.build");
+  assertJsonCommand(
+    runOrange(["quest", "done", questId, "--evidence", "npm test passed", "--json"], cwd),
+    "quest.done"
+  );
+  assertJsonCommand(runOrange(["doctor", "--json"], cwd), "doctor.run");
+  assertJsonCommand(runOrange(["identity", "build", "--json"], cwd), "identity.build");
 });
 
 function silentIo() {
@@ -478,6 +490,21 @@ function parseJsonOnly(raw) {
   assert.equal(raw.trimStart().startsWith("{"), true);
   assert.equal(raw.trimEnd().endsWith("}"), true);
   return JSON.parse(raw);
+}
+
+function assertJsonCommand(result, command) {
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  const payload = parseJsonOnly(result.stdout);
+  assertJsonEnvelope(payload, true, command);
+  return payload;
+}
+
+function assertJsonEnvelope(payload, ok, command) {
+  assert.equal(payload.ok, ok);
+  assert.equal(payload.contract_version, JSON_CONTRACT_VERSION);
+  assert.equal(payload.command, command);
+  assert.match(payload.command, /^[a-z0-9]+(?:\.[a-z0-9]+)+$/);
 }
 
 function runOrange(args, cwd) {

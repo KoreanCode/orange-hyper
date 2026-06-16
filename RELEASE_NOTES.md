@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.1.0-alpha.4
+
+Adapter Contract Freeze release.
+
+- JSON success and failure envelopes now include `"contract_version": "0.1"`.
+- JSON envelope `command` values now use dot notation such as `quest.new`, `route.show`, `capsule.build`, `quest.done`, `doctor.run`, and `identity.build`.
+- `docs/16_ADAPTER_CONTRACT.md` now fixes stdout/stderr behavior for JSON and human modes.
+- README points to the adapter contract instead of repeating JSON envelope details.
+- This release keeps the v0.1 Seed Kernel scope: no Memory Graph, MCP, hooks, subagents, role system, auto planner, or auto execution loop.
+
 ## v0.1.0-alpha.3
 
 Seed Kernel Adapter Contract release.
