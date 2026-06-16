@@ -1,5 +1,50 @@
 # Release Notes
 
+## v0.2.1
+
+This patch release includes two bounded release-surface fixes before v0.3 Memory
+Graph usability work:
+
+- Project Boundary Guard
+- `project_id`/`project_name` propagation
+- capsule `Project Boundary` header
+- `doctor` project boundary checks
+- `doctor --repair-project-id`
+- external source import explicitly blocked
+- CLI/npx execution surface fix
+- `orange-hyper` bin alias
+- README explicit `npx --package` usage
+
+Project Boundary Guard release.
+
+This patch release keeps v0.3 Memory Graph usability work from indexing memory
+that belongs to another project or came from unrelated external context. The
+latest published npm version is `0.2.0`, so this release bumps the package
+version to `0.2.1`.
+
+- Package version is `0.2.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `orange init` now writes stable random `project_id` and `project_name` fields
+  to `.orange-hyper/config.json` without storing absolute local paths.
+- New Quest, Memory Delta Proposal, Accepted Memory Node, Capsule boundary, and
+  Identity summary JSON output record the current project identity.
+- `orange capsule` adds a `Project Boundary` header explaining that only
+  Quest/Proposal/Accepted Node artifacts with the current `project_id` are
+  project memory.
+- `doctor` warns on legacy artifacts missing `project_id` and errors on explicit
+  cross-project mismatches.
+- `doctor` verifies proposal-to-source-Quest and accepted-node-to-source-proposal
+  project identity consistency.
+- New option: `orange doctor --repair-project-id`. It fills missing legacy
+  project identity fields with the current config values, but does not overwrite
+  a different existing `project_id`.
+- `doctor --json` keeps the existing JSON envelope and includes boundary
+  diagnostics under `data.project_boundary`.
+- External source memory import remains a future feature. v0.2.1 does not add
+  `remember propose --from-file`, external report import, clipboard/pasted
+  report automatic proposal, Memory Graph rendering, MCP, hooks, subagents, role
+  evolution, auto planner, or auto execution loop.
+
 ## v0.2.0
 
 Memory Delta Proposal stable release.

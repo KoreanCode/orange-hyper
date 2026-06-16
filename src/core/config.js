@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { workspacePaths } from "./paths.js";
 
@@ -13,10 +14,15 @@ export const ORANGE_GITIGNORE = [
 ].join("\n");
 
 export function defaultConfig(cwd = process.cwd()) {
+  const projectId = createProjectId();
+  const projectName = path.basename(cwd);
   return {
     version: CONFIG_VERSION,
+    project_id: projectId,
+    project_name: projectName,
     project: {
-      name: path.basename(cwd),
+      id: projectId,
+      name: projectName,
       default_language: "ko"
     },
     storage: {
@@ -55,6 +61,44 @@ export function readConfig(cwd = process.cwd()) {
   return JSON.parse(fs.readFileSync(paths.config, "utf8"));
 }
 
+export function readProjectIdentity(cwd = process.cwd()) {
+  return projectIdentityFromConfig(readConfig(cwd), cwd);
+}
+
+export function requireProjectIdentity(cwd = process.cwd()) {
+  const identity = readProjectIdentity(cwd);
+  if (!identity.project_id) {
+    throw new Error("config.project_id is missing. Run `orange init` or `orange doctor --repair-project-id`.");
+  }
+  return identity;
+}
+
+export function projectIdentityFromConfig(config, cwd = process.cwd()) {
+  return {
+    project_id: config?.project_id || config?.project?.id || "",
+    project_name: config?.project_name || config?.project?.name || path.basename(cwd)
+  };
+}
+
+export function normalizeConfigProjectIdentity(config, cwd = process.cwd(), options = {}) {
+  const projectId = config?.project_id || config?.project?.id || options.projectId || createProjectId();
+  const projectName = options.projectName || config?.project_name || config?.project?.name || path.basename(cwd);
+  return {
+    ...config,
+    project_id: projectId,
+    project_name: projectName,
+    project: {
+      ...(config.project || {}),
+      id: projectId,
+      name: projectName
+    }
+  };
+}
+
+export function createProjectId() {
+  return `project_${crypto.randomUUID()}`;
+}
+
 export function initWorkspace(cwd = process.cwd(), options = {}) {
   const paths = workspacePaths(cwd);
   fs.mkdirSync(paths.activeQuests, { recursive: true });
@@ -66,17 +110,34 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
   fs.mkdirSync(paths.traces, { recursive: true });
 
   if (!fs.existsSync(paths.config) || options.force) {
-    const config = defaultConfig(cwd);
-    if (options.projectName) {
-      config.project.name = options.projectName;
-    }
+    const config = normalizeConfigProjectIdentity(defaultConfig(cwd), cwd, {
+      projectName: options.projectName
+    });
     fs.writeFileSync(paths.config, `${JSON.stringify(config, null, 2)}\n`);
+  } else {
+    const config = JSON.parse(fs.readFileSync(paths.config, "utf8"));
+    const normalized = normalizeConfigProjectIdentity(config, cwd);
+    if (JSON.stringify(config) !== JSON.stringify(normalized)) {
+      fs.writeFileSync(paths.config, `${JSON.stringify(normalized, null, 2)}\n`);
+    }
   }
 
   if (!fs.existsSync(paths.currentCapsule) || options.force) {
+    const identity = readProjectIdentity(cwd);
     fs.writeFileSync(
       paths.currentCapsule,
-      "# Orange Hyper Current Capsule\n\nNo active capsule has been generated yet.\n"
+      [
+        "# Orange Hyper Current Capsule",
+        "",
+        "## Project Boundary",
+        "",
+        `- Project name: ${identity.project_name}`,
+        `- Project id: ${identity.project_id}`,
+        "- Only Quest, Proposal, and Accepted Node artifacts with this project_id are project memory.",
+        "- Unrelated pasted reports, external project docs, and other repo documents are not project memory without an explicit orange import command.",
+        "",
+        "No active capsule has been generated yet."
+      ].join("\n") + "\n"
     );
   }
 

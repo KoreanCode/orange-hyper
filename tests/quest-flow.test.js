@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { JSON_CONTRACT_VERSION, main } from "../src/cli/index.js";
 import { generateCapsule } from "../src/core/capsule.js";
-import { initWorkspace } from "../src/core/config.js";
+import { initWorkspace, readConfig } from "../src/core/config.js";
 import { stringifyFrontmatter } from "../src/core/frontmatter.js";
 import { runDoctor } from "../src/core/doctor.js";
 import {
@@ -29,6 +29,7 @@ function tempWorkspace() {
 test("init creates the v0.2 storage structure", () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd, { projectName: "demo" });
+  const config = readConfig(cwd);
   assert.ok(fs.existsSync(paths.config));
   assert.ok(fs.existsSync(paths.orangeGitignore));
   assert.ok(fs.existsSync(paths.activeQuests));
@@ -38,6 +39,12 @@ test("init creates the v0.2 storage structure", () => {
   assert.ok(fs.existsSync(paths.rejectedMemoryDeltaProposals));
   assert.ok(fs.existsSync(paths.currentCapsule));
   assert.ok(fs.existsSync(paths.routeTrace));
+  assert.match(config.project_id, /^project_[0-9a-f-]{36}$/);
+  assert.equal(config.project_name, "demo");
+  assert.equal(config.project.id, config.project_id);
+  assert.equal(config.project.name, "demo");
+  assert.doesNotMatch(JSON.stringify(config), new RegExp(escapeRegExp(cwd)));
+  assert.match(fs.readFileSync(paths.currentCapsule, "utf8"), new RegExp(`Project id: ${escapeRegExp(config.project_id)}`));
   assert.equal(fs.readFileSync(paths.orangeGitignore, "utf8"), "capsules/\ntraces/\nproposals/\nidentity/\nlocal/\n");
 });
 
@@ -48,19 +55,24 @@ test("init is idempotent and preserves existing quest and trace files", () => {
     clock: new Date("2026-06-16T00:00:00.000Z")
   });
   fs.appendFileSync(paths.routeTrace, `${JSON.stringify({ trace_id: "route_keep", contract: { route: "L2/P2/T2/V2/A0/M0/MB2" } })}\n`);
+  const projectId = readConfig(cwd).project_id;
   initWorkspace(cwd);
   assert.ok(fs.existsSync(created.filePath));
   assert.match(fs.readFileSync(paths.routeTrace, "utf8"), /route_keep/);
+  assert.equal(readConfig(cwd).project_id, projectId);
 });
 
 test("quest lifecycle writes markdown frontmatter, capsule, completion evidence, and doctor passes", () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
+  const config = readConfig(cwd);
 
   const created = createQuest(cwd, "implement the route contract formatter", {
     clock: new Date("2026-06-16T00:00:00.000Z"),
     expectedVerification: ["node --test"]
   });
+  assert.equal(created.data.project_id, config.project_id);
+  assert.equal(created.data.project_name, config.project_name);
   assert.ok(fs.readFileSync(created.filePath, "utf8").startsWith("---\n"));
   assert.equal(listQuests(cwd, "active").length, 1);
 
@@ -68,6 +80,10 @@ test("quest lifecycle writes markdown frontmatter, capsule, completion evidence,
     clock: new Date("2026-06-16T00:01:00.000Z")
   });
   assert.match(capsule.content, /Orange Hyper Current Capsule/);
+  assert.match(capsule.content, /## Project Boundary/);
+  assert.match(capsule.content, new RegExp(`Project id: ${escapeRegExp(config.project_id)}`));
+  assert.match(capsule.content, /Only Quest, Proposal, and Accepted Node artifacts with this project_id are project memory/);
+  assert.match(capsule.content, /external project docs/);
   assert.ok(fs.existsSync(workspacePaths(cwd).currentCapsule));
 
   const completed = completeQuest(cwd, created.id, {
@@ -75,6 +91,7 @@ test("quest lifecycle writes markdown frontmatter, capsule, completion evidence,
     evidence: ["node --test passed"]
   });
   assert.equal(completed.data.status, "completed");
+  assert.equal(completed.data.project_id, config.project_id);
   assert.equal(completed.data.verification_status, "verified");
   assert.equal(listQuests(cwd, "active").length, 0);
   assert.equal(listQuests(cwd, "completed").length, 1);
@@ -369,6 +386,7 @@ test("L0/L1 quest new creates quest but prints not_recommended warning", async (
 test("remember propose list show accept and reject support JSON envelopes", async () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd);
+  const config = readConfig(cwd);
   const first = createQuest(cwd, "remember a durable implementation decision", {
     layer: "L2",
     clock: new Date("2026-06-16T00:00:00.000Z")
@@ -385,6 +403,8 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
   assert.equal(proposed.data.duplicated, false);
   assert.deepEqual(proposed.data.warnings, []);
   const proposalId = proposed.data.proposal.id;
+  assert.equal(proposed.data.proposal.project_id, config.project_id);
+  assert.equal(proposed.data.proposal.project_name, config.project_name);
   assert.equal(proposed.data.proposal.status, "pending");
   assert.equal(proposed.data.proposal.file, `.orange-hyper/proposals/memory-delta/pending/${proposalId}.md`);
 
@@ -399,6 +419,9 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
 
   const accepted = assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
   assert.equal(accepted.data.proposal.status, "accepted");
+  assert.equal(accepted.data.proposal.project_id, config.project_id);
+  assert.equal(accepted.data.node.project_id, config.project_id);
+  assert.equal(accepted.data.node.project_name, config.project_name);
   assert.equal(accepted.data.node.source_proposal, proposalId);
   assert.equal(accepted.data.node.source_quest, first.id);
   assert.equal(accepted.data.node.node_type, "decision");
@@ -410,6 +433,8 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
   assert.equal(accepted.data.node.provenance.source_quest, first.id);
   assert.equal(accepted.data.node.provenance.node_type, "decision");
   assert.equal(accepted.data.node.provenance.origin, "memory-delta-proposal");
+  assert.equal(accepted.data.node.provenance.project_id, config.project_id);
+  assert.equal(accepted.data.node.provenance.project_name, config.project_name);
   assert.equal(accepted.data.node.provenance.accepted_at, accepted.data.node.accepted_at);
   assert.equal(accepted.data.node.provenance.source_proposal_hash, accepted.data.node.source_proposal_hash);
   assert.ok(fs.existsSync(path.join(paths.acceptedMemoryDeltaProposals, `${proposalId}.md`)));
@@ -703,6 +728,17 @@ test("remember propose requires completed L2+ quest with verification state", as
   );
 });
 
+test("remember propose rejects external source import flags in v0.2", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const result = runOrange(["remember", "propose", "--from-file", "report.md", "--json"], cwd);
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "");
+  const payload = parseJsonOnly(result.stdout);
+  assertJsonEnvelope(payload, false, "remember.propose");
+  assert.match(payload.error.message, /External source memory import is a future feature/);
+});
+
 test("doctor catches memory proposal source quest and status problems", () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
@@ -730,6 +766,27 @@ test("doctor catches memory proposal source quest and status problems", () => {
   const result = runDoctor(cwd);
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /source_quest not found: quest_missing/);
+});
+
+test("doctor catches proposal source quest project mismatch", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember source quest project boundary");
+  const sourceQuest = readQuestFile(path.join(workspacePaths(cwd).completedQuests, `${proposal.data.source_quest}.md`));
+  fs.writeFileSync(
+    sourceQuest.filePath,
+    stringifyFrontmatter(
+      {
+        ...sourceQuest.data,
+        project_id: "project_source_other"
+      },
+      sourceQuest.body
+    )
+  );
+
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /memory proposal .* project_id .* does not match source quest .* project_id project_source_other/);
 });
 
 test("doctor warns when memory proposal updated_at is earlier than created_at", () => {
@@ -813,6 +870,7 @@ test("memory proposal quality validation reports warnings and errors", () => {
 test("accept creates graph node provenance and reject does not create graph nodes", () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
+  const config = readConfig(cwd);
   const acceptedQuest = createQuest(cwd, "remember accepted graph provenance", {
     layer: "L2",
     clock: new Date("2026-06-16T00:00:00.000Z")
@@ -828,12 +886,16 @@ test("accept creates graph node provenance and reject does not create graph node
     clock: new Date("2026-06-16T00:03:00.000Z")
   });
   assert.equal(accepted.node.data.source_proposal, proposal.data.id);
+  assert.equal(accepted.node.data.project_id, config.project_id);
+  assert.equal(accepted.node.data.project_name, config.project_name);
   assert.equal(accepted.node.data.source_quest, acceptedQuest.id);
   assert.equal(accepted.node.data.accepted_at, "2026-06-16T00:03:00.000Z");
   assert.equal(accepted.node.data.node_type, "decision");
   assert.equal(accepted.node.data.origin, "memory-delta-proposal");
   assert.match(accepted.node.data.source_proposal_hash, /^[a-f0-9]{64}$/);
   assert.equal(accepted.node.data.provenance.proposal_id, proposal.data.id);
+  assert.equal(accepted.node.data.provenance.project_id, config.project_id);
+  assert.equal(accepted.node.data.provenance.project_name, config.project_name);
   assert.equal(accepted.node.data.provenance.source_proposal, proposal.data.id);
   assert.equal(accepted.node.data.provenance.source_quest, acceptedQuest.id);
   assert.equal(accepted.node.data.provenance.accepted_at, "2026-06-16T00:03:00.000Z");
@@ -881,10 +943,12 @@ test("doctor catches accepted memory graph provenance mismatch", () => {
     stringifyFrontmatter(
       {
         ...accepted.node.data,
+        project_id: "project_other",
         source_quest: "quest_other",
         origin: "manual",
         provenance: {
           ...accepted.node.data.provenance,
+          project_id: "project_other",
           source_quest: "quest_other",
           origin: "manual"
         }
@@ -895,6 +959,8 @@ test("doctor catches accepted memory graph provenance mismatch", () => {
 
   const doctor = runDoctor(cwd);
   assert.equal(doctor.ok, false);
+  assert.match(doctor.errors.join("\n"), /graph node .* project_id project_other does not match config project_id/);
+  assert.match(doctor.errors.join("\n"), /graph node .* project_id project_other does not match source proposal/);
   assert.match(doctor.errors.join("\n"), /provenance does not match accepted proposal/);
   assert.match(doctor.errors.join("\n"), /origin provenance does not match memory-delta-proposal/);
 });
@@ -949,6 +1015,7 @@ test("remember selectors reject path traversal", async () => {
 test("identity summary includes memory proposal and accepted node counts", async () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd, { projectName: "memory-identity-demo" });
+  const config = readConfig(cwd);
   const pendingQuest = createQuest(cwd, "fix", {
     layer: "L2",
     clock: new Date("2026-06-16T00:00:00.000Z")
@@ -995,6 +1062,9 @@ test("identity summary includes memory proposal and accepted node counts", async
   await main(["identity", "build", "--json"], { cwd, io });
   const payload = parseJsonOnly(output.join(""));
   assertJsonEnvelope(payload, true, "identity.build");
+  assert.equal(payload.data.summary_file, ".orange-hyper/identity/summary.json");
+  assert.equal(payload.data.summary.project_id, config.project_id);
+  assert.equal(payload.data.summary.project_name, "memory-identity-demo");
   assert.equal(payload.data.summary.pendingMemoryProposals, 1);
   assert.equal(payload.data.summary.pendingMemoryProposalsWithWarnings, 1);
   assert.equal(payload.data.summary.acceptedMemoryProposals, 1);
@@ -1004,6 +1074,9 @@ test("identity summary includes memory proposal and accepted node counts", async
     { nodeType: "decision", count: 2 },
     { nodeType: "risk", count: 1 }
   ]);
+  const summary = JSON.parse(fs.readFileSync(workspacePaths(cwd).identitySummaryJson, "utf8"));
+  assert.equal(summary.project_id, config.project_id);
+  assert.equal(summary.project_name, "memory-identity-demo");
 });
 
 test("quest done --json prints completed quest information as valid JSON", async () => {
@@ -1056,9 +1129,100 @@ test("doctor --json prints ok false diagnostics and exits non-zero for invalid s
   assert.match(payload.data.errors.join("\n"), /Missing YAML frontmatter/);
 });
 
+test("doctor warns for legacy files missing project_id and reports it in JSON", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const quest = createQuest(cwd, "legacy quest without project identity", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const legacyData = { ...quest.data };
+  delete legacyData.project_id;
+  delete legacyData.project_name;
+  fs.writeFileSync(quest.filePath, stringifyFrontmatter(legacyData, quest.body));
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, true);
+  assert.match(doctor.warnings.join("\n"), /quest .* missing project_id \(legacy file\)/);
+  assert.match(doctor.project_boundary.warnings.join("\n"), /missing project_id/);
+
+  const payload = assertJsonCommand(runOrange(["doctor", "--json"], cwd), "doctor.run");
+  assert.equal(payload.data.ok, true);
+  assert.match(payload.data.project_boundary.warnings.join("\n"), /missing project_id/);
+});
+
+test("doctor errors for cross-project mismatch and reports it in JSON", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const quest = createQuest(cwd, "cross project quest", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  fs.writeFileSync(
+    quest.filePath,
+    stringifyFrontmatter(
+      {
+        ...quest.data,
+        project_id: "project_other"
+      },
+      quest.body
+    )
+  );
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, false);
+  assert.match(doctor.errors.join("\n"), /project_id project_other does not match config project_id/);
+
+  const result = runOrange(["doctor", "--json"], cwd);
+  assert.equal(result.status, 2);
+  const payload = parseJsonOnly(result.stdout);
+  assertJsonEnvelope(payload, false, "doctor.run");
+  assert.match(payload.data.project_boundary.errors.join("\n"), /project_other/);
+});
+
+test("doctor repair-project-id fills missing project identity without overwriting mismatches", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const config = readConfig(cwd);
+  const proposal = createMemoryProposal(cwd, "repair missing project identity fields");
+  const quest = readQuestFile(path.join(workspacePaths(cwd).completedQuests, `${proposal.data.source_quest}.md`));
+  const legacyQuestData = { ...quest.data };
+  const legacyProposalData = { ...proposal.data };
+  delete legacyQuestData.project_id;
+  delete legacyQuestData.project_name;
+  delete legacyProposalData.project_id;
+  delete legacyProposalData.project_name;
+  fs.writeFileSync(quest.filePath, stringifyFrontmatter(legacyQuestData, quest.body));
+  fs.writeFileSync(proposal.filePath, stringifyFrontmatter(legacyProposalData, proposal.body));
+
+  const repaired = assertJsonCommand(runOrange(["doctor", "--repair-project-id", "--json"], cwd), "doctor.run");
+  assert.equal(repaired.data.ok, true);
+  assert.match(repaired.data.repairs.join("\n"), /added missing project identity fields/);
+  assert.deepEqual(repaired.data.project_boundary.warnings, []);
+  assert.equal(readQuestFile(quest.filePath).data.project_id, config.project_id);
+  assert.equal(readMemoryDeltaProposalFile(proposal.filePath).data.project_id, config.project_id);
+
+  const mismatchQuest = createQuest(cwd, "do not overwrite mismatched project id", {
+    clock: new Date("2026-06-16T00:10:00.000Z")
+  });
+  fs.writeFileSync(
+    mismatchQuest.filePath,
+    stringifyFrontmatter(
+      {
+        ...mismatchQuest.data,
+        project_id: "project_other"
+      },
+      mismatchQuest.body
+    )
+  );
+  const mismatch = runOrange(["doctor", "--repair-project-id", "--json"], cwd);
+  assert.equal(mismatch.status, 2);
+  assert.equal(readQuestFile(mismatchQuest.filePath).data.project_id, "project_other");
+  assert.match(parseJsonOnly(mismatch.stdout).data.project_boundary.errors.join("\n"), /project_other/);
+});
+
 test("identity build writes generated placeholder html", async () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd, { projectName: "identity-demo" });
+  const config = readConfig(cwd);
   const created = createQuest(cwd, "build identity placeholder", {
     clock: new Date("2026-06-16T00:00:00.000Z")
   });
@@ -1069,6 +1233,7 @@ test("identity build writes generated placeholder html", async () => {
   await main(["identity", "build"], { cwd, io: silentIo() });
   const html = fs.readFileSync(paths.identityHtml, "utf8");
   assert.match(html, /identity-demo/);
+  assert.match(html, new RegExp(`Project ID: ${escapeRegExp(config.project_id)}`));
   assert.match(html, /Level: Seed/);
   assert.match(html, /Memory proposal review is active in v0\.2\./);
   assert.match(html, /Graph rendering is not active yet\./);
@@ -1078,6 +1243,7 @@ test("identity build writes generated placeholder html", async () => {
 test("identity build --json prints generated html path and summary", async () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd, { projectName: "identity-json-demo" });
+  const config = readConfig(cwd);
   const created = createQuest(cwd, "build identity JSON summary", {
     clock: new Date("2026-06-16T00:00:00.000Z")
   });
@@ -1091,6 +1257,9 @@ test("identity build --json prints generated html path and summary", async () =>
   const payload = parseJsonOnly(raw);
   assertJsonEnvelope(payload, true, "identity.build");
   assert.equal(payload.data.file, ".orange-hyper/identity/orange-hyper.html");
+  assert.equal(payload.data.summary_file, ".orange-hyper/identity/summary.json");
+  assert.equal(payload.data.summary.project_id, config.project_id);
+  assert.equal(payload.data.summary.project_name, "identity-json-demo");
   assert.equal(payload.data.summary.projectName, "identity-json-demo");
   assert.equal(payload.data.summary.completedCount, 1);
   assert.equal(payload.data.summary.verifiedCount, 1);
@@ -1226,4 +1395,8 @@ function captureIo() {
       stderr: { write: () => {} }
     }
   };
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

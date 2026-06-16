@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { requireInitialized } from "./config.js";
+import { requireInitialized, requireProjectIdentity } from "./config.js";
 import { workspacePaths } from "./paths.js";
 import { formatRouteLine } from "./route.js";
 import { findQuest } from "./quest.js";
@@ -8,7 +8,11 @@ import { nowIso } from "./time.js";
 
 export function generateCapsule(cwd, selector, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const quest = findQuest(cwd, selector);
+  if (quest.data.project_id && quest.data.project_id !== project.project_id) {
+    throw new Error(`Quest ${quest.data.id} belongs to project_id ${quest.data.project_id}, not current project_id ${project.project_id}`);
+  }
   const [layer, procedure, tool_budget, verification, delegation, mcp, memory] = String(quest.data.route).split("/");
   const contract = {
     layer,
@@ -26,6 +30,15 @@ export function generateCapsule(cwd, selector, options = {}) {
     "",
     `Generated: ${generated_at}`,
     `Source quest: ${sourcePath}`,
+    `Project name: ${project.project_name}`,
+    `Project id: ${project.project_id}`,
+    "",
+    "## Project Boundary",
+    "",
+    `- Project name: ${project.project_name}`,
+    `- Project id: ${project.project_id}`,
+    "- Only Quest, Proposal, and Accepted Node artifacts with this project_id are project memory.",
+    "- Unrelated pasted reports, external project docs, and other repo documents are not project memory without an explicit orange import command.",
     "",
     "## Quest",
     "",

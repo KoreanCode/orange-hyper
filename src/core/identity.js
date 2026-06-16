@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { readConfig, requireInitialized } from "./config.js";
+import { readProjectIdentity, requireInitialized } from "./config.js";
 import { listMemoryGraphNodes, pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
@@ -15,7 +15,7 @@ const IDENTITY_STATUS_MESSAGES = [
 export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   requireInitialized(cwd);
   const paths = workspacePaths(cwd);
-  const config = readConfig(cwd);
+  const project = readProjectIdentity(cwd);
   const quests = listQuests(cwd, "all");
   const active = quests.filter((quest) => quest.data.status === "active");
   const completed = quests.filter((quest) => quest.data.status === "completed");
@@ -27,10 +27,13 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const acceptedMemoryNodes = listMemoryGraphNodes(cwd).length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const generatedAt = nowIso(options.clock);
-  const projectName = config.project?.name || path.basename(cwd);
+  const projectName = project.project_name || path.basename(cwd);
 
   fs.mkdirSync(paths.identity, { recursive: true });
-  const html = renderIdentityHtml({
+  const summary = {
+    project_id: project.project_id,
+    project_name: projectName,
+    projectId: project.project_id,
     projectName,
     generatedAt,
     activeCount: active.length,
@@ -45,26 +48,15 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     acceptedMemoryNodes,
     topProposalNodeTypes: proposalNodeTypes,
     statusMessages: IDENTITY_STATUS_MESSAGES
-  });
+  };
+  const html = renderIdentityHtml(summary);
   fs.writeFileSync(paths.identityHtml, html);
+  fs.writeFileSync(paths.identitySummaryJson, `${JSON.stringify(summary, null, 2)}\n`);
   return {
     filePath: paths.identityHtml,
+    summaryFilePath: paths.identitySummaryJson,
     html,
-    summary: {
-      projectName,
-      activeCount: active.length,
-      completedCount: completed.length,
-      verifiedCount: verified.length,
-      unverifiedCount: unverified.length,
-      routeDistribution,
-      pendingMemoryProposals: memoryProposalCounts.pending,
-      pendingMemoryProposalsWithWarnings: pendingWarnings,
-      acceptedMemoryProposals: memoryProposalCounts.accepted,
-      rejectedMemoryProposals: memoryProposalCounts.rejected,
-      acceptedMemoryNodes,
-      topProposalNodeTypes: proposalNodeTypes,
-      statusMessages: IDENTITY_STATUS_MESSAGES
-    }
+    summary
   };
 }
 
@@ -125,6 +117,7 @@ function renderIdentityHtml(model) {
   <main>
     <p class="subtle">Generated ${escapeHtml(model.generatedAt)}</p>
     <h1>${escapeHtml(model.projectName)}</h1>
+    <p class="subtle">Project ID: ${escapeHtml(model.project_id || "")}</p>
     <p class="subtle">Level: Seed</p>
     <section class="grid" aria-label="Quest summary">
       <div class="card"><div class="label">Active Quests</div><div class="value">${model.activeCount}</div></div>

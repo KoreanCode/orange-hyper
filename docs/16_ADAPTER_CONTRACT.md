@@ -13,6 +13,23 @@ trace writes, capsule generation, quest completion, and identity output. A
 natural-language workflow may translate user intent into kernel commands, but it
 must not copy or reimplement kernel state logic.
 
+## CLI Invocation
+
+The npm package name is `orange-hyper`; the primary CLI command is `orange`.
+The package also provides an `orange-hyper` compatibility alias that points to
+the same `bin/orange.js` entrypoint.
+
+Recommended npx usage should pin the package explicitly and invoke the command
+name explicitly:
+
+```bash
+npx -y --package orange-hyper@latest orange --help
+npx -y --package orange-hyper@latest orange-hyper --help
+```
+
+Adapters should prefer `orange` as the primary command name. The `orange-hyper`
+alias exists for compatibility and smoke checks.
+
 ## JSON Envelope
 
 Successful JSON output uses this envelope:
@@ -64,6 +81,25 @@ and failure envelopes.
 Unknown JSON-mode failures still use a dot-shaped command id such as
 `unknown.command` or `<command>.unknown`.
 
+## Project Boundary Contract
+
+v0.2.x records a stable random `project_id` and human-readable `project_name` in
+`.orange-hyper/config.json`. Shared config must not store an absolute local root
+path. New Quest, Memory Delta Proposal, Accepted Memory Node, Capsule boundary,
+and Identity summary JSON output include the current project identity.
+
+Adapters must treat only artifacts whose `project_id` matches the current config
+as project memory. Unrelated pasted reports, external project docs, and other
+repo documents are not memory unless a future explicit `orange` import command
+exists. v0.2.x intentionally does not support `remember propose --from-file`,
+external report import, or automatic clipboard/pasted-report memory proposals.
+
+`doctor --json` includes project boundary warnings/errors in the existing JSON
+envelope. Missing `project_id` on legacy artifacts is a warning; an explicit
+different `project_id` is an error. `orange doctor --repair-project-id` may fill
+missing legacy project identity fields with the current config values, but it
+must not overwrite a different existing `project_id`.
+
 ## stdout/stderr Policy
 
 - `--json` success: stdout JSON, stderr empty, exit 0.
@@ -91,6 +127,8 @@ orange quest new "Implement adapter JSON contract" --layer L2 --json
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
       "file": ".orange-hyper/quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "active",
       "layer": "L2",
       "quest_policy": "recommended",
@@ -181,11 +219,13 @@ orange capsule --quest quest_20260616_000000Z_implement-adapter-json-contract --
   "data": {
     "capsule": {
       "file": ".orange-hyper/capsules/current.md",
-      "content": "# Orange Hyper Current Capsule\n\nGenerated: 2026-06-16T00:02:00.000Z\nSource quest: .orange-hyper/quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md\n\n## Quest\n\n- ID: quest_20260616_000000Z_implement-adapter-json-contract\n- Title: Implement adapter JSON contract\n- Status: active\n- Output contract: implementation\n- Quest policy: recommended\n\n## Route Contract\n\nOrange route: L2 · P2 · T2 · V2 · A0 · M0 · MB2\n\n## Request\n\nImplement adapter JSON contract\n\n## Constraints\n\n- Not specified.\n\n## Unknowns\n\n- Not specified.\n\n## Verification\n\n- Expected level: V2\n- Not specified.\n\n## Working Notes\n\n- Keep the work bounded to this capsule unless the user changes the request.\n- Do not treat this capsule as an automatic execution plan.\n"
+      "content": "# Orange Hyper Current Capsule\n\nGenerated: 2026-06-16T00:02:00.000Z\nSource quest: .orange-hyper/quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md\nProject name: orange-hyper\nProject id: project_550e8400-e29b-41d4-a716-446655440000\n\n## Project Boundary\n\n- Project name: orange-hyper\n- Project id: project_550e8400-e29b-41d4-a716-446655440000\n- Only Quest, Proposal, and Accepted Node artifacts with this project_id are project memory.\n- Unrelated pasted reports, external project docs, and other repo documents are not project memory without an explicit orange import command.\n\n## Quest\n\n- ID: quest_20260616_000000Z_implement-adapter-json-contract\n- Title: Implement adapter JSON contract\n- Status: active\n- Output contract: implementation\n- Quest policy: recommended\n\n## Route Contract\n\nOrange route: L2 · P2 · T2 · V2 · A0 · M0 · MB2\n\n## Request\n\nImplement adapter JSON contract\n\n## Constraints\n\n- Not specified.\n\n## Unknowns\n\n- Not specified.\n\n## Verification\n\n- Expected level: V2\n- Not specified.\n\n## Working Notes\n\n- Keep the work bounded to this capsule unless the user changes the request.\n- Do not treat this capsule as an automatic execution plan.\n"
     },
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
       "file": ".orange-hyper/quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "active",
       "title": "Implement adapter JSON contract",
       "layer": "L2",
@@ -215,6 +255,8 @@ orange quest done quest_20260616_000000Z_implement-adapter-json-contract --evide
     "quest": {
       "id": "quest_20260616_000000Z_implement-adapter-json-contract",
       "file": ".orange-hyper/quests/completed/quest_20260616_000000Z_implement-adapter-json-contract.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "completed",
       "title": "Implement adapter JSON contract",
       "layer": "L2",
@@ -249,6 +291,8 @@ orange remember propose --quest quest_20260616_000000Z_implement-adapter-json-co
     "proposal": {
       "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "pending",
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
       "node_type": "decision",
@@ -282,6 +326,8 @@ orange remember validate mem_delta_quest_20260616_000000Z_implement-adapter-json
     "proposal": {
       "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "pending",
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
       "node_type": "decision",
@@ -325,6 +371,8 @@ orange remember revise mem_delta_quest_20260616_000000Z_implement-adapter-json-c
     "proposal": {
       "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "pending",
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
       "node_type": "decision",
@@ -371,6 +419,8 @@ orange remember list --status pending --type decision --quest quest_20260616_000
       {
         "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
         "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+        "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+        "project_name": "orange-hyper",
         "status": "pending",
         "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
         "node_type": "decision",
@@ -398,6 +448,8 @@ candidate, and its JSON payload includes node provenance:
     "proposal": {
       "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/proposals/memory-delta/accepted/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "status": "accepted",
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
       "node_type": "decision",
@@ -409,6 +461,8 @@ candidate, and its JSON payload includes node provenance:
     "node": {
       "id": "decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
       "kind": "decision",
       "node_type": "decision",
       "status": "candidate",
@@ -419,6 +473,8 @@ candidate, and its JSON payload includes node provenance:
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
       "source_proposal_hash": "sha256...",
       "provenance": {
+        "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+        "project_name": "orange-hyper",
         "proposal_id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
         "source_proposal": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
         "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
@@ -452,6 +508,7 @@ orange doctor --json
     "ok": true,
     "errors": [],
     "warnings": [],
+    "repairs": [],
     "checks": [
       ".orange-hyper root exists",
       "config.json exists",
@@ -467,7 +524,14 @@ orange doctor --json
       ".orange-hyper/.gitignore policy checked",
       "quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md parses",
       "traces/route.jsonl has 1 entry"
-    ]
+    ],
+    "project_boundary": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "errors": [],
+      "warnings": [],
+      "repairs": []
+    }
   }
 }
 ```
@@ -491,6 +555,7 @@ diagnostics machine-readable:
       ".orange-hyper/quests/active/broken.md failed to parse: Missing YAML frontmatter."
     ],
     "warnings": [],
+    "repairs": [],
     "checks": [
       ".orange-hyper root exists",
       "config.json exists",
@@ -502,10 +567,52 @@ diagnostics machine-readable:
       "config.json parses",
       ".orange-hyper/.gitignore policy checked",
       "traces/route.jsonl has 0 entries"
-    ]
+    ],
+    "project_boundary": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "errors": [],
+      "warnings": [],
+      "repairs": []
+    }
   }
 }
 ```
+
+For legacy project-boundary warnings, `doctor --json` still exits 0 when there
+are no hard errors:
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "doctor.run",
+  "data": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      "quest quest_20260616_000000Z_legacy missing project_id (legacy file)"
+    ],
+    "repairs": [],
+    "checks": ["config.json parses"],
+    "project_boundary": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "errors": [],
+      "warnings": [
+        "quest quest_20260616_000000Z_legacy missing project_id (legacy file)"
+      ],
+      "repairs": []
+    }
+  }
+}
+```
+
+For a cross-project mismatch, `doctor --json` exits non-zero and includes the
+boundary error in both `data.errors` and `data.project_boundary.errors`.
+`orange doctor --repair-project-id --json` may add missing project identity
+fields to legacy artifacts; it reports those writes in `data.repairs` and
+`data.project_boundary.repairs`.
 
 ### `identity build --json`
 
@@ -520,7 +627,11 @@ orange identity build --json
   "command": "identity.build",
   "data": {
     "file": ".orange-hyper/identity/orange-hyper.html",
+    "summary_file": ".orange-hyper/identity/summary.json",
     "summary": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "projectId": "project_550e8400-e29b-41d4-a716-446655440000",
       "projectName": "orange-hyper",
       "activeCount": 0,
       "completedCount": 1,

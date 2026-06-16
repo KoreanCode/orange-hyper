@@ -1,10 +1,11 @@
 {
   "name": "orange-hyper",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
   "bin": {
-    "orange": "bin/orange.js"
+    "orange": "bin/orange.js",
+    "orange-hyper": "bin/orange.js"
   },
   "scripts": {
     "test": "node --test",

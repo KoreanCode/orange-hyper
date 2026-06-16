@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
-import { requireInitialized } from "./config.js";
+import { requireInitialized, requireProjectIdentity } from "./config.js";
 import { splitFrontmatter, stringifyFrontmatter } from "./frontmatter.js";
 import { workspacePaths } from "./paths.js";
 import { findQuest, listQuests } from "./quest.js";
@@ -71,11 +71,13 @@ export function ensureMemoryGraphDirs(cwd = process.cwd()) {
 
 export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const paths = ensureMemoryProposalDirs(cwd);
   if (!questSelector) {
     throw new Error("remember propose requires --quest <quest-id>.");
   }
   const quest = findQuest(cwd, questSelector);
+  assertCurrentProject("source quest", quest.data.id, quest.data, project);
   if (quest.data.status !== "completed") {
     throw new Error("Memory proposals can only be created from completed quests.");
   }
@@ -97,6 +99,8 @@ export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   assertSafeId(baseId, "Proposal id");
   const data = {
     schema_version: MEMORY_DELTA_SCHEMA_VERSION,
+    project_id: project.project_id,
+    project_name: project.project_name,
     id: baseId,
     status: "pending",
     source_quest: quest.data.id,
@@ -179,7 +183,9 @@ export function validateMemoryDeltaProposalBySelector(cwd, selector) {
 
 export function reviseMemoryDeltaProposal(cwd, selector, revisions = {}, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const proposal = findMemoryDeltaProposal(cwd, selector);
+  assertCurrentProject("memory proposal", proposal.data.id, proposal.data, project);
   assertPendingProposal(proposal);
 
   const normalized = normalizeProposalRevisions(revisions);
@@ -234,7 +240,9 @@ export function reviseMemoryDeltaProposal(cwd, selector, revisions = {}, options
 
 export function acceptMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const proposal = findMemoryDeltaProposal(cwd, selector);
+  assertCurrentProject("memory proposal", proposal.data.id, proposal.data, project);
   assertPendingProposal(proposal);
 
   const validation = validateMemoryDeltaProposalDetailed(proposal, {
@@ -244,6 +252,9 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   if (validation.errors.length) {
     throw new Error(`Cannot accept memory proposal ${proposal.data.id}: ${validation.errors.join("; ")}`);
   }
+  const sourceQuest = findQuest(cwd, proposal.data.source_quest);
+  assertCurrentProject("source quest", sourceQuest.data.id, sourceQuest.data, project);
+  assertSameProject("memory proposal", proposal.data.id, proposal.data, "source quest", sourceQuest.data.id, sourceQuest.data);
 
   const paths = ensureMemoryGraphDirs(cwd);
   const acceptedAt = nowIso(options.clock);
@@ -254,10 +265,12 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   }
 
   const accepted = moveProposal(cwd, proposal, "accepted", acceptedAt);
-  const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt);
+  const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt, project);
   fs.writeFileSync(nodeFilePath, stringifyFrontmatter(node.data, node.body));
   updateGraphIndex(paths.graphIndex, {
     id: node.data.id,
+    project_id: node.data.project_id,
+    project_name: node.data.project_name,
     kind: node.data.kind,
     status: node.data.status,
     file: path.relative(paths.root, nodeFilePath),
@@ -277,7 +290,9 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
 
 export function rejectMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const proposal = findMemoryDeltaProposal(cwd, selector);
+  assertCurrentProject("memory proposal", proposal.data.id, proposal.data, project);
   assertPendingProposal(proposal);
   const validation = validateMemoryDeltaProposalDetailed(proposal, {
     cwd,
@@ -780,11 +795,26 @@ function assertPendingProposal(proposal) {
   }
 }
 
-function buildGraphNodeFromProposal(cwd, proposal, createdAt) {
+function assertCurrentProject(kind, id, data, project) {
+  if (data?.project_id && data.project_id !== project.project_id) {
+    throw new Error(`${kind} ${id || "(unknown)"} belongs to project_id ${data.project_id}, not current project_id ${project.project_id}`);
+  }
+}
+
+function assertSameProject(leftKind, leftId, leftData, rightKind, rightId, rightData) {
+  if (!leftData?.project_id || !rightData?.project_id || leftData.project_id === rightData.project_id) {
+    return;
+  }
+  throw new Error(`${leftKind} ${leftId || "(unknown)"} project_id ${leftData.project_id} does not match ${rightKind} ${rightId || "(unknown)"} project_id ${rightData.project_id}`);
+}
+
+function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
   const nodeId = graphNodeIdForProposal(proposal);
   const sourceProposalHash = hashMemoryDeltaProposalSource(proposal);
   const data = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
+    project_id: project.project_id,
+    project_name: project.project_name,
     id: nodeId,
     kind: proposal.data.node_type,
     node_type: proposal.data.node_type,
@@ -798,6 +828,8 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt) {
     source_quest: proposal.data.source_quest,
     source_proposal_hash: sourceProposalHash,
     provenance: {
+      project_id: project.project_id,
+      project_name: project.project_name,
       proposal_id: proposal.data.id,
       source_proposal: proposal.data.id,
       source_quest: proposal.data.source_quest,

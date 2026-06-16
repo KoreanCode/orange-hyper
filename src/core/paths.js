@@ -30,6 +30,7 @@ export function workspacePaths(cwd = process.cwd()) {
     graphIndex: path.join(root, "graph", "index.json"),
     identity: path.join(root, "identity"),
     identityHtml: path.join(root, "identity", "orange-hyper.html"),
+    identitySummaryJson: path.join(root, "identity", "summary.json"),
     traces: path.join(root, "traces"),
     routeTrace: path.join(root, "traces", "route.jsonl")
   };

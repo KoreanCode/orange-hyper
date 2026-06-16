@@ -91,7 +91,9 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "doctor") {
     const args = parseArgs(rest);
-    const result = runDoctor(cwd);
+    const result = runDoctor(cwd, {
+      repairProjectId: Boolean(args.flags["repair-project-id"])
+    });
     if (args.flags.json) {
       if (result.ok) {
         writeJson(io, jsonOk(COMMAND_IDS.doctor, result));
@@ -244,6 +246,9 @@ async function rememberCommand(cwd, io, argv) {
   }
   if (subcommand === "propose") {
     const args = parseArgs(rest);
+    if (Object.hasOwn(args.flags, "from-file")) {
+      throw new Error("External source memory import is a future feature; v0.2 only supports `orange remember propose --quest <quest-id>`.");
+    }
     const questSelector = args.flags.quest;
     const proposal = proposeMemoryDelta(cwd, questSelector);
     if (args.flags.json) {
@@ -418,7 +423,7 @@ async function routeCommand(cwd, io, argv) {
 function parseArgs(argv) {
   const flags = {};
   const positionals = [];
-  const booleanFlags = new Set(["all", "completed", "force", "json", "open"]);
+  const booleanFlags = new Set(["all", "completed", "force", "json", "open", "repair-project-id"]);
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (!value.startsWith("--")) {
@@ -501,6 +506,9 @@ function formatDoctor(result) {
   }
   for (const warning of result.warnings) {
     lines.push(`WARN ${warning}`);
+  }
+  for (const repair of result.repairs || []) {
+    lines.push(`REPAIR ${repair}`);
   }
   for (const error of result.errors) {
     lines.push(`ERROR ${error}`);
@@ -685,6 +693,8 @@ function formatQuestNewJson(cwd, quest) {
     quest: {
       id: quest.id,
       file: path.relative(cwd, quest.filePath),
+      project_id: quest.data.project_id || null,
+      project_name: quest.data.project_name || "",
       status: quest.data.status,
       layer: quest.data.layer,
       quest_policy: quest.data.quest_policy,
@@ -719,6 +729,7 @@ function formatCapsuleJson(cwd, capsule) {
 function formatIdentityJson(cwd, identity, args) {
   const data = {
     file: path.relative(cwd, identity.filePath),
+    summary_file: path.relative(cwd, identity.summaryFilePath),
     summary: identity.summary
   };
   if (args.flags.open) {
@@ -731,6 +742,8 @@ function formatMemoryProposalJson(cwd, proposal, options = {}) {
   const data = {
     id: proposal.data.id,
     file: path.relative(cwd, proposal.filePath),
+    project_id: proposal.data.project_id || null,
+    project_name: proposal.data.project_name || "",
     status: proposal.data.status,
     source_quest: proposal.data.source_quest,
     node_type: proposal.data.node_type,
@@ -786,6 +799,8 @@ function formatMemoryNodeJson(cwd, node) {
   return {
     id: node.data.id,
     file: path.relative(cwd, node.filePath),
+    project_id: node.data.project_id || null,
+    project_name: node.data.project_name || "",
     kind: node.data.kind,
     node_type: node.data.node_type,
     status: node.data.status,
@@ -803,6 +818,8 @@ function formatQuestJson(cwd, quest) {
   return {
     id: quest.data.id,
     file: path.relative(cwd, quest.filePath),
+    project_id: quest.data.project_id || null,
+    project_name: quest.data.project_name || "",
     status: quest.data.status,
     title: quest.data.title,
     layer: quest.data.layer,
@@ -835,7 +852,7 @@ function usage() {
     "  remember accept <proposal-id> [--json]",
     "  remember reject <proposal-id> [--json]",
     "  identity build [--json]",
-    "  doctor [--json]"
+    "  doctor [--json] [--repair-project-id]"
   ].join("\n");
 }
 

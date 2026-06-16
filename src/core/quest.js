@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { requireInitialized } from "./config.js";
+import { requireInitialized, requireProjectIdentity } from "./config.js";
 import { splitFrontmatter, stringifyFrontmatter } from "./frontmatter.js";
 import { workspacePaths } from "./paths.js";
 import { buildRouteContract, formatRouteLine, validateRouteContract } from "./route.js";
@@ -14,6 +14,7 @@ const COMPLETED_VERIFICATION_STATUSES = new Set(["verified", "unverified"]);
 
 export function createQuest(cwd, rawRequest, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   if (!rawRequest || !String(rawRequest).trim()) {
     throw new Error("Quest request is required.");
   }
@@ -27,6 +28,8 @@ export function createQuest(cwd, rawRequest, options = {}) {
   const id = options.id || `quest_${timestampForId(options.clock)}_${slugify(title)}`;
   const data = {
     schema_version: QUEST_SCHEMA_VERSION,
+    project_id: project.project_id,
+    project_name: project.project_name,
     id,
     title,
     status: "active",
@@ -223,6 +226,7 @@ export function validateQuestDocument(quest, expectedStatus) {
 
 export function completeQuest(cwd, selector, options = {}) {
   requireInitialized(cwd);
+  const project = requireProjectIdentity(cwd);
   const evidence = asArray(options.evidence).filter(Boolean);
   const unverifiedReason = options.unverifiedReason || "";
   if (!evidence.length && !unverifiedReason) {
@@ -233,6 +237,9 @@ export function completeQuest(cwd, selector, options = {}) {
   }
 
   const quest = findQuest(cwd, selector);
+  if (quest.data.project_id && quest.data.project_id !== project.project_id) {
+    throw new Error(`Quest ${quest.data.id} belongs to project_id ${quest.data.project_id}, not current project_id ${project.project_id}`);
+  }
   if (quest.data.status === "completed") {
     throw new Error(`Quest is already completed: ${quest.data.id}`);
   }

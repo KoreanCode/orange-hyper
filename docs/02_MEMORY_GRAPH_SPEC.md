@@ -42,7 +42,36 @@ auto planner / auto execution loop
 raw prompt 전체 저장
 사용자 승인 없는 graph node 생성
 L0/L1 작업의 기본 memory proposal 활성화
+external report import / clipboard 자동 memory proposal
 ```
+
+### 2.1.1 Project Boundary / Provenance
+
+v0.2.x부터 `.orange-hyper/config.json`은 stable random `project_id`와 사람이
+읽는 `project_name`을 가진다. 공유 config에는 절대 경로를 저장하지 않는다.
+
+Project memory로 취급되는 파일은 현재 config의 `project_id`와 일치해야 한다.
+
+- Quest frontmatter
+- Memory Delta Proposal frontmatter
+- Accepted Memory Node frontmatter and provenance
+- Capsule `Project Boundary` header
+- Identity summary JSON
+
+legacy 파일에 `project_id`가 없으면 `doctor`는 warning을 낸다. 이미 다른
+`project_id`가 있으면 cross-project mismatch이므로 error다.
+`orange doctor --repair-project-id`는 누락된 legacy project identity 필드만
+현재 config 값으로 채우고, 다른 `project_id`는 덮어쓰지 않는다.
+
+Proposal의 `source_quest` project id는 proposal의 `project_id`와 일치해야 한다.
+Accepted Node의 `source_proposal` project id도 node의 `project_id`와 일치해야
+한다. 이 연결이 어긋나면 v0.3 index/search/dashboard로 넘어가기 전에 doctor가
+오염 가능성을 잡아야 한다.
+
+external source memory import는 future feature다. v0.2.x에서는
+`remember propose --from-file`, external report import, clipboard/pasted report
+자동 memory proposal을 구현하지 않는다. 명시적 `orange` command 없이 외부 문서,
+unrelated pasted reports, 다른 repo 문서를 project memory로 취급하지 않는다.
 
 Proposal 저장 구조:
 
@@ -75,6 +104,8 @@ frontmatter:
 
 ```yaml
 schema_version: 1
+project_id: project_550e8400-e29b-41d4-a716-446655440000
+project_name: my-project
 id: mem_delta_...
 status: pending
 source_quest: quest_...
@@ -146,6 +177,8 @@ accepted graph node 후보 frontmatter에는 다음 provenance를 남긴다.
 
 ```yaml
 schema_version: 1
+project_id: project_550e8400-e29b-41d4-a716-446655440000
+project_name: my-project
 id: decision.mem_delta_...
 kind: decision
 node_type: decision
@@ -159,6 +192,8 @@ source_proposal: mem_delta_...
 source_quest: quest_...
 source_proposal_hash: sha256...
 provenance:
+  project_id: project_550e8400-e29b-41d4-a716-446655440000
+  project_name: my-project
   proposal_id: mem_delta_...
   source_proposal: mem_delta_...
   source_quest: quest_...
