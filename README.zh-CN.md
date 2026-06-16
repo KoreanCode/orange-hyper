@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.3-doc.2`
+- README version: `0.3-doc.3`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.3.0-alpha.0 为基准，Orange Hyper 提供 Seed Kernel 和 read-only graph preview 功能。
+以 v0.3.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel 和 read-only graph preview 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -93,6 +93,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - pending proposal 可以 list、show、validate、revise、accept、reject。
 - accepted proposal 会成为带 provenance 的 graph node candidate。
 - `graph list`、`graph show`、`graph search`、`graph rebuild-index` 可以 read-only 浏览当前项目的 accepted memory node。
+- `graph list --type ... --source-quest ... --source-proposal ...` 和 `graph search <query> --type ... --source-quest ...` 可以将结果限制在当前项目的 accepted node 内。
 - Project Boundary 不把不同 `project_id` 的 memory 当作当前项目 memory。
 - `doctor` 检查 Quest、proposal、accepted node 和 Project Boundary 状态。
 - `identity build` 会创建汇总 Seed Kernel 状态和 read-only Identity Graph Preview 的 Identity Dashboard 文件。

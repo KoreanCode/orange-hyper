@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { requireInitialized, requireProjectIdentity } from "./config.js";
 import { splitFrontmatter, stringifyFrontmatter } from "./frontmatter.js";
+import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { findQuest, listQuests } from "./quest.js";
 import { asArray } from "./text.js";
@@ -62,17 +63,22 @@ export function ensureMemoryGraphDirs(cwd = process.cwd()) {
   if (!fs.existsSync(paths.graphIndex)) {
     writeGraphIndexFile(paths.graphIndex, {
       schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-      index_version: "0.3.0-alpha.0",
+      index_version: "0.3.0-alpha.1",
       project_id: null,
       project_name: "",
       updated_at: null,
+      generated_at: null,
       source: "graph-node-markdown",
+      ...originMetadata(),
       nodes: []
     });
   }
   return paths;
 }
 
+/**
+ * @returns {import("./types.d.ts").MemoryProposalDocument}
+ */
 export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   requireInitialized(cwd);
   const project = requireProjectIdentity(cwd);
@@ -103,6 +109,7 @@ export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   assertSafeId(baseId, "Proposal id");
   const data = {
     schema_version: MEMORY_DELTA_SCHEMA_VERSION,
+    ...originMetadata(),
     project_id: project.project_id,
     project_name: project.project_name,
     id: baseId,
@@ -143,6 +150,11 @@ export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   });
 }
 
+/**
+ * @param {string} cwd
+ * @param {string | { status?: string, nodeType?: string | null, sourceQuest?: string | null }} [filters]
+ * @returns {import("./types.d.ts").MemoryProposalDocument[]}
+ */
 export function listMemoryDeltaProposals(cwd, filters = "all") {
   requireInitialized(cwd);
   const paths = workspacePaths(cwd);
@@ -158,6 +170,9 @@ export function memoryDeltaProposalFiles(cwd, status = "all") {
   return memoryProposalFiles(workspacePaths(cwd), status);
 }
 
+/**
+ * @returns {import("./types.d.ts").MemoryProposalDocument}
+ */
 export function findMemoryDeltaProposal(cwd, selector) {
   requireInitialized(cwd);
   assertSafeSelector(selector, "Proposal selector");
@@ -204,10 +219,10 @@ export function reviseMemoryDeltaProposal(cwd, selector, revisions = {}, options
   const updatedAt = nowIso(options.clock);
   const data = {
     ...proposal.data,
-    updated_at: updatedAt
+    updated_at: updatedAt,
+    ...(normalized.confidence !== undefined ? { confidence: normalized.confidence } : {})
   };
   if (normalized.confidence !== undefined) {
-    data.confidence = normalized.confidence;
     body = updateSuggestedNodeConfidence(body, normalized.confidence);
   }
 
@@ -242,6 +257,9 @@ export function reviseMemoryDeltaProposal(cwd, selector, revisions = {}, options
   };
 }
 
+/**
+ * @returns {import("./types.d.ts").MemoryAcceptResult}
+ */
 export function acceptMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
   const project = requireProjectIdentity(cwd);
@@ -302,6 +320,9 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   };
 }
 
+/**
+ * @returns {import("./types.d.ts").MemoryProposalDocument}
+ */
 export function rejectMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
   const project = requireProjectIdentity(cwd);
@@ -319,21 +340,27 @@ export function rejectMemoryDelta(cwd, selector, options = {}) {
   return moveProposal(cwd, proposal, "rejected", rejectedAt);
 }
 
+/**
+ * @returns {import("./types.d.ts").MemoryProposalDocument}
+ */
 export function readMemoryDeltaProposalFile(filePath) {
   const source = fs.readFileSync(filePath, "utf8");
   const parsed = splitFrontmatter(source);
-  return {
+  return /** @type {import("./types.d.ts").MemoryProposalDocument} */ ({
     filePath,
     source,
     ...parsed,
     statusDirectory: path.basename(path.dirname(filePath))
-  };
+  });
 }
 
+/**
+ * @returns {import("./types.d.ts").AcceptedMemoryNodeDocument}
+ */
 export function readMemoryGraphNodeFile(filePath) {
   const source = fs.readFileSync(filePath, "utf8");
   const parsed = splitFrontmatter(source);
-  return { filePath, source, ...parsed };
+  return /** @type {import("./types.d.ts").AcceptedMemoryNodeDocument} */ ({ filePath, source, ...parsed });
 }
 
 export function listMemoryGraphNodes(cwd) {
@@ -827,6 +854,7 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
   const sourceProposalHash = hashMemoryDeltaProposalSource(proposal);
   const data = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
+    ...originMetadata(),
     project_id: project.project_id,
     project_name: project.project_name,
     id: nodeId,
@@ -842,6 +870,7 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
     source_quest: proposal.data.source_quest,
     source_proposal_hash: sourceProposalHash,
     provenance: {
+      ...originMetadata(),
       project_id: project.project_id,
       project_name: project.project_name,
       proposal_id: proposal.data.id,
@@ -905,11 +934,13 @@ function graphNodeIdForProposal(proposal) {
 function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   let index = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-    index_version: "0.3.0-alpha.0",
+    index_version: "0.3.0-alpha.1",
     project_id: nodeEntry.project_id || null,
     project_name: nodeEntry.project_name || "",
     updated_at: null,
+    generated_at: null,
     source: "graph-node-markdown",
+    ...originMetadata(),
     nodes: []
   };
   if (fs.existsSync(indexPath)) {
@@ -921,11 +952,13 @@ function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   writeGraphIndexFile(indexPath, {
     ...index,
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-    index_version: "0.3.0-alpha.0",
+    index_version: "0.3.0-alpha.1",
     project_id: nodeEntry.project_id || index.project_id || null,
     project_name: nodeEntry.project_name || index.project_name || "",
     updated_at: updatedAt,
+    generated_at: updatedAt,
     source: "graph-node-markdown",
+    ...originMetadata(),
     nodes
   });
 }

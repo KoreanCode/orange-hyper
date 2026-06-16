@@ -2,7 +2,8 @@
   "version": "0.1.0",
   "project": {
     "name": "orange-hyper",
-    "default_language": "ko"
+    "default_language": "ko",
+    "id": "project_921341cf-feb0-4009-8da6-e1d0c8131e6f"
   },
   "storage": {
     "root": ".orange-hyper",
@@ -27,5 +28,7 @@
     "auto_planner": false,
     "auto_execution_loop": false,
     "branch_pr_spec_workflow_required": false
-  }
+  },
+  "project_id": "project_921341cf-feb0-4009-8da6-e1d0c8131e6f",
+  "project_name": "orange-hyper"
 }

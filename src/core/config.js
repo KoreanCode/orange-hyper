@@ -1,23 +1,45 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
+import { originMetadata, originSummaryLines } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 
 export const CONFIG_VERSION = "0.1.0";
 export const ORANGE_GITIGNORE = [
   "capsules/",
   "traces/",
-  "proposals/",
   "identity/",
   "local/",
+  "proposals/memory-delta/pending/",
+  "proposals/memory-delta/rejected/",
   ""
 ].join("\n");
+
+const LEGACY_ORANGE_GITIGNORE_BLOCKERS = new Set([
+  "proposals",
+  "proposals/",
+  "/proposals",
+  "/proposals/"
+]);
+
+const EMPTY_GRAPH_INDEX = {
+  schema_version: 1,
+  index_version: "0.3.0-alpha.1",
+  project_id: null,
+  project_name: "",
+  updated_at: null,
+  generated_at: null,
+  source: "graph-node-markdown",
+  ...originMetadata(),
+  nodes: []
+};
 
 export function defaultConfig(cwd = process.cwd()) {
   const projectId = createProjectId();
   const projectName = path.basename(cwd);
   return {
     version: CONFIG_VERSION,
+    origin: originMetadata(),
     project_id: projectId,
     project_name: projectName,
     project: {
@@ -107,6 +129,11 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
   fs.mkdirSync(paths.pendingMemoryDeltaProposals, { recursive: true });
   fs.mkdirSync(paths.acceptedMemoryDeltaProposals, { recursive: true });
   fs.mkdirSync(paths.rejectedMemoryDeltaProposals, { recursive: true });
+  fs.mkdirSync(paths.graphDecisionNodes, { recursive: true });
+  fs.mkdirSync(paths.graphConstraintNodes, { recursive: true });
+  fs.mkdirSync(paths.graphComponentNodes, { recursive: true });
+  fs.mkdirSync(paths.graphRiskNodes, { recursive: true });
+  fs.mkdirSync(paths.graphVerificationNodes, { recursive: true });
   fs.mkdirSync(paths.traces, { recursive: true });
 
   if (!fs.existsSync(paths.config) || options.force) {
@@ -114,12 +141,6 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
       projectName: options.projectName
     });
     fs.writeFileSync(paths.config, `${JSON.stringify(config, null, 2)}\n`);
-  } else {
-    const config = JSON.parse(fs.readFileSync(paths.config, "utf8"));
-    const normalized = normalizeConfigProjectIdentity(config, cwd);
-    if (JSON.stringify(config) !== JSON.stringify(normalized)) {
-      fs.writeFileSync(paths.config, `${JSON.stringify(normalized, null, 2)}\n`);
-    }
   }
 
   if (!fs.existsSync(paths.currentCapsule) || options.force) {
@@ -128,6 +149,8 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
       paths.currentCapsule,
       [
         "# Orange Hyper Current Capsule",
+        "",
+        ...originSummaryLines(),
         "",
         "## Project Boundary",
         "",
@@ -143,13 +166,52 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
 
   if (!fs.existsSync(paths.orangeGitignore) || options.force) {
     fs.writeFileSync(paths.orangeGitignore, ORANGE_GITIGNORE);
+  } else {
+    ensureOrangeGitignorePolicy(paths.orangeGitignore);
   }
 
   if (!fs.existsSync(paths.routeTrace) || options.force) {
     fs.writeFileSync(paths.routeTrace, "");
   }
 
+  if (!fs.existsSync(paths.graphEdges) || options.force) {
+    fs.writeFileSync(paths.graphEdges, "");
+  }
+
+  if (!fs.existsSync(paths.graphIndex) || options.force) {
+    const project = fs.existsSync(paths.config)
+      ? projectIdentityFromConfig(JSON.parse(fs.readFileSync(paths.config, "utf8")), cwd)
+      : { project_id: "", project_name: path.basename(cwd) };
+    fs.writeFileSync(paths.graphIndex, `${JSON.stringify({
+      ...EMPTY_GRAPH_INDEX,
+      project_id: project.project_id || null,
+      project_name: project.project_name || ""
+    }, null, 2)}\n`);
+  }
+
   return paths;
+}
+
+export function ensureOrangeGitignorePolicy(filePath) {
+  const original = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+  const lines = original
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .filter((line, index, array) => !(index === array.length - 1 && line === ""))
+    .filter((line) => !LEGACY_ORANGE_GITIGNORE_BLOCKERS.has(line.trim()));
+  const existing = new Set(lines.map((line) => line.trim()).filter(Boolean));
+
+  for (const expected of ORANGE_GITIGNORE.split(/\n/).filter(Boolean)) {
+    if (!existing.has(expected)) {
+      lines.push(expected);
+      existing.add(expected);
+    }
+  }
+
+  const next = `${lines.join("\n")}\n`;
+  if (next !== original) {
+    fs.writeFileSync(filePath, next);
+  }
 }
 
 export function requireInitialized(cwd = process.cwd()) {

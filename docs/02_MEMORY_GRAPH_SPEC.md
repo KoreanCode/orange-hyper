@@ -17,8 +17,8 @@
 
 v0.2.0 stable은 Memory Graph 전체 구현이 아니라 "기억 후보 제안/승인" 단계다.
 Obsidian-style dashboard graph와 graph editing은 v0.3+ 범위가 아니라 더 먼
-후속 범위다. v0.3.0-alpha.0은 accepted node 탐색과 read-only identity preview까지만
-다룬다.
+후속 범위다. v0.3.0-alpha.1은 accepted node 탐색, 필터링, deterministic search,
+read-only identity preview까지만 다룬다.
 
 포함:
 
@@ -74,6 +74,35 @@ external source memory import는 future feature다. v0.2.x에서는
 `remember propose --from-file`, external report import, clipboard/pasted report
 자동 memory proposal을 구현하지 않는다. 명시적 `orange` command 없이 외부 문서,
 unrelated pasted reports, 다른 repo 문서를 project memory로 취급하지 않는다.
+
+### 2.1.2 Shared Memory State Policy
+
+v0.3.0-alpha.1에서 shared memory state는 fresh clone에서도 accepted graph
+provenance를 재검증할 수 있어야 한다. accepted graph node와 그
+`source_proposal` accepted proposal은 같은 repo state로 공유되어야 한다.
+
+Git에 남길 수 있는 `.orange-hyper/` state:
+
+- `.orange-hyper/config.json`
+- `.orange-hyper/quests/completed/*.md`
+- `.orange-hyper/proposals/memory-delta/accepted/*.md`
+- `.orange-hyper/graph/**`
+
+기본 local/generated state로 ignore하는 `.orange-hyper/` state:
+
+- `.orange-hyper/capsules/`
+- `.orange-hyper/traces/`
+- `.orange-hyper/identity/`
+- `.orange-hyper/local/`
+- `.orange-hyper/proposals/memory-delta/pending/`
+- `.orange-hyper/proposals/memory-delta/rejected/`
+
+`.orange-hyper/proposals/` 전체를 ignore하면 accepted proposal provenance가
+빠진 채 graph node만 공유될 수 있다. 이 상태에서는 fresh clone의 `doctor`가
+`ACCEPTED_NODE_SOURCE_PROPOSAL_MISSING`을 보고해야 한다. 해결은 accepted
+proposal provenance를 커밋하거나 accepted proposal file을 복원하는 것이다.
+Pending/rejected proposal은 기본적으로 local review queue지만, accepted proposal은
+accepted graph node와 함께 공유되는 project memory다.
 
 Proposal 저장 구조:
 
@@ -211,7 +240,7 @@ provenance:
 
 ## 2.2 v0.3 Memory Graph Usability 범위
 
-v0.3.0-alpha.0은 accepted memory node 탐색과 read-only preview만 제공한다.
+v0.3.0-alpha.1은 accepted memory node 탐색과 read-only preview만 제공한다.
 Graph는 source state를 수정하지 않는다. `graph rebuild-index`는 재생성 가능한
 read model인 `graph/index.json`만 다시 쓴다.
 
@@ -219,8 +248,13 @@ read model인 `graph/index.json`만 다시 쓴다.
 
 ```text
 orange graph list
+orange graph list --type decision|constraint|component|risk|verification
+orange graph list --source-quest <quest-id>
+orange graph list --source-proposal <proposal-id>
 orange graph show <node-id>
 orange graph search <query>
+orange graph search <query> --type decision|constraint|component|risk|verification
+orange graph search <query> --source-quest <quest-id>
 orange graph rebuild-index
 orange identity build read-only graph preview
 doctor graph/index.json consistency checks
@@ -265,10 +299,11 @@ Index read model:
 ```json
 {
   "schema_version": 1,
-  "index_version": "0.3.0-alpha.0",
+  "index_version": "0.3.0-alpha.1",
   "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
   "project_name": "orange-hyper",
-  "updated_at": "2026-06-16T00:00:00.000Z",
+  "updated_at": "2026-06-16T00:05:00.000Z",
+  "generated_at": "2026-06-16T00:06:00.000Z",
   "source": "graph-node-markdown",
   "nodes": [
     {
@@ -299,6 +334,41 @@ Search is plain text only. Search fields:
 - source quest/proposal
 - tags/keywords
 
+Filter behavior:
+
+- `graph list --type` narrows accepted nodes by `node_type`.
+- `graph list --source-quest` narrows accepted nodes by source Quest id.
+- `graph list --source-proposal` narrows accepted nodes by source Proposal id.
+- `graph search --type` and `graph search --source-quest` apply the same
+  current-project accepted-node boundary before scoring.
+- Pending and rejected proposals are never graph nodes and must not appear in
+  filtered results.
+- Nodes whose `project_id` differs from the current config are excluded from
+  graph results and reported by `doctor`.
+
+Search ranking is deterministic and intentionally simple. It is not fuzzy,
+semantic, or vector search. Scoring should prefer:
+
+1. exact node id or title match
+2. Candidate Memory match
+3. node_type match
+4. source Quest / source Proposal match
+5. partial substring matches across searchable fields
+
+Tie-breaking is deterministic by node id.
+
+Index idempotency:
+
+- `graph/index.json` is a read model, not the source of truth.
+- Source of truth remains graph node Markdown and accepted proposal provenance.
+- `updated_at` represents deterministic source-node freshness, such as the
+  latest source node `updated_at`/`accepted_at`.
+- `generated_at` may describe generation time, but repeated rebuilds with the
+  same semantic source graph should preserve the previous `generated_at` so raw
+  JSON does not churn unnecessarily.
+- Tests should compare stable node count/id/type/source/provenance fields rather
+  than treating generation metadata as source state.
+
 Doctor v0.3 graph checks:
 
 - `graph/index.json` parses.
@@ -307,6 +377,16 @@ Doctor v0.3 graph checks:
 - accepted proposal without a graph node is reported.
 - graph node provenance/project_id matches source proposal and source quest.
 - graph node/index selectors and paths cannot escape `.orange-hyper/graph/nodes`.
+
+Doctor diagnostics should expose readable `code`, `message`, and `hint` fields
+for graph/project-boundary problems. Required diagnostic codes include:
+
+- `CONFIG_PROJECT_ID_MISSING`
+- `GRAPH_INDEX_ORPHAN_ENTRY`
+- `ACCEPTED_PROPOSAL_MISSING_NODE`
+- `ACCEPTED_NODE_SOURCE_PROPOSAL_MISSING`
+- `GRAPH_NODE_PROJECT_MISMATCH`
+- `LEGACY_PROJECT_ID_MISSING`
 
 ## 3. Node 타입
 

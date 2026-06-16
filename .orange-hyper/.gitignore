@@ -1,5 +1,6 @@
 capsules/
 traces/
-proposals/
 identity/
 local/
+proposals/memory-delta/pending/
+proposals/memory-delta/rejected/

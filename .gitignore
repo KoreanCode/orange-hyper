@@ -28,6 +28,7 @@ pnpm-debug.log*
 # Orange Hyper local/private state
 .orange-hyper/capsules/
 .orange-hyper/traces/
-.orange-hyper/proposals/
 .orange-hyper/identity/
 .orange-hyper/local/
+.orange-hyper/proposals/memory-delta/pending/
+.orange-hyper/proposals/memory-delta/rejected/

@@ -6,8 +6,9 @@
 
 v0.2.0 stable의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, memory proposal/node count, Seed mode 메시지를 보여주는 것이다.
 
-v0.3.0-alpha.0은 placeholder를 read-only graph preview로 확장한다. Heavy graph
-engine, editor, graph state mutation은 포함하지 않는다.
+v0.3.0-alpha.1은 placeholder를 read-only graph preview로 확장하고 accepted
+memory node detail, source columns, project-boundary summary를 보강한다. Heavy
+graph engine, editor, graph state mutation은 포함하지 않는다.
 
 v0.4 이후 후보 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
@@ -136,7 +137,7 @@ v0.4+ 후보 출력:
 
 v0.2에서는 최소 입력만 허용한다. 실제 stable 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count, route distribution, Seed Kernel 상태 메시지만 계산한다.
 
-v0.3.0-alpha.0은 같은 단일 HTML 산출물에 current-project accepted memory node
+v0.3.0-alpha.1은 같은 단일 HTML 산출물에 current-project accepted memory node
 preview를 추가한다. Graph view와 node/edge visualization은 작은 SVG/static table
 수준으로 제한한다.
 
@@ -574,6 +575,21 @@ orange identity build --include-local
 10. `Graph editing is not supported`가 표시된다.
 11. pending/rejected proposal은 graph preview node로 표시되지 않는다.
 12. 현재 config의 `project_id`와 일치하는 accepted node만 표시된다.
+```
+
+### 10.3 v0.3.0-alpha.1 identity preview hardening 기준
+
+```text
+1. graph summary에 현재 accepted memory node 수가 표시된다.
+2. graph summary에 node type distribution이 표시된다.
+3. graph summary에 project boundary active 상태가 표시된다.
+4. accepted node table은 node id, type, title, source quest, source proposal을 표시한다.
+5. node id는 detail section으로 이동할 수 있는 anchor 역할을 한다.
+6. detail section은 candidate memory, source quest, source proposal, tags를 표시한다.
+7. identity preview는 read-only이며 graph editing control을 제공하지 않는다.
+8. D3, Cytoscape, heavy graph dependency를 도입하지 않는다.
+9. pending/rejected proposal은 preview node로 표시하지 않는다.
+10. current project_id와 다른 node는 preview node로 표시하지 않는다.
 ```
 
 ## 11. 구현 단계

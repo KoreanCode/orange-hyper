@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v0.3.0-alpha.0 is still a Seed Kernel. The `orange` CLI is the
+Orange Hyper v0.3.0-alpha.1 is still a Seed Kernel. The `orange` CLI is the
 kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
@@ -501,6 +501,8 @@ should call `remember propose`, review with `remember show`,
 
 ```bash
 orange graph list --json
+orange graph list --type decision --source-quest quest_20260616_000000Z_adapter-contract --json
+orange graph list --source-proposal mem_delta_quest_20260616_000000Z_adapter-contract_decision --json
 ```
 
 ```json
@@ -512,6 +514,11 @@ orange graph list --json
     "project": {
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper"
+    },
+    "filters": {
+      "type": "decision",
+      "source_quest": "quest_20260616_000000Z_adapter-contract",
+      "source_proposal": null
     },
     "count": 1,
     "nodes": [
@@ -543,6 +550,9 @@ orange graph list --json
 `graph.list` returns only accepted memory nodes for the current config
 `project_id`. Pending and rejected proposals are not graph nodes. Cross-project
 nodes are excluded from graph results and reported by `doctor`.
+
+Filter fields are echoed in `data.filters`. Unset filters are `null`. Adapters
+may use `--type`, `--source-quest`, and `--source-proposal` together.
 
 ### `graph show --json`
 
@@ -586,6 +596,7 @@ with a structured JSON error envelope.
 
 ```bash
 orange graph search "adapter contract" --json
+orange graph search "adapter contract" --type decision --source-quest quest_20260616_000000Z_adapter-contract --json
 ```
 
 ```json
@@ -598,6 +609,11 @@ orange graph search "adapter contract" --json
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper"
     },
+    "filters": {
+      "type": "decision",
+      "source_quest": "quest_20260616_000000Z_adapter-contract",
+      "source_proposal": null
+    },
     "query": "adapter contract",
     "count": 1,
     "nodes": [
@@ -608,7 +624,8 @@ orange graph search "adapter contract" --json
         "candidate_memory": "Adapter JSON contract remains stable.",
         "source_quest": "quest_20260616_000000Z_adapter-contract",
         "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
-        "matches": ["title", "candidate_memory", "keywords"]
+        "matches": ["title", "candidate_memory", "keywords"],
+        "score": 87
       }
     ],
     "warnings": []
@@ -617,8 +634,9 @@ orange graph search "adapter contract" --json
 ```
 
 v0.3 search is plain text search over node id, title, Candidate Memory/summary,
-node type, source quest/proposal, tags, and keywords. It is not fuzzy, semantic,
-or vector search.
+node type, source quest/proposal, tags, and keywords. Ranking is deterministic
+and prefers exact id/title, Candidate Memory, node type, source quest/proposal,
+then partial substring matches. It is not fuzzy, semantic, or vector search.
 
 ### `graph rebuild-index --json`
 
@@ -640,10 +658,11 @@ orange graph rebuild-index --json
     "count": 1,
     "index": {
       "schema_version": 1,
-      "index_version": "0.3.0-alpha.0",
+      "index_version": "0.3.0-alpha.1",
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper",
-      "updated_at": "2026-06-16T00:06:00.000Z",
+      "updated_at": "2026-06-16T00:05:00.000Z",
+      "generated_at": "2026-06-16T00:06:00.000Z",
       "source": "graph-node-markdown",
       "nodes": [
         {
@@ -670,7 +689,10 @@ orange graph rebuild-index --json
 
 `graph/index.json` is a read model. `rebuild-index` regenerates it from graph
 node Markdown and does not edit graph node source files, proposal status, or
-memory content.
+memory content. Repeated rebuilds over the same source graph should preserve
+semantic fields, including node count/id/type/source/provenance and deterministic
+`updated_at`. `generated_at` is generation metadata and is preserved when the
+semantic read model has not changed.
 
 ### `doctor --json`
 
@@ -688,6 +710,11 @@ orange doctor --json
     "errors": [],
     "warnings": [],
     "repairs": [],
+    "diagnostics": {
+      "errors": [],
+      "warnings": [],
+      "repairs": []
+    },
     "checks": [
       ".orange-hyper root exists",
       "config.json exists",
@@ -698,10 +725,19 @@ orange doctor --json
       "proposals/memory-delta/pending exists",
       "proposals/memory-delta/accepted exists",
       "proposals/memory-delta/rejected exists",
+      "graph/nodes/decision exists",
+      "graph/nodes/constraint exists",
+      "graph/nodes/component exists",
+      "graph/nodes/risk exists",
+      "graph/nodes/verification exists",
+      "graph/index.json exists",
+      "graph/edges.jsonl exists",
       "traces/route.jsonl exists",
       "config.json parses",
       ".orange-hyper/.gitignore policy checked",
       "quests/active/quest_20260616_000000Z_implement-adapter-json-contract.md parses",
+      "graph/index.json parses",
+      "graph/edges.jsonl has 0 entries",
       "traces/route.jsonl has 1 entry"
     ],
     "project_boundary": {
@@ -709,7 +745,12 @@ orange doctor --json
       "project_name": "orange-hyper",
       "errors": [],
       "warnings": [],
-      "repairs": []
+      "repairs": [],
+      "diagnostics": {
+        "errors": [],
+        "warnings": [],
+        "repairs": []
+      }
     }
   }
 }
@@ -731,10 +772,21 @@ diagnostics machine-readable:
   "data": {
     "ok": false,
     "errors": [
-      ".orange-hyper/quests/active/broken.md failed to parse: Missing YAML frontmatter."
+      "graph/index.json entry decision.orphan is orphaned from source graph nodes"
     ],
     "warnings": [],
     "repairs": [],
+    "diagnostics": {
+      "errors": [
+        {
+          "code": "GRAPH_INDEX_ORPHAN_ENTRY",
+          "message": "graph/index.json entry decision.orphan is orphaned from source graph nodes",
+          "hint": "Run `orange graph rebuild-index` to drop stale read-model entries."
+        }
+      ],
+      "warnings": [],
+      "repairs": []
+    },
     "checks": [
       ".orange-hyper root exists",
       "config.json exists",
@@ -742,9 +794,21 @@ diagnostics machine-readable:
       "quests/active exists",
       "quests/completed exists",
       "capsules/current.md exists",
+      "proposals/memory-delta/pending exists",
+      "proposals/memory-delta/accepted exists",
+      "proposals/memory-delta/rejected exists",
+      "graph/nodes/decision exists",
+      "graph/nodes/constraint exists",
+      "graph/nodes/component exists",
+      "graph/nodes/risk exists",
+      "graph/nodes/verification exists",
+      "graph/index.json exists",
+      "graph/edges.jsonl exists",
       "traces/route.jsonl exists",
       "config.json parses",
       ".orange-hyper/.gitignore policy checked",
+      "graph/index.json parses",
+      "graph/edges.jsonl has 0 entries",
       "traces/route.jsonl has 0 entries"
     ],
     "project_boundary": {
@@ -752,7 +816,12 @@ diagnostics machine-readable:
       "project_name": "orange-hyper",
       "errors": [],
       "warnings": [],
-      "repairs": []
+      "repairs": [],
+      "diagnostics": {
+        "errors": [],
+        "warnings": [],
+        "repairs": []
+      }
     }
   }
 }
@@ -773,6 +842,17 @@ are no hard errors:
       "quest quest_20260616_000000Z_legacy missing project_id (legacy file)"
     ],
     "repairs": [],
+    "diagnostics": {
+      "errors": [],
+      "warnings": [
+        {
+          "code": "LEGACY_PROJECT_ID_MISSING",
+          "message": "quest quest_20260616_000000Z_legacy missing project_id (legacy file)",
+          "hint": "Run `orange doctor --repair-project-id` to fill missing legacy project_id fields."
+        }
+      ],
+      "repairs": []
+    },
     "checks": ["config.json parses"],
     "project_boundary": {
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
@@ -781,7 +861,18 @@ are no hard errors:
       "warnings": [
         "quest quest_20260616_000000Z_legacy missing project_id (legacy file)"
       ],
-      "repairs": []
+      "repairs": [],
+      "diagnostics": {
+        "errors": [],
+        "warnings": [
+          {
+            "code": "LEGACY_PROJECT_ID_MISSING",
+            "message": "quest quest_20260616_000000Z_legacy missing project_id (legacy file)",
+            "hint": "Run `orange doctor --repair-project-id` to fill missing legacy project_id fields."
+          }
+        ],
+        "repairs": []
+      }
     }
   }
 }
@@ -821,6 +912,7 @@ orange identity build --json
       "acceptedMemoryProposals": 1,
       "rejectedMemoryProposals": 0,
       "acceptedMemoryNodes": 1,
+      "projectBoundaryActive": true,
       "topProposalNodeTypes": [
         {
           "nodeType": "decision",
@@ -844,6 +936,7 @@ orange identity build --json
             "source_quest": "quest_20260616_000000Z_adapter-contract",
             "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
             "accepted_at": "2026-06-16T00:05:00.000Z",
+            "candidate_memory": "Adapter JSON contract remains stable.",
             "summary": "Adapter JSON contract remains stable.",
             "tags": ["adapter", "contract", "decision"],
             "keywords": ["adapter", "contract", "decision"]

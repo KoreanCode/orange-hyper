@@ -14,9 +14,70 @@ import {
   reviseMemoryDeltaProposal,
   validateMemoryDeltaProposalBySelector
 } from "../core/memory.js";
+import { originMetadata } from "../core/origin.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
+
+/**
+ * @typedef {import("../core/types.d.ts").CommandId} CommandId
+ * @typedef {import("../core/types.d.ts").JsonEnvelope<unknown>} JsonEnvelope
+ * @typedef {import("../core/types.d.ts").JsonErrorEnvelope<unknown>} JsonErrorEnvelope
+ * @typedef {import("../core/types.d.ts").QuestCreationResult} QuestCreationResult
+ * @typedef {import("../core/types.d.ts").MemoryProposalDocument} MemoryProposalDocument
+ * @typedef {import("../core/types.d.ts").GraphListResult} GraphListResult
+ * @typedef {import("../core/types.d.ts").GraphNode} GraphNode
+ * @typedef {import("../core/types.d.ts").IdentityBuildResult} IdentityBuildResult
+ * @typedef {import("../core/types.d.ts").IdentitySummary} IdentitySummary
+ *
+ * @typedef {{
+ *   id: string,
+ *   file: string,
+ *   project_id: string | null,
+ *   project_name: string,
+ *   status: string,
+ *   source_quest: string,
+ *   node_type: string,
+ *   confidence: string,
+ *   created_at: string,
+ *   updated_at: string,
+ *   title: string,
+ *   duplicated: boolean,
+ *   warnings?: string[],
+ *   body?: string,
+ *   content?: string
+ * }} MemoryProposalJson
+ *
+ * @typedef {{
+ *   id: string,
+ *   file: string,
+ *   project_id: string | null,
+ *   project_name: string,
+ *   node_type: string,
+ *   title: string,
+ *   source_quest: string,
+ *   source_proposal: string,
+ *   accepted_at: string,
+ *   candidate_memory: string,
+ *   summary: string,
+ *   tags: string[],
+ *   keywords: string[],
+ *   matches?: string[],
+ *   score?: number,
+ *   content?: string
+ * }} GraphNodeJson
+ *
+ * @typedef {{ proposal: MemoryProposalJson }} RememberShowResult
+ * @typedef {{ proposal: MemoryProposalJson }} RememberRejectResult
+ * @typedef {{ duplicated: boolean, warnings: string[], proposal: MemoryProposalJson }} RememberProposeResult
+ * @typedef {{ filters: { status: string, type: string | null, quest: string | null }, proposals: MemoryProposalJson[] }} RememberListResult
+ * @typedef {{ proposal: MemoryProposalJson, node: Record<string, unknown> }} RememberAcceptResult
+ * @typedef {{ project: { project_id: string | null, project_name: string }, filters: import("../core/types.d.ts").GraphFilters, count: number, nodes: GraphNodeJson[], warnings: string[] }} GraphListJsonResult
+ * @typedef {{ project: { project_id: string | null, project_name: string }, node: GraphNodeJson, warnings: string[] }} GraphShowJsonResult
+ * @typedef {{ project: { project_id: string | null, project_name: string }, filters: import("../core/types.d.ts").GraphFilters, query: string, count: number, nodes: GraphNodeJson[], warnings: string[] }} GraphSearchJsonResult
+ * @typedef {{ quest: Record<string, unknown>, contract: import("../core/types.d.ts").RouteContract, next: { route: string, capsule: string }, warning: string | null }} QuestCreationJsonResult
+ * @typedef {{ file: string, summary_file: string, summary: IdentitySummary, warning?: string }} IdentitySummaryResult
+ */
 
 export const EXIT_CODES = {
   success: 0,
@@ -258,7 +319,8 @@ async function graphCommand(cwd, io, argv) {
   }
   if (subcommand === "list") {
     const args = parseArgs(rest);
-    const result = listGraphNodes(cwd);
+    const filters = graphFiltersFromArgs(args.flags);
+    const result = listGraphNodes(cwd, filters);
     const data = formatGraphListJson(result);
     if (args.flags.json) {
       writeJson(io, jsonOk(COMMAND_IDS.graph.list, data));
@@ -272,6 +334,7 @@ async function graphCommand(cwd, io, argv) {
     const args = parseArgs(rest);
     const selector = args.positionals[0];
     const result = showGraphNode(cwd, selector);
+    /** @type {GraphShowJsonResult} */
     const data = {
       project: formatGraphProject(result.project),
       node: formatGraphNodeForJson(result.node, { includeContent: true }),
@@ -281,16 +344,19 @@ async function graphCommand(cwd, io, argv) {
       writeJson(io, jsonOk(COMMAND_IDS.graph.show, data));
       return;
     }
-    write(io, result.node.content.trimEnd());
+    write(io, formatGraphNodeDetail(result.node));
     writeGraphWarnings(io, result.warnings);
     return;
   }
   if (subcommand === "search") {
     const args = parseArgs(rest);
     const query = args.positionals.join(" ").trim();
-    const result = searchGraphNodes(cwd, query);
+    const filters = graphFiltersFromArgs(args.flags);
+    const result = searchGraphNodes(cwd, query, filters);
+    /** @type {GraphSearchJsonResult} */
     const data = {
       project: formatGraphProject(result.project),
+      filters: result.filters,
       query: result.query,
       count: result.nodes.length,
       nodes: result.nodes.map((node) => formatGraphNodeForJson(node, { includeMatches: true })),
@@ -339,11 +405,13 @@ async function rememberCommand(cwd, io, argv) {
     const questSelector = args.flags.quest;
     const proposal = proposeMemoryDelta(cwd, questSelector);
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.remember.propose, {
+      /** @type {RememberProposeResult} */
+      const data = {
         duplicated: proposal.duplicated,
         warnings: proposal.warnings || [],
         proposal: formatMemoryProposalJson(cwd, proposal, { includeBody: false })
-      }));
+      };
+      writeJson(io, jsonOk(COMMAND_IDS.remember.propose, data));
       return;
     }
     write(io, proposal.duplicated ? `Existing pending memory proposal: ${proposal.data.id}` : `Created memory proposal: ${proposal.data.id}`);
@@ -367,10 +435,12 @@ async function rememberCommand(cwd, io, argv) {
     };
     const proposals = listMemoryDeltaProposals(cwd, filters);
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.remember.list, {
+      /** @type {RememberListResult} */
+      const data = {
         filters: formatMemoryProposalListFilters(filters),
         proposals: proposals.map((proposal) => formatMemoryProposalJson(cwd, proposal, { includeBody: false }))
-      }));
+      };
+      writeJson(io, jsonOk(COMMAND_IDS.remember.list, data));
       return;
     }
     write(io, formatMemoryProposalList(proposals));
@@ -382,9 +452,11 @@ async function rememberCommand(cwd, io, argv) {
     const selector = args.positionals[0];
     const proposal = findMemoryDeltaProposal(cwd, selector);
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.remember.show, {
+      /** @type {RememberShowResult} */
+      const data = {
         proposal: formatMemoryProposalJson(cwd, proposal, { includeBody: true })
-      }));
+      };
+      writeJson(io, jsonOk(COMMAND_IDS.remember.show, data));
       return;
     }
     write(io, proposal.source.trimEnd());
@@ -446,10 +518,12 @@ async function rememberCommand(cwd, io, argv) {
     const selector = args.positionals[0];
     const accepted = acceptMemoryDelta(cwd, selector);
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.remember.accept, {
+      /** @type {RememberAcceptResult} */
+      const data = {
         proposal: formatMemoryProposalJson(cwd, accepted.proposal, { includeBody: false }),
         node: formatMemoryNodeJson(cwd, accepted.node)
-      }));
+      };
+      writeJson(io, jsonOk(COMMAND_IDS.remember.accept, data));
       return;
     }
     write(io, `Accepted memory proposal: ${accepted.proposal.data.id}`);
@@ -463,9 +537,11 @@ async function rememberCommand(cwd, io, argv) {
     const selector = args.positionals[0];
     const rejected = rejectMemoryDelta(cwd, selector);
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.remember.reject, {
+      /** @type {RememberRejectResult} */
+      const data = {
         proposal: formatMemoryProposalJson(cwd, rejected, { includeBody: false })
-      }));
+      };
+      writeJson(io, jsonOk(COMMAND_IDS.remember.reject, data));
       return;
     }
     write(io, `Rejected memory proposal: ${rejected.data.id}`);
@@ -618,18 +694,48 @@ function formatGraphSearchResult(result) {
     id: node.id,
     type: node.node_type,
     matches: node.matches.join(","),
+    score: String(node.score || 0),
     title: node.title
   }));
   const widths = {
     id: Math.max(2, ...rows.map((row) => row.id.length)),
     type: Math.max(4, ...rows.map((row) => row.type.length)),
-    matches: Math.max(7, ...rows.map((row) => row.matches.length))
+    matches: Math.max(7, ...rows.map((row) => row.matches.length)),
+    score: Math.max(5, ...rows.map((row) => row.score.length))
   };
-  const header = `${"ID".padEnd(widths.id)}  ${"TYPE".padEnd(widths.type)}  ${"MATCHES".padEnd(widths.matches)}  TITLE`;
+  const header = `${"ID".padEnd(widths.id)}  ${"TYPE".padEnd(widths.type)}  ${"SCORE".padEnd(widths.score)}  ${"MATCHES".padEnd(widths.matches)}  TITLE`;
   const lines = rows.map((row) =>
-    `${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.matches.padEnd(widths.matches)}  ${row.title}`
+    `${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.score.padEnd(widths.score)}  ${row.matches.padEnd(widths.matches)}  ${row.title}`
   );
   return [header, ...lines].join("\n");
+}
+
+function formatGraphNodeDetail(node) {
+  const provenance = node.provenance || {};
+  return [
+    `Graph node: ${node.id}`,
+    `Type: ${node.node_type}`,
+    `Title: ${node.title}`,
+    `Candidate Memory: ${node.candidate_memory || node.summary || ""}`,
+    `Source Quest: ${node.source_quest}`,
+    `Source Proposal: ${node.source_proposal}`,
+    `Accepted At: ${node.accepted_at}`,
+    "",
+    "Provenance:",
+    `  Project: ${provenance.project_id || node.project_id || ""}`,
+    `  Origin: ${provenance.origin || node.origin || ""}`,
+    `  Node Type: ${provenance.node_type || node.node_type || ""}`,
+    `  Source Quest: ${provenance.source_quest || node.source_quest || ""}`,
+    `  Source Proposal: ${provenance.source_proposal || provenance.proposal_id || node.source_proposal || ""}`,
+    `  Accepted At: ${provenance.accepted_at || node.accepted_at || ""}`,
+    `  Source Proposal Hash: ${provenance.source_proposal_hash || node.source_proposal_hash || ""}`,
+    "",
+    "Summary:",
+    node.summary || node.candidate_memory || "",
+    "",
+    "Evidence:",
+    node.evidence || "(none)"
+  ].join("\n");
 }
 
 function writeGraphWarnings(io, warnings) {
@@ -643,14 +749,36 @@ function formatDoctor(result) {
   for (const check of result.checks) {
     lines.push(`OK ${check}`);
   }
+  const printed = new Set();
+  for (const warning of result.diagnostics?.warnings || []) {
+    printed.add(`warning:${warning.message}`);
+    lines.push(`WARN ${warning.code}: ${warning.message}`);
+    lines.push(`HINT ${warning.hint}`);
+  }
   for (const warning of result.warnings) {
-    lines.push(`WARN ${warning}`);
+    if (!printed.has(`warning:${warning}`)) {
+      lines.push(`WARN ${warning}`);
+    }
+  }
+  for (const repair of result.diagnostics?.repairs || []) {
+    printed.add(`repair:${repair.message}`);
+    lines.push(`REPAIR ${repair.code}: ${repair.message}`);
+    lines.push(`HINT ${repair.hint}`);
   }
   for (const repair of result.repairs || []) {
-    lines.push(`REPAIR ${repair}`);
+    if (!printed.has(`repair:${repair}`)) {
+      lines.push(`REPAIR ${repair}`);
+    }
+  }
+  for (const error of result.diagnostics?.errors || []) {
+    printed.add(`error:${error.message}`);
+    lines.push(`ERROR ${error.code}: ${error.message}`);
+    lines.push(`HINT ${error.hint}`);
   }
   for (const error of result.errors) {
-    lines.push(`ERROR ${error}`);
+    if (!printed.has(`error:${error}`)) {
+      lines.push(`ERROR ${error}`);
+    }
   }
   lines.push(result.ok ? "No problems found." : `${result.errors.length} problem(s) found.`);
   return lines.join("\n");
@@ -750,20 +878,32 @@ export function exitCodeForError(error) {
   return EXIT_CODES.userInput;
 }
 
+/**
+ * @template TData
+ * @param {string} command
+ * @param {TData} data
+ * @returns {import("../core/types.d.ts").JsonEnvelope<TData>}
+ */
 function jsonOk(command, data) {
   return {
     ok: true,
     contract_version: JSON_CONTRACT_VERSION,
-    command,
+    command: /** @type {CommandId} */ (command),
     data
   };
 }
 
+/**
+ * @param {string} command
+ * @param {{ code: string, message: string, hint?: string, data?: unknown }} error
+ * @returns {JsonErrorEnvelope}
+ */
 function jsonError(command, error) {
+  /** @type {JsonErrorEnvelope} */
   const payload = {
     ok: false,
     contract_version: JSON_CONTRACT_VERSION,
-    command,
+    command: /** @type {CommandId} */ (command),
     error: {
       code: error.code,
       message: error.message,
@@ -822,6 +962,10 @@ function writeJson(io, value) {
   write(io, JSON.stringify(value, null, 2));
 }
 
+/**
+ * @param {QuestCreationResult} quest
+ * @returns {QuestCreationJsonResult}
+ */
 function formatQuestNewJson(cwd, quest) {
   const routeCommand = `orange route --quest ${quest.id}`;
   const capsuleCommand = `orange capsule --quest ${quest.id}`;
@@ -834,6 +978,11 @@ function formatQuestNewJson(cwd, quest) {
       file: path.relative(cwd, quest.filePath),
       project_id: quest.data.project_id || null,
       project_name: quest.data.project_name || "",
+      generated_by: quest.data.generated_by || "",
+      generator_package: quest.data.generator_package || "",
+      generator_version: quest.data.generator_version || "",
+      source_repository: quest.data.source_repository || "",
+      official_package: quest.data.official_package || "",
       status: quest.data.status,
       layer: quest.data.layer,
       quest_policy: quest.data.quest_policy,
@@ -858,6 +1007,7 @@ function formatQuestDoneJson(cwd, quest) {
 function formatCapsuleJson(cwd, capsule) {
   return {
     capsule: {
+      ...originMetadata(),
       file: path.relative(cwd, capsule.filePath),
       content: capsule.content
     },
@@ -865,6 +1015,10 @@ function formatCapsuleJson(cwd, capsule) {
   };
 }
 
+/**
+ * @param {IdentityBuildResult} identity
+ * @returns {IdentitySummaryResult}
+ */
 function formatIdentityJson(cwd, identity, args) {
   const data = {
     file: path.relative(cwd, identity.filePath),
@@ -877,12 +1031,21 @@ function formatIdentityJson(cwd, identity, args) {
   return data;
 }
 
+/**
+ * @param {MemoryProposalDocument} proposal
+ * @returns {MemoryProposalJson}
+ */
 function formatMemoryProposalJson(cwd, proposal, options = {}) {
   const data = {
     id: proposal.data.id,
     file: path.relative(cwd, proposal.filePath),
     project_id: proposal.data.project_id || null,
     project_name: proposal.data.project_name || "",
+    generated_by: proposal.data.generated_by || "",
+    generator_package: proposal.data.generator_package || "",
+    generator_version: proposal.data.generator_version || "",
+    source_repository: proposal.data.source_repository || "",
+    official_package: proposal.data.official_package || "",
     status: proposal.data.status,
     source_quest: proposal.data.source_quest,
     node_type: proposal.data.node_type,
@@ -934,9 +1097,14 @@ function formatMemoryProposalListFilters(filters) {
   };
 }
 
+/**
+ * @param {GraphListResult} result
+ * @returns {GraphListJsonResult}
+ */
 function formatGraphListJson(result) {
   return {
     project: formatGraphProject(result.project),
+    filters: result.filters,
     count: result.nodes.length,
     nodes: result.nodes.map((node) => formatGraphNodeForJson(node)),
     warnings: result.warnings
@@ -950,6 +1118,10 @@ function formatGraphProject(project) {
   };
 }
 
+/**
+ * @param {GraphNode} node
+ * @returns {GraphNodeJson}
+ */
 function formatGraphNodeForJson(node, options = {}) {
   const data = {
     id: node.id,
@@ -964,6 +1136,11 @@ function formatGraphNodeForJson(node, options = {}) {
     source_quest: node.source_quest,
     source_proposal: node.source_proposal,
     accepted_at: node.accepted_at,
+    generated_by: node.generated_by || "",
+    generator_package: node.generator_package || "",
+    generator_version: node.generator_version || "",
+    source_repository: node.source_repository || "",
+    official_package: node.official_package || "",
     origin: node.origin,
     candidate_memory: node.candidate_memory,
     summary: node.summary,
@@ -972,6 +1149,7 @@ function formatGraphNodeForJson(node, options = {}) {
   };
   if (options.includeMatches) {
     data.matches = node.matches || [];
+    data.score = node.score || 0;
   }
   if (options.includeContent) {
     data.evidence = node.evidence;
@@ -981,6 +1159,14 @@ function formatGraphNodeForJson(node, options = {}) {
     data.content = node.content;
   }
   return data;
+}
+
+function graphFiltersFromArgs(flags) {
+  return {
+    nodeType: flags.type || null,
+    sourceQuest: flags["source-quest"] || null,
+    sourceProposal: flags["source-proposal"] || null
+  };
 }
 
 function formatMemoryNodeJson(cwd, node) {
@@ -998,6 +1184,11 @@ function formatMemoryNodeJson(cwd, node) {
     source_proposal: node.data.source_proposal,
     source_quest: node.data.source_quest,
     source_proposal_hash: node.data.source_proposal_hash,
+    generated_by: node.data.generated_by || "",
+    generator_package: node.data.generator_package || "",
+    generator_version: node.data.generator_version || "",
+    source_repository: node.data.source_repository || "",
+    official_package: node.data.official_package || "",
     provenance: node.data.provenance || {}
   };
 }
@@ -1008,6 +1199,11 @@ function formatQuestJson(cwd, quest) {
     file: path.relative(cwd, quest.filePath),
     project_id: quest.data.project_id || null,
     project_name: quest.data.project_name || "",
+    generated_by: quest.data.generated_by || "",
+    generator_package: quest.data.generator_package || "",
+    generator_version: quest.data.generator_version || "",
+    source_repository: quest.data.source_repository || "",
+    official_package: quest.data.official_package || "",
     status: quest.data.status,
     title: quest.data.title,
     layer: quest.data.layer,
@@ -1039,9 +1235,9 @@ function usage() {
     "  remember revise <proposal-id> [--candidate <text>] [--why <text>] [--confidence low|medium|high] [--json]",
     "  remember accept <proposal-id> [--json]",
     "  remember reject <proposal-id> [--json]",
-    "  graph list [--json]",
+    "  graph list [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph show <node-id> [--json]",
-    "  graph search <query> [--json]",
+    "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
@@ -1074,9 +1270,9 @@ function graphUsage() {
     "orange graph <command>",
     "",
     "Commands:",
-    "  list [--json]",
+    "  list [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  show <node-id> [--json]",
-    "  search <query> [--json]",
+    "  search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  rebuild-index [--json]"
   ].join("\n");
 }

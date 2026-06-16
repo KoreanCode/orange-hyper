@@ -3,6 +3,7 @@ import path from "node:path";
 import { readProjectIdentity, requireInitialized } from "./config.js";
 import { listGraphNodes } from "./graph.js";
 import { pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
+import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
 import { nowIso } from "./time.js";
@@ -14,6 +15,9 @@ const IDENTITY_STATUS_MESSAGES = [
   "Accepted memory nodes are candidate project memory."
 ];
 
+/**
+ * @returns {import("./types.d.ts").IdentityBuildResult}
+ */
 export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   requireInitialized(cwd);
   const paths = workspacePaths(cwd);
@@ -32,9 +36,11 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const graphPreview = buildGraphPreview(graph.nodes);
   const generatedAt = nowIso(options.clock);
   const projectName = project.project_name || path.basename(cwd);
+  const origin = originMetadata();
 
   fs.mkdirSync(paths.identity, { recursive: true });
   const summary = {
+    ...origin,
     project_id: project.project_id,
     project_name: projectName,
     projectId: project.project_id,
@@ -50,9 +56,11 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     acceptedMemoryProposals: memoryProposalCounts.accepted,
     rejectedMemoryProposals: memoryProposalCounts.rejected,
     acceptedMemoryNodes,
+    projectBoundaryActive: Boolean(project.project_id),
     topProposalNodeTypes: proposalNodeTypes,
     graphPreview,
     graphWarnings: graph.warnings,
+    origin,
     statusMessages: IDENTITY_STATUS_MESSAGES
   };
   const html = renderIdentityHtml(summary);
@@ -66,7 +74,11 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   };
 }
 
+/**
+ * @returns {Record<string, number>}
+ */
 function readRouteDistribution(routeTracePath) {
+  /** @type {Record<string, number>} */
   const distribution = {};
   if (!fs.existsSync(routeTracePath)) {
     return distribution;
@@ -84,6 +96,9 @@ function readRouteDistribution(routeTracePath) {
   return distribution;
 }
 
+/**
+ * @returns {import("./types.d.ts").IdentitySummary["graphPreview"]}
+ */
 function buildGraphPreview(nodes) {
   const nodeTypeDistribution = {};
   for (const node of nodes) {
@@ -97,7 +112,7 @@ function buildGraphPreview(nodes) {
     source_proposal: node.source_proposal,
     accepted_at: node.accepted_at
   }));
-  return {
+  return /** @type {import("./types.d.ts").IdentitySummary["graphPreview"]} */ ({
     readOnly: true,
     editingSupported: false,
     acceptedMemoryNodes: nodes.length,
@@ -106,17 +121,23 @@ function buildGraphPreview(nodes) {
       id: node.id,
       project_id: node.project_id,
       project_name: node.project_name,
+      generated_by: node.generated_by,
+      generator_package: node.generator_package,
+      generator_version: node.generator_version,
+      source_repository: node.source_repository,
+      official_package: node.official_package,
       node_type: node.node_type,
       title: node.title,
       source_quest: node.source_quest,
       source_proposal: node.source_proposal,
       accepted_at: node.accepted_at,
+      candidate_memory: node.candidate_memory,
       summary: node.summary,
       tags: node.tags,
       keywords: node.keywords
     })),
     sourceLinks
-  };
+  });
 }
 
 function renderIdentityHtml(model) {
@@ -135,21 +156,23 @@ function renderIdentityHtml(model) {
     .join("\n");
   const graphTypes = graphTypeRows || "<tr><td>none</td><td>0</td></tr>";
   const graphRows = model.graphPreview.nodes
-    .map((node) => `<tr><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title)}</td><td>${escapeHtml(node.source_quest)}</td><td>${escapeHtml(node.source_proposal)}</td></tr>`)
+    .map((node) => `<tr><td><a href="#${nodeAnchorId(node.id)}">${escapeHtml(node.id)}</a></td><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title)}</td><td>${escapeHtml(node.source_quest)}</td><td>${escapeHtml(node.source_proposal)}</td></tr>`)
     .join("\n");
-  const graphNodes = graphRows || "<tr><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td></tr>";
-  const selectedNode = model.graphPreview.nodes[0] || null;
+  const graphNodes = graphRows || "<tr><td>none</td><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td></tr>";
+  const nodeDetails = renderNodeDetails(model.graphPreview.nodes);
   const statusMessages = model.statusMessages
     .map((message) => `<li>${escapeHtml(message)}</li>`)
     .join("\n");
   const stateJson = escapeScriptJson(JSON.stringify({
-    schemaVersion: "0.3.0-alpha.0",
+    schemaVersion: "0.3.0-alpha.1",
     project: {
       project_id: model.project_id || "",
       project_name: model.project_name || model.projectName || "",
       generatedAt: model.generatedAt
     },
+    origin: model.origin || originMetadata(),
     acceptedMemoryNodes: model.acceptedMemoryNodes,
+    projectBoundaryActive: model.projectBoundaryActive,
     nodeTypeDistribution: model.graphPreview.nodeTypeDistribution,
     graphPreview: model.graphPreview,
     readOnly: true,
@@ -160,6 +183,8 @@ function renderIdentityHtml(model) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="${escapeHtml(model.generated_by || "Orange Hyper")} ${escapeHtml(model.generator_version || "")}">
+  <meta name="source-repository" content="${escapeHtml(model.source_repository || "")}">
   <title>Orange Hyper Identity - ${escapeHtml(model.projectName)}</title>
   <style>
     :root { color-scheme: light; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -179,6 +204,10 @@ function renderIdentityHtml(model) {
     .graph-svg { width: 100%; height: 180px; background: #fffaf1; border: 1px solid #ddd5c8; }
     .detail { border: 1px solid #ddd5c8; background: #fffaf1; padding: 16px; }
     .detail h3 { margin-top: 0; }
+    .node-details { display: grid; gap: 10px; margin-top: 16px; }
+    .node-detail { border: 1px solid #ddd5c8; background: #fffaf1; padding: 12px 14px; }
+    .node-detail summary { cursor: pointer; font-weight: 700; }
+    a { color: #8b4a00; }
     .pill { display: inline-block; border: 1px solid #d6c6aa; border-radius: 999px; padding: 3px 8px; margin: 2px 4px 2px 0; font-size: 12px; color: #5f574c; }
     .notice { margin-top: 24px; padding: 16px; border-radius: 8px; background: #fff0d1; border: 1px solid #e4bf72; }
     @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
@@ -201,6 +230,7 @@ function renderIdentityHtml(model) {
       <div class="card"><div class="label">Accepted Memory Proposals</div><div class="value">${model.acceptedMemoryProposals}</div></div>
       <div class="card"><div class="label">Rejected Memory Proposals</div><div class="value">${model.rejectedMemoryProposals}</div></div>
       <div class="card"><div class="label">Accepted Memory Nodes</div><div class="value">${model.acceptedMemoryNodes}</div></div>
+      <div class="card"><div class="label">Project Boundary Active</div><div class="value">${model.projectBoundaryActive ? "Yes" : "No"}</div></div>
     </section>
     <section aria-label="Route distribution">
       <h2>Route Distribution</h2>
@@ -227,15 +257,19 @@ ${proposals}
           ${renderGraphSvg(model.graphPreview.nodes)}
           <h3>Accepted Memory Nodes</h3>
           <table>
-            <thead><tr><th>Node Type</th><th>Title</th><th>Source Quest</th><th>Source Proposal</th></tr></thead>
+            <thead><tr><th>Node ID</th><th>Node Type</th><th>Title</th><th>Source Quest</th><th>Source Proposal</th></tr></thead>
             <tbody>
 ${graphNodes}
             </tbody>
           </table>
+          <div class="node-details" aria-label="Accepted memory node details">
+${nodeDetails}
+          </div>
         </div>
         <aside class="detail" aria-label="Selected node detail">
-          <h3>Selected Node Detail</h3>
-          ${selectedNode ? renderSelectedNodeDetail(selectedNode) : "<p class=\"subtle\">No accepted node selected.</p>"}
+          <h3>Graph Summary</h3>
+          <p>Accepted memory node count: ${model.acceptedMemoryNodes}</p>
+          <p>Project boundary active: ${model.projectBoundaryActive ? "yes" : "no"}</p>
           <h3>Node Type Distribution</h3>
           <table>
             <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
@@ -295,9 +329,24 @@ function renderSelectedNodeDetail(node) {
     `<p>Type: ${escapeHtml(node.node_type)}</p>`,
     `<p>Source Quest: ${escapeHtml(node.source_quest)}</p>`,
     `<p>Source Proposal: ${escapeHtml(node.source_proposal)}</p>`,
+    `<p>Candidate Memory: ${escapeHtml(node.candidate_memory || node.summary || "")}</p>`,
     `<p>${escapeHtml(node.summary || "")}</p>`,
     tags ? `<div>${tags}</div>` : ""
   ].join("\n");
+}
+
+function renderNodeDetails(nodes) {
+  if (!nodes.length) {
+    return "<p class=\"subtle\">No accepted node selected.</p>";
+  }
+  return nodes.map((node, index) => `<details id="${nodeAnchorId(node.id)}" class="node-detail"${index === 0 ? " open" : ""}>
+  <summary>${escapeHtml(node.node_type)} - ${escapeHtml(node.title)}</summary>
+  ${renderSelectedNodeDetail(node)}
+</details>`).join("\n");
+}
+
+function nodeAnchorId(value) {
+  return `node-${String(value).replace(/[^A-Za-z0-9_-]+/g, "-")}`;
 }
 
 function escapeHtml(value) {

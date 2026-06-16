@@ -33,6 +33,8 @@ verification_evidence:
   - "local CLI smoke passed in /private/tmp/orange-hyper-smoke.wsOt2a: init, quest new, route, capsule, identity build, doctor"
 unverified_reason: ""
 completed_at: 2026-06-16T08:09:23.787Z
+project_id: project_921341cf-feb0-4009-8da6-e1d0c8131e6f
+project_name: orange-hyper
 ---
 
 # alpha.1 public surface consistency patch

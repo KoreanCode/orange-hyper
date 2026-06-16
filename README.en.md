@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.3-doc.2`
+- README version: `0.3-doc.3`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.3.0-alpha.0, Orange Hyper provides Seed Kernel and read-only graph preview features.
+As of v0.3.0-alpha.1, Orange Hyper provides Seed Kernel and read-only graph preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -93,6 +93,7 @@ As of v0.3.0-alpha.0, Orange Hyper provides Seed Kernel and read-only graph prev
 - Pending proposals can be listed, shown, validated, revised, accepted, or rejected.
 - An accepted proposal becomes a graph node candidate with provenance.
 - `graph list`, `graph show`, `graph search`, and `graph rebuild-index` provide read-only navigation over accepted memory nodes for the current project.
+- `graph list --type ... --source-quest ... --source-proposal ...` and `graph search <query> --type ... --source-quest ...` narrow results to current-project accepted nodes.
 - Project Boundary prevents memory with a different `project_id` from being treated as current project memory.
 - `doctor` checks Quest, proposal, accepted node, and Project Boundary state.
 - `identity build` creates an Identity Dashboard file summarizing Seed Kernel state and the read-only Identity Graph Preview.

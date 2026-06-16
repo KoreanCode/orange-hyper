@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { requireInitialized, requireProjectIdentity } from "./config.js";
+import { originSummaryLines } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { formatRouteLine } from "./route.js";
 import { findQuest } from "./quest.js";
@@ -27,6 +28,8 @@ export function generateCapsule(cwd, selector, options = {}) {
   const generated_at = nowIso(options.clock);
   const lines = [
     "# Orange Hyper Current Capsule",
+    "",
+    ...originSummaryLines(),
     "",
     `Generated: ${generated_at}`,
     `Source quest: ${sourcePath}`,

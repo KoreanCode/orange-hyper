@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: "If you use Orange Hyper, please cite the official repository."
+type: software
+title: "Orange Hyper"
+authors:
+  - name: "nambanote"
+repository-code: "https://github.com/KoreanCode/orange-hyper"
+url: "https://github.com/KoreanCode/orange-hyper"
+license: "MIT"
+version: "0.3.0-alpha.1"
+date-released: "2026-06-16"
+abstract: "Lightweight quest and capsule kernel for coding agents."
+

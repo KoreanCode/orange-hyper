@@ -1,21 +1,40 @@
 {
   "name": "orange-hyper",
-  "version": "0.3.0-alpha.0",
+  "version": "0.3.0-alpha.2",
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
+  "author": "nambanote",
+  "homepage": "https://github.com/KoreanCode/orange-hyper#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoreanCode/orange-hyper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/KoreanCode/orange-hyper/issues"
+  },
+  "keywords": [
+    "coding-agent",
+    "memory",
+    "cli",
+    "quest",
+    "provenance"
+  ],
   "bin": {
     "orange": "bin/orange.js",
     "orange-hyper": "bin/orange.js"
   },
   "scripts": {
     "test": "node --test",
-    "doctor": "node bin/orange.js doctor"
+    "typecheck": "tsc --noEmit",
+    "doctor": "node bin/orange.js doctor",
+    "check:readme-sync": "node scripts/check-readme-sync.js"
   },
   "engines": {
     "node": ">=20"
   },
   "files": [
     "bin",
+    "scripts",
     "src",
     "docs",
     "RELEASE_NOTES.md",
@@ -25,7 +44,17 @@
     "README.ja.md",
     "readme-hero.png",
     "assets",
-    "LICENSE"
+    "CITATION.cff",
+    "LICENSE",
+    "PROVENANCE.md",
+    "SECURITY.md"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "publishConfig": {
+    "provenance": true
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "typescript": "^6.0.3"
+  }
 }

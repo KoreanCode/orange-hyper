@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.3-doc.2`
+- README version: `0.3-doc.3`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.3.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel 및 read-only graph preview 기능을 제공합니다.
+v0.3.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel 및 read-only graph preview 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -93,6 +93,7 @@ v0.3.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel 및 read-only graph prev
 - pending proposal을 list, show, validate, revise, accept, reject할 수 있습니다.
 - accepted proposal은 provenance가 있는 graph node 후보가 됩니다.
 - `graph list`, `graph show`, `graph search`, `graph rebuild-index`로 현재 프로젝트의 accepted memory node를 read-only로 탐색할 수 있습니다.
+- `graph list --type ... --source-quest ... --source-proposal ...`와 `graph search <query> --type ... --source-quest ...`로 current-project accepted node를 좁혀 볼 수 있습니다.
 - Project Boundary는 `project_id`가 다른 memory를 현재 프로젝트 memory로 보지 않습니다.
 - `doctor`는 Quest, proposal, accepted node, Project Boundary 상태를 점검합니다.
 - `identity build`는 Seed Kernel 상태와 read-only Identity Graph Preview를 요약하는 Identity Dashboard 파일을 만듭니다.
@@ -105,6 +106,17 @@ v0.3.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel 및 read-only graph prev
 </p>
 
 Orange Hyper는 자동으로 기억을 저장하지 않습니다. 사용자가 accept한 proposal만 accepted memory node 후보가 되며, pending/rejected proposal은 graph node가 아닙니다.
+
+## Type Safety Foundation
+
+v0.3-alpha.x의 Type Safety Foundation은 전체 TypeScript rewrite가 아니라
+Adapter JSON Contract와 Quest/Proposal/Graph/Doctor/Identity schema를 먼저
+고정하기 위한 contract-checking layer입니다.
+
+- Orange Hyper is still distributed as JavaScript in this phase.
+- TypeScript is used first as a contract checker.
+- Full TS source migration is planned before/around v0.4 hook work.
+- Adapter JSON Contract remains contract_version `"0.1"`.
 
 ## 설치/사용법
 

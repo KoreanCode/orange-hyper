@@ -1,5 +1,67 @@
 # Release Notes
 
+## v0.3.0-alpha.1
+
+Graph Quality Hardening and real-repo dogfooding release.
+
+- Package version is `0.3.0-alpha.1`.
+- README version is `0.3-doc.3`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- No MCP, hooks, subagents, role evolution, auto planner, or auto execution loop
+  behavior is introduced.
+
+### Graph Quality Hardening
+
+- `orange init` now idempotently backfills missing v0.2/v0.3 storage directories
+  and graph read-model files without overwriting existing config/project data.
+- `.orange-hyper/.gitignore` now keeps accepted Memory Delta Proposals shareable
+  with accepted graph nodes while pending/rejected proposals and generated local
+  state remain ignored by default.
+- `orange graph list` now supports `--type`, `--source-quest`, and
+  `--source-proposal` filters in human and JSON modes.
+- `orange graph search` now supports `--type` and `--source-quest` filters and
+  returns deterministic plain-text scores. It remains non-fuzzy, non-semantic,
+  and non-vector search.
+- `graph show` human output now highlights node id, type, title, Candidate
+  Memory, source Quest/Proposal, accepted time, and provenance.
+- `graph rebuild-index` separates deterministic `updated_at` from generation
+  metadata and preserves semantic read-model output across repeated rebuilds.
+
+### Doctor and Identity
+
+- `doctor --json` now includes structured graph/project-boundary diagnostics
+  with `code`, `message`, and `hint` while preserving existing string arrays.
+- Diagnostic codes include `CONFIG_PROJECT_ID_MISSING`,
+  `GRAPH_INDEX_ORPHAN_ENTRY`, `ACCEPTED_PROPOSAL_MISSING_NODE`,
+  `ACCEPTED_NODE_SOURCE_PROPOSAL_MISSING`, `GRAPH_NODE_PROJECT_MISMATCH`, and
+  `LEGACY_PROJECT_ID_MISSING`.
+- Identity preview now shows accepted memory node count, node type distribution,
+  project-boundary active state, source columns, and anchor-based node details.
+- Identity remains read-only and does not include graph editing controls or
+  heavy graph dependencies.
+
+### Documentation and Checks
+
+- Added `npm run check:readme-sync` to verify the README version metadata across
+  Korean, English, Simplified Chinese, and Japanese READMEs.
+- Updated README, Memory Graph spec, Identity Dashboard spec, and Adapter
+  Contract examples for graph filters, deterministic ranking, idempotent index
+  principles, and alpha.1 identity preview hardening.
+
+### Type Safety Foundation
+
+- Added TypeScript as a development-only contract checker while keeping Orange
+  Hyper distributed as JavaScript.
+- Added `tsconfig.json` with `allowJs`, `checkJs`, and `noEmit` for gradual JS
+  typechecking without a dist build pipeline.
+- Added domain contract types for Adapter JSON envelopes, command ids, project
+  identity, Quest frontmatter, route contracts, Memory Delta Proposals,
+  accepted graph nodes, graph index entries, doctor diagnostics, and identity
+  summaries.
+- Added focused JSDoc return-shape links for JSON envelopes and core
+  Quest/Memory/Graph/Doctor/Identity result surfaces.
+- Adapter JSON Contract remains contract_version `"0.1"`.
+
 ## v0.3.0-alpha.0
 
 Memory Graph Usability, Identity Graph Preview, and README Identity Rewrite

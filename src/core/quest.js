@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { requireInitialized, requireProjectIdentity } from "./config.js";
 import { splitFrontmatter, stringifyFrontmatter } from "./frontmatter.js";
+import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { buildRouteContract, formatRouteLine, validateRouteContract } from "./route.js";
 import { asArray, makeTitle, slugify } from "./text.js";
@@ -12,6 +13,9 @@ export const QUEST_STATUSES = new Set(["active", "completed"]);
 const ACTIVE_VERIFICATION_STATUSES = new Set(["pending"]);
 const COMPLETED_VERIFICATION_STATUSES = new Set(["verified", "unverified"]);
 
+/**
+ * @returns {import("./types.d.ts").QuestCreationResult}
+ */
 export function createQuest(cwd, rawRequest, options = {}) {
   requireInitialized(cwd);
   const project = requireProjectIdentity(cwd);
@@ -26,8 +30,9 @@ export function createQuest(cwd, rawRequest, options = {}) {
     outputContract: options.outputContract
   });
   const id = options.id || `quest_${timestampForId(options.clock)}_${slugify(title)}`;
-  const data = {
-    schema_version: QUEST_SCHEMA_VERSION,
+  const data = /** @type {import("./types.d.ts").QuestFrontmatter} */ ({
+    schema_version: /** @type {1} */ (QUEST_SCHEMA_VERSION),
+    ...originMetadata(),
     project_id: project.project_id,
     project_name: project.project_name,
     id,
@@ -46,7 +51,7 @@ export function createQuest(cwd, rawRequest, options = {}) {
     verification_status: "pending",
     verification_evidence: [],
     unverified_reason: ""
-  };
+  });
 
   const body = [
     `# ${title}`,
@@ -85,10 +90,13 @@ export function createQuest(cwd, rawRequest, options = {}) {
   return { id, filePath, data, body, contract };
 }
 
+/**
+ * @returns {import("./types.d.ts").MarkdownDocument<import("./types.d.ts").QuestFrontmatter>}
+ */
 export function readQuestFile(filePath) {
   const source = fs.readFileSync(filePath, "utf8");
   const parsed = splitFrontmatter(source);
-  return { filePath, source, ...parsed };
+  return /** @type {import("./types.d.ts").MarkdownDocument<import("./types.d.ts").QuestFrontmatter>} */ ({ filePath, source, ...parsed });
 }
 
 export function questFiles(cwd, status = "active") {
@@ -224,6 +232,9 @@ export function validateQuestDocument(quest, expectedStatus) {
   return errors;
 }
 
+/**
+ * @returns {import("./types.d.ts").QuestCompletionResult}
+ */
 export function completeQuest(cwd, selector, options = {}) {
   requireInitialized(cwd);
   const project = requireProjectIdentity(cwd);

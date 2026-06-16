@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { originMetadata } from "./origin.js";
 import { nowIso, timestampForId } from "./time.js";
 import { workspacePaths } from "./paths.js";
 
@@ -74,6 +75,9 @@ export function inferLayer(rawRequest, outputContract = inferOutputContract(rawR
   return "L2";
 }
 
+/**
+ * @returns {import("./types.d.ts").RouteContract}
+ */
 export function buildRouteContract(rawRequest, options = {}) {
   const outputContract = options.outputContract || inferOutputContract(rawRequest);
   const layer = options.layer || inferLayer(rawRequest, outputContract);
@@ -82,7 +86,7 @@ export function buildRouteContract(rawRequest, options = {}) {
     throw new Error(`Unsupported layer: ${layer}`);
   }
   const quest_policy = questPolicyForLayer(layer);
-  const contract = {
+  const contract = /** @type {import("./types.d.ts").RouteContract} */ ({
     route: `${layer}/${mapped.procedure}/${mapped.tool_budget}/${mapped.verification}/${mapped.delegation}/${mapped.mcp}/${mapped.memory}`,
     layer,
     procedure: mapped.procedure,
@@ -94,7 +98,7 @@ export function buildRouteContract(rawRequest, options = {}) {
     output_contract: outputContract,
     quest_policy,
     reason_summary: reasonSummary(layer, outputContract, quest_policy)
-  };
+  });
   return contract;
 }
 
@@ -139,6 +143,7 @@ export function appendRouteTrace(cwd, rawRequest, contract, options = {}) {
   const created_at = nowIso(options.clock);
   const trace = {
     trace_id: `route_${timestampForId(options.clock)}`,
+    ...originMetadata(),
     created_at,
     input: rawRequest,
     quest_id: options.questId || null,

@@ -15,6 +15,9 @@ import {
 import { workspacePaths } from "./paths.js";
 import { questFiles, readQuestFile, validateQuestDocument } from "./quest.js";
 
+/**
+ * @returns {import("./types.d.ts").DoctorResult}
+ */
 export function runDoctor(cwd = process.cwd(), options = {}) {
   const paths = workspacePaths(cwd);
   const errors = [];
@@ -24,22 +27,49 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   const boundaryErrors = [];
   const boundaryWarnings = [];
   const boundaryRepairs = [];
+  const diagnostics = emptyDiagnostics();
+  const boundaryDiagnostics = emptyDiagnostics();
   const repairProjectId = Boolean(options.repairProjectId);
   let projectIdentity = { project_id: "", project_name: path.basename(cwd) };
   const questsById = new Map();
   const checkedNodePaths = new Set();
 
-  const addBoundaryError = (message) => {
-    errors.push(message);
-    boundaryErrors.push(message);
-  };
-  const addBoundaryWarning = (message) => {
-    warnings.push(message);
-    boundaryWarnings.push(message);
-  };
-  const addBoundaryRepair = (message) => {
+  const addDiagnostic = (severity, code, message, hint, options = {}) => {
+    const item = { code, message, hint };
+    if (severity === "error") {
+      errors.push(message);
+      diagnostics.errors.push(item);
+      if (options.boundary) {
+        boundaryErrors.push(message);
+        boundaryDiagnostics.errors.push(item);
+      }
+      return;
+    }
+    if (severity === "warning") {
+      warnings.push(message);
+      diagnostics.warnings.push(item);
+      if (options.boundary) {
+        boundaryWarnings.push(message);
+        boundaryDiagnostics.warnings.push(item);
+      }
+      return;
+    }
     repairs.push(message);
-    boundaryRepairs.push(message);
+    diagnostics.repairs.push(item);
+    if (options.boundary) {
+      boundaryRepairs.push(message);
+      boundaryDiagnostics.repairs.push(item);
+    }
+  };
+
+  const addBoundaryError = (message, code = "PROJECT_BOUNDARY_ERROR", hint = "Inspect the artifact project_id; cross-project mismatches are not repaired automatically.") => {
+    addDiagnostic("error", code, message, hint, { boundary: true });
+  };
+  const addBoundaryWarning = (message, code = "PROJECT_BOUNDARY_WARNING", hint = "Run `orange doctor --repair-project-id` to fill missing legacy project identity fields.") => {
+    addDiagnostic("warning", code, message, hint, { boundary: true });
+  };
+  const addBoundaryRepair = (message, code = "PROJECT_BOUNDARY_REPAIRED", hint = "Re-run `orange doctor --json` to confirm the repaired project boundary.") => {
+    addDiagnostic("repair", code, message, hint, { boundary: true });
   };
 
   checkExists(paths.root, "directory", ".orange-hyper root", errors, checks);
@@ -51,17 +81,35 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   checkExists(paths.pendingMemoryDeltaProposals, "directory", "proposals/memory-delta/pending", errors, checks);
   checkExists(paths.acceptedMemoryDeltaProposals, "directory", "proposals/memory-delta/accepted", errors, checks);
   checkExists(paths.rejectedMemoryDeltaProposals, "directory", "proposals/memory-delta/rejected", errors, checks);
+  checkExists(paths.graphDecisionNodes, "directory", "graph/nodes/decision", errors, checks, addDiagnostic);
+  checkExists(paths.graphConstraintNodes, "directory", "graph/nodes/constraint", errors, checks, addDiagnostic);
+  checkExists(paths.graphComponentNodes, "directory", "graph/nodes/component", errors, checks, addDiagnostic);
+  checkExists(paths.graphRiskNodes, "directory", "graph/nodes/risk", errors, checks, addDiagnostic);
+  checkExists(paths.graphVerificationNodes, "directory", "graph/nodes/verification", errors, checks, addDiagnostic);
+  checkExists(paths.graphIndex, "file", "graph/index.json", errors, checks, addDiagnostic);
+  checkExists(paths.graphEdges, "file", "graph/edges.jsonl", errors, checks, addDiagnostic);
   checkExists(paths.routeTrace, "file", "traces/route.jsonl", errors, checks);
 
   if (fs.existsSync(paths.config)) {
     try {
       let config = JSON.parse(fs.readFileSync(paths.config, "utf8"));
-      if (repairProjectId) {
+      const hasConfigProjectIdConflict = config.project_id && config.project?.id && config.project_id !== config.project.id;
+      if (hasConfigProjectIdConflict) {
+        addBoundaryError(
+          `config.project_id ${config.project_id} does not match config.project.id ${config.project.id}`,
+          "CONFIG_PROJECT_ID_MISMATCH",
+          "Resolve config.json manually; doctor will not overwrite an existing different project_id."
+        );
+      } else if (repairProjectId) {
         const normalized = normalizeConfigProjectIdentity(config, cwd);
         if (JSON.stringify(config) !== JSON.stringify(normalized)) {
           fs.writeFileSync(paths.config, `${JSON.stringify(normalized, null, 2)}\n`);
           config = normalized;
-          addBoundaryRepair("added missing project identity fields to config.json");
+          addBoundaryRepair(
+            "added missing project identity fields to config.json",
+            "CONFIG_PROJECT_ID_REPAIRED",
+            "Re-run `orange doctor --json` to confirm config.project_id and project.id are present."
+          );
         }
       }
       projectIdentity = projectIdentityFromConfig(config, cwd);
@@ -69,10 +117,18 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
         warnings.push(`config version is ${config.version}; expected ${CONFIG_VERSION}`);
       }
       if (!config.project_id) {
-        addBoundaryError("config.project_id is missing");
+        addBoundaryError(
+          "config.project_id is missing",
+          "CONFIG_PROJECT_ID_MISSING",
+          "Run `orange doctor --repair-project-id` to fill a missing project_id without overwriting mismatched project ids."
+        );
       }
       if (!config.project_name) {
-        addBoundaryWarning("config.project_name is missing");
+        addBoundaryWarning(
+          "config.project_name is missing",
+          "LEGACY_PROJECT_NAME_MISSING",
+          "Run `orange doctor --repair-project-id` to fill missing legacy project_name fields."
+        );
       }
       if (config.features?.hooks || config.features?.mcp || config.features?.subagents || config.features?.auto_execution_loop) {
         errors.push("v0.1 feature flags must keep hooks, MCP, subagents, and auto execution loop disabled");
@@ -194,7 +250,12 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
         try {
           const nodes = findGraphNodesForProposal(cwd, proposal.data.id);
           if (!nodes.length) {
-            errors.push(`accepted memory proposal ${proposal.data.id} has no graph node provenance`);
+            addDiagnostic(
+              "error",
+              "ACCEPTED_PROPOSAL_MISSING_NODE",
+              `accepted memory proposal ${proposal.data.id} has no graph node provenance`,
+              "Run `orange remember accept <proposal-id>` only for pending proposals, or inspect the accepted proposal and graph node files manually."
+            );
           }
           const proposalHash = hashMemoryDeltaProposalSource(proposal);
           for (const node of nodes) {
@@ -291,8 +352,9 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   checks.push(...graphJson.checks);
   const graphReadModel = validateGraphReadModel(cwd, { projectIdentity });
   errors.push(...graphReadModel.errors);
-  warnings.push(...graphReadModel.warnings);
+  pushUnique(warnings, graphReadModel.warnings);
   checks.push(...graphReadModel.checks);
+  mergeDiagnostics(diagnostics, graphReadModel.diagnostics);
 
   return {
     ok: errors.length === 0,
@@ -300,25 +362,47 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
     warnings,
     checks,
     repairs,
+    diagnostics,
     project_boundary: {
       project_id: projectIdentity.project_id || null,
       project_name: projectIdentity.project_name || null,
       errors: boundaryErrors,
       warnings: boundaryWarnings,
-      repairs: boundaryRepairs
+      repairs: boundaryRepairs,
+      diagnostics: boundaryDiagnostics
     }
   };
 }
 
-function checkExists(target, kind, label, errors, checks) {
+function checkExists(target, kind, label, errors, checks, addDiagnostic) {
   if (!fs.existsSync(target)) {
-    errors.push(`missing ${label}`);
+    const message = `missing ${label}`;
+    if (addDiagnostic && label.startsWith("graph/")) {
+      addDiagnostic(
+        "error",
+        "GRAPH_STRUCTURE_MISSING",
+        message,
+        "Run `orange init` to create missing v0.2/v0.3 storage directories and graph read-model files."
+      );
+    } else {
+      errors.push(message);
+    }
     return;
   }
   const stat = fs.statSync(target);
   const isKind = kind === "directory" ? stat.isDirectory() : stat.isFile();
   if (!isKind) {
-    errors.push(`${label} is not a ${kind}`);
+    const message = `${label} is not a ${kind}`;
+    if (addDiagnostic && label.startsWith("graph/")) {
+      addDiagnostic(
+        "error",
+        "GRAPH_STRUCTURE_INVALID",
+        message,
+        "Move or remove the invalid path, then run `orange init` to recreate the graph storage structure."
+      );
+    } else {
+      errors.push(message);
+    }
     return;
   }
   checks.push(`${label} exists`);
@@ -340,7 +424,11 @@ function repairOrCheckFrontmatterProjectIdentity(context) {
   }
   const data = document.data || {};
   if (data.project_id && data.project_id !== projectIdentity.project_id) {
-    addBoundaryError(`${kind} ${label} project_id ${data.project_id} does not match config project_id ${projectIdentity.project_id}`);
+    addBoundaryError(
+      `${kind} ${label} project_id ${data.project_id} does not match config project_id ${projectIdentity.project_id}`,
+      kind === "graph node" ? "GRAPH_NODE_PROJECT_MISMATCH" : "PROJECT_ID_MISMATCH",
+      "Cross-project mismatches are not repaired automatically; inspect the artifact before moving or deleting it."
+    );
     return;
   }
   const needsProjectId = !data.project_id;
@@ -358,14 +446,26 @@ function repairOrCheckFrontmatterProjectIdentity(context) {
     fs.writeFileSync(document.filePath, source);
     document.data = repaired;
     document.source = source;
-    addBoundaryRepair(`added missing project identity fields to ${kind} ${label}`);
+    addBoundaryRepair(
+      `added missing project identity fields to ${kind} ${label}`,
+      "LEGACY_PROJECT_ID_REPAIRED",
+      "Re-run `orange doctor --json` to confirm the legacy artifact now has project identity."
+    );
     return;
   }
   if (needsProjectId) {
-    addBoundaryWarning(`${kind} ${label} missing project_id (legacy file)`);
+    addBoundaryWarning(
+      `${kind} ${label} missing project_id (legacy file)`,
+      "LEGACY_PROJECT_ID_MISSING",
+      "Run `orange doctor --repair-project-id` to fill missing legacy project_id fields."
+    );
   }
   if (needsProjectName) {
-    addBoundaryWarning(`${kind} ${label} missing project_name (legacy file)`);
+    addBoundaryWarning(
+      `${kind} ${label} missing project_name (legacy file)`,
+      "LEGACY_PROJECT_NAME_MISSING",
+      "Run `orange doctor --repair-project-id` to fill missing legacy project_name fields."
+    );
   }
 }
 
@@ -383,7 +483,11 @@ function checkLinkedProjectIdentity(context, addBoundaryError) {
   if (!leftProjectId || !rightProjectId || leftProjectId === rightProjectId) {
     return;
   }
-  addBoundaryError(`${leftKind} ${leftLabel} project_id ${leftProjectId} does not match ${rightKind} ${rightLabel} project_id ${rightProjectId}`);
+  addBoundaryError(
+    `${leftKind} ${leftLabel} project_id ${leftProjectId} does not match ${rightKind} ${rightLabel} project_id ${rightProjectId}`,
+    leftKind.includes("graph node") ? "GRAPH_NODE_PROJECT_MISMATCH" : "PROJECT_ID_MISMATCH",
+    "Cross-project provenance mismatches are not repaired automatically; inspect the linked artifacts manually."
+  );
 }
 
 function checkCapsuleProjectBoundary(context) {
@@ -402,7 +506,11 @@ function checkCapsuleProjectBoundary(context) {
   const projectId = extractMarkdownField(content, "Project id");
   const projectName = extractMarkdownField(content, "Project name");
   if (projectId && projectId !== projectIdentity.project_id) {
-    addBoundaryError(`capsules/current.md project_id ${projectId} does not match config project_id ${projectIdentity.project_id}`);
+    addBoundaryError(
+      `capsules/current.md project_id ${projectId} does not match config project_id ${projectIdentity.project_id}`,
+      "PROJECT_ID_MISMATCH",
+      "Cross-project capsule boundaries are not repaired automatically; rebuild the capsule from a current-project Quest."
+    );
     return;
   }
   const needsProjectId = !projectId;
@@ -412,14 +520,26 @@ function checkCapsuleProjectBoundary(context) {
   }
   if (repairProjectId) {
     fs.writeFileSync(paths.currentCapsule, prependCapsuleBoundary(content, projectIdentity));
-    addBoundaryRepair("added missing project boundary header to capsules/current.md");
+    addBoundaryRepair(
+      "added missing project boundary header to capsules/current.md",
+      "LEGACY_PROJECT_ID_REPAIRED",
+      "Re-run `orange doctor --json` to confirm the capsule project boundary."
+    );
     return;
   }
   if (needsProjectId) {
-    addBoundaryWarning("capsules/current.md missing project_id (legacy file)");
+    addBoundaryWarning(
+      "capsules/current.md missing project_id (legacy file)",
+      "LEGACY_PROJECT_ID_MISSING",
+      "Run `orange doctor --repair-project-id` to add the missing capsule project boundary."
+    );
   }
   if (needsProjectName) {
-    addBoundaryWarning("capsules/current.md missing project_name (legacy file)");
+    addBoundaryWarning(
+      "capsules/current.md missing project_name (legacy file)",
+      "LEGACY_PROJECT_NAME_MISSING",
+      "Run `orange doctor --repair-project-id` to add the missing capsule project name."
+    );
   }
 }
 
@@ -443,7 +563,11 @@ function checkIdentitySummaryProjectBoundary(context) {
     return;
   }
   if (summary.project_id && summary.project_id !== projectIdentity.project_id) {
-    addBoundaryError(`identity summary project_id ${summary.project_id} does not match config project_id ${projectIdentity.project_id}`);
+    addBoundaryError(
+      `identity summary project_id ${summary.project_id} does not match config project_id ${projectIdentity.project_id}`,
+      "PROJECT_ID_MISMATCH",
+      "Cross-project identity summaries are not repaired automatically; rebuild identity after confirming the project boundary."
+    );
     return;
   }
   const needsProjectId = !summary.project_id;
@@ -458,19 +582,60 @@ function checkIdentitySummaryProjectBoundary(context) {
       ...(needsProjectName ? { project_name: projectIdentity.project_name, projectName: projectIdentity.project_name } : {})
     };
     fs.writeFileSync(paths.identitySummaryJson, `${JSON.stringify(repaired, null, 2)}\n`);
-    addBoundaryRepair("added missing project identity fields to identity/summary.json");
+    addBoundaryRepair(
+      "added missing project identity fields to identity/summary.json",
+      "LEGACY_PROJECT_ID_REPAIRED",
+      "Re-run `orange doctor --json` to confirm identity summary project identity."
+    );
     return;
   }
   if (needsProjectId) {
-    addBoundaryWarning("identity summary missing project_id (legacy file)");
+    addBoundaryWarning(
+      "identity summary missing project_id (legacy file)",
+      "LEGACY_PROJECT_ID_MISSING",
+      "Run `orange doctor --repair-project-id` to fill missing legacy identity summary fields."
+    );
   }
   if (needsProjectName) {
-    addBoundaryWarning("identity summary missing project_name (legacy file)");
+    addBoundaryWarning(
+      "identity summary missing project_name (legacy file)",
+      "LEGACY_PROJECT_NAME_MISSING",
+      "Run `orange doctor --repair-project-id` to fill missing legacy identity summary fields."
+    );
+  }
+}
+
+function emptyDiagnostics() {
+  return {
+    errors: [],
+    warnings: [],
+    repairs: []
+  };
+}
+
+function mergeDiagnostics(target, source) {
+  if (!source) {
+    return;
+  }
+  for (const key of ["errors", "warnings", "repairs"]) {
+    for (const item of source[key] || []) {
+      if (!target[key].some((existing) => existing.code === item.code && existing.message === item.message)) {
+        target[key].push(item);
+      }
+    }
+  }
+}
+
+function pushUnique(target, values) {
+  for (const value of values || []) {
+    if (!target.includes(value)) {
+      target.push(value);
+    }
   }
 }
 
 function extractMarkdownField(content, label) {
-  const match = content.match(new RegExp(`^\\s*-?\\s*${escapeRegExp(label)}:\\s*(.+?)\\s*$`, "im"));
+  const match = content.match(new RegExp(`^\\s*-?\\s*${escapeRegExp(label)}:[ \\t]*([^\\r\\n]*?)\\s*$`, "im"));
   return match ? match[1].trim() : "";
 }
 
