@@ -117,6 +117,11 @@ orange remember list --type decision --json
 orange remember list --quest <quest-id> --json
 orange remember list --json
 orange remember show <proposal-id>
+orange remember validate <proposal-id>
+orange remember validate <proposal-id> --json
+orange remember revise <proposal-id> --candidate "Durable project memory..."
+orange remember revise <proposal-id> --why "This will guide future work..."
+orange remember revise <proposal-id> --confidence medium --json
 orange remember accept <proposal-id>
 orange remember reject <proposal-id>
 orange doctor
@@ -163,15 +168,23 @@ orange remember list --status pending
 orange remember list --type decision
 orange remember list --quest <quest-id>
 orange remember show <proposal-id>
+orange remember validate <proposal-id>
+orange remember revise <proposal-id> --candidate "Durable project memory..."
+orange remember revise <proposal-id> --why "This should be remembered because..."
+orange remember revise <proposal-id> --confidence high
 orange remember accept <proposal-id>
 orange remember reject <proposal-id>
 ```
 
 Proposal은 `.orange-hyper/proposals/memory-delta/pending/`에 Markdown + YAML frontmatter로 저장됩니다. 필수 섹션은 `Candidate Memory`, `Why this should be remembered`, `Evidence`, `Suggested Node`입니다. `accept`는 pending proposal을 accepted로 옮기고 `.orange-hyper/graph/nodes/<type>/`에 provenance가 포함된 graph node 후보를 생성합니다. `reject`는 proposal을 rejected로 옮기며 graph node를 만들지 않습니다.
 
+Proposal review flow는 accept 전 검토 단계입니다. `remember validate`는 pending, accepted, rejected proposal 모두에서 frontmatter, 필수 섹션, quality validation, source Quest 존재 여부를 검사합니다. `remember revise`는 pending proposal만 수정할 수 있으며 `Candidate Memory`, `Why this should be remembered`, `confidence`를 바꾼 뒤 `updated_at`을 갱신하고 quality validation을 다시 실행합니다. accepted/rejected proposal은 과거 사용자 결정 기록이므로 revise가 실패합니다.
+
 `remember list`는 `--status pending|accepted|rejected`, `--type decision|constraint|component|risk|verification`, `--quest <quest-id>` 필터를 지원합니다. `--json` 모드에서도 같은 필터가 적용되며, adapter는 human-readable table을 파싱하지 말고 JSON envelope의 `data.proposals`와 `data.filters`를 읽어야 합니다.
 
 `remember propose`는 pending proposal에 대해서만 idempotent합니다. 같은 `source_quest`, `node_type`, `Candidate Memory` 내용이 이미 pending 상태로 있으면 새 파일을 만들지 않고 기존 proposal id/path를 반환하며, JSON 출력은 `data.duplicated: true`를 포함합니다. accepted/rejected proposal은 사용자의 과거 결정 기록으로 보존됩니다. v0.2에서는 accepted/rejected까지 중복 제거하지 않으며, 같은 Quest를 다시 제안해야 하면 새 pending proposal id를 할당할 수 있습니다.
+
+`remember revise`가 다른 pending proposal과 같은 `Candidate Memory`를 만들면 안전하게 실패합니다. 이 검사는 accepted/rejected 기록을 다시 쓰지 않고, pending review 단계의 충돌만 막습니다.
 
 Proposal 품질 검증은 생성과 `doctor`에서 수행됩니다. 비어 있는 `Candidate Memory`, 비어 있는 `Why this should be remembered`, source Quest나 verification 정보를 참조하지 않는 `Evidence`, frontmatter `node_type`과 충돌하는 `Suggested Node`, `low|medium|high`가 아닌 confidence는 오류입니다. 너무 짧거나 일반적인 `Candidate Memory`는 초기 alpha에서는 hard error가 아니라 warning입니다.
 
@@ -186,7 +199,7 @@ accepted graph node 후보에는 `source_proposal`, `source_quest`, `accepted_at
 
 현재 frontmatter parser는 full YAML 구현이 아닙니다. 지원 범위는 문자열, 숫자, boolean, 빈 배열, 문자열 배열, 단순 nested object에 한정합니다. Quest와 Memory Delta Proposal 파일은 이 subset 안에서 사람이 읽고 고칠 수 있게 유지합니다.
 
-`orange identity build`는 v0.2에서도 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`에 Seed Kernel 상태 요약과 memory proposal/node count만 self-contained HTML로 생성합니다. 상태 메시지는 `Memory proposals are active.`, `Graph rendering is not active yet.`, `Accepted memory nodes are candidate project memory.`입니다.
+`orange identity build`는 v0.2에서도 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`에 Seed Kernel 상태 요약과 memory proposal/node count만 self-contained HTML로 생성합니다. 상태 메시지는 `Memory proposal review is active in v0.2.`, `Graph rendering is not active yet.`, `Accepted memory nodes are candidate project memory.`입니다.
 
 ## Source checkout usage
 

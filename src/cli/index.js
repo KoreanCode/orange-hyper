@@ -9,7 +9,9 @@ import {
   findMemoryDeltaProposal,
   listMemoryDeltaProposals,
   proposeMemoryDelta,
-  rejectMemoryDelta
+  rejectMemoryDelta,
+  reviseMemoryDeltaProposal,
+  validateMemoryDeltaProposalBySelector
 } from "../core/memory.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
@@ -40,6 +42,8 @@ const COMMAND_IDS = {
     list: "remember.list",
     propose: "remember.propose",
     reject: "remember.reject",
+    revise: "remember.revise",
+    validate: "remember.validate",
     show: "remember.show"
   },
   route: "route.show"
@@ -294,6 +298,56 @@ async function rememberCommand(cwd, io, argv) {
     write(io, proposal.source.trimEnd());
     return;
   }
+  if (subcommand === "validate") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const result = validateMemoryDeltaProposalBySelector(cwd, selector);
+    const data = formatMemoryProposalValidationJson(cwd, result);
+    if (args.flags.json) {
+      if (data.validation.valid) {
+        writeJson(io, jsonOk(COMMAND_IDS.remember.validate, data));
+      } else {
+        writeJson(io, jsonError(COMMAND_IDS.remember.validate, {
+          code: "MEMORY_PROPOSAL_INVALID",
+          message: `Memory proposal ${result.proposal.data.id} failed validation.`,
+          hint: "Run `orange remember validate <proposal-id>` without --json for human-readable diagnostics.",
+          data
+        }));
+        process.exitCode = EXIT_CODES.validation;
+      }
+      return;
+    }
+    write(io, formatMemoryProposalValidation(result.proposal, data.validation));
+    if (!data.validation.valid) {
+      process.exitCode = EXIT_CODES.validation;
+    }
+    return;
+  }
+  if (subcommand === "revise") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const revised = reviseMemoryDeltaProposal(cwd, selector, {
+      ...(Object.hasOwn(args.flags, "candidate") ? { candidate: args.flags.candidate } : {}),
+      ...(Object.hasOwn(args.flags, "why") ? { why: args.flags.why } : {}),
+      ...(Object.hasOwn(args.flags, "confidence") ? { confidence: args.flags.confidence } : {})
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.revise, formatMemoryProposalRevisionJson(cwd, revised)));
+      return;
+    }
+    write(io, `Revised memory proposal: ${revised.proposal.data.id}`);
+    write(io, `Proposal: ${path.relative(cwd, revised.proposal.filePath)}`);
+    write(io, formatValidationSummary(revised.validation));
+    for (const warning of revised.validation.warnings) {
+      write(io, `Warning: ${warning}`);
+    }
+    write(io, "Next:");
+    write(io, `  orange remember validate ${revised.proposal.data.id}`);
+    write(io, `  orange remember accept ${revised.proposal.data.id}`);
+    return;
+  }
   if (subcommand === "accept") {
     requireInitialized(cwd);
     const args = parseArgs(rest);
@@ -453,6 +507,31 @@ function formatDoctor(result) {
   }
   lines.push(result.ok ? "No problems found." : `${result.errors.length} problem(s) found.`);
   return lines.join("\n");
+}
+
+function formatMemoryProposalValidation(proposal, validation) {
+  const lines = [
+    validation.valid
+      ? `Memory proposal ${proposal.data.id} is valid.`
+      : `Memory proposal ${proposal.data.id} failed validation.`
+  ];
+  for (const warning of validation.warnings) {
+    lines.push(`WARN ${warning}`);
+  }
+  for (const error of validation.errors) {
+    lines.push(`ERROR ${error}`);
+  }
+  return lines.join("\n");
+}
+
+function formatValidationSummary(validation) {
+  const warningCount = validation.warnings.length;
+  if (validation.errors.length) {
+    return `Validation: failed with ${validation.errors.length} error(s).`;
+  }
+  return warningCount
+    ? `Validation: passed with ${warningCount} warning(s).`
+    : "Validation: passed.";
 }
 
 function extractRequest(body) {
@@ -671,6 +750,30 @@ function formatMemoryProposalJson(cwd, proposal, options = {}) {
   return data;
 }
 
+function formatMemoryProposalValidationJson(cwd, result) {
+  return {
+    proposal: formatMemoryProposalJson(cwd, result.proposal, { includeBody: false }),
+    validation: {
+      valid: result.validation.errors.length === 0,
+      errors: result.validation.errors,
+      warnings: result.validation.warnings
+    }
+  };
+}
+
+function formatMemoryProposalRevisionJson(cwd, result) {
+  return {
+    revised: true,
+    revisions: result.revisions,
+    proposal: formatMemoryProposalJson(cwd, result.proposal, { includeBody: false }),
+    validation: {
+      valid: result.validation.errors.length === 0,
+      errors: result.validation.errors,
+      warnings: result.validation.warnings
+    }
+  };
+}
+
 function formatMemoryProposalListFilters(filters) {
   return {
     status: filters.status || "all",
@@ -727,6 +830,8 @@ function usage() {
     "  remember propose --quest <quest-id> [--json]",
     "  remember list [--status pending|accepted|rejected] [--type decision|constraint|component|risk|verification] [--quest <quest-id>] [--json]",
     "  remember show <proposal-id> [--json]",
+    "  remember validate <proposal-id> [--json]",
+    "  remember revise <proposal-id> [--candidate <text>] [--why <text>] [--confidence low|medium|high] [--json]",
     "  remember accept <proposal-id> [--json]",
     "  remember reject <proposal-id> [--json]",
     "  identity build [--json]",
@@ -763,6 +868,8 @@ function rememberUsage() {
     "  propose --quest <quest-id> [--json]",
     "  list [--status pending|accepted|rejected] [--type decision|constraint|component|risk|verification] [--quest <quest-id>] [--json]",
     "  show <proposal-id> [--json]",
+    "  validate <proposal-id> [--json]",
+    "  revise <proposal-id> [--candidate <text>] [--why <text>] [--confidence low|medium|high] [--json]",
     "  accept <proposal-id> [--json]",
     "  reject <proposal-id> [--json]"
   ].join("\n");

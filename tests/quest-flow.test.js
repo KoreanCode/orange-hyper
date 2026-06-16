@@ -14,7 +14,8 @@ import {
   listMemoryGraphNodes,
   proposeMemoryDelta,
   readMemoryDeltaProposalFile,
-  rejectMemoryDelta
+  rejectMemoryDelta,
+  reviseMemoryDeltaProposal
 } from "../src/core/memory.js";
 import { workspacePaths } from "../src/core/paths.js";
 import { completeQuest, createQuest, listQuests, readQuestFile } from "../src/core/quest.js";
@@ -435,6 +436,157 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
   assert.equal(runOrange(["remember", "reject", secondProposal, "--json"], cwd).status, 1);
 });
 
+test("remember validate supports human and JSON output for pending accepted and rejected proposals", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+
+  const pending = createMemoryProposal(cwd, "remember pending validation review");
+  const human = runOrange(["remember", "validate", pending.data.id], cwd);
+  assert.equal(human.status, 0);
+  assert.equal(human.stderr, "");
+  assert.match(human.stdout, new RegExp(`Memory proposal ${pending.data.id} is valid\\.`));
+
+  const pendingJson = assertJsonCommand(
+    runOrange(["remember", "validate", pending.data.id, "--json"], cwd),
+    "remember.validate"
+  );
+  assert.equal(pendingJson.data.validation.valid, true);
+  assert.deepEqual(pendingJson.data.validation.errors, []);
+  assert.equal(pendingJson.data.proposal.status, "pending");
+
+  acceptMemoryDelta(cwd, pending.data.id);
+  const acceptedJson = assertJsonCommand(
+    runOrange(["remember", "validate", pending.data.id, "--json"], cwd),
+    "remember.validate"
+  );
+  assert.equal(acceptedJson.data.validation.valid, true);
+  assert.equal(acceptedJson.data.proposal.status, "accepted");
+
+  const toReject = createMemoryProposal(cwd, "remember rejected validation review");
+  rejectMemoryDelta(cwd, toReject.data.id);
+  const rejectedJson = assertJsonCommand(
+    runOrange(["remember", "validate", toReject.data.id, "--json"], cwd),
+    "remember.validate"
+  );
+  assert.equal(rejectedJson.data.validation.valid, true);
+  assert.equal(rejectedJson.data.proposal.status, "rejected");
+});
+
+test("remember revise updates candidate why confidence timestamp and quality warnings", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember proposal review editing");
+  fs.writeFileSync(
+    proposal.filePath,
+    stringifyFrontmatter(
+      {
+        ...proposal.data,
+        updated_at: "2026-01-01T00:00:00.000Z"
+      },
+      proposal.body
+    )
+  );
+
+  const candidate = assertJsonCommand(
+    runOrange([
+      "remember",
+      "revise",
+      proposal.data.id,
+      "--candidate",
+      "Adapters must validate and revise memory proposals before accepting them.",
+      "--json"
+    ], cwd),
+    "remember.revise"
+  );
+  assert.equal(candidate.data.validation.valid, true);
+  assert.deepEqual(candidate.data.revisions, ["candidate"]);
+  assert.notEqual(candidate.data.proposal.updated_at, "2026-01-01T00:00:00.000Z");
+
+  const why = assertJsonCommand(
+    runOrange([
+      "remember",
+      "revise",
+      proposal.data.id,
+      "--why",
+      "The review step keeps accepted memory nodes tied to explicit user approval.",
+      "--json"
+    ], cwd),
+    "remember.revise"
+  );
+  assert.deepEqual(why.data.revisions, ["why"]);
+
+  const confidence = assertJsonCommand(
+    runOrange(["remember", "revise", proposal.data.id, "--confidence", "high", "--json"], cwd),
+    "remember.revise"
+  );
+  assert.deepEqual(confidence.data.revisions, ["confidence"]);
+  assert.equal(confidence.data.proposal.confidence, "high");
+
+  const revised = readMemoryDeltaProposalFile(path.join(cwd, confidence.data.proposal.file));
+  assert.equal(revised.data.confidence, "high");
+  assert.match(revised.body, /Adapters must validate and revise memory proposals before accepting them\./);
+  assert.match(revised.body, /The review step keeps accepted memory nodes tied to explicit user approval\./);
+  assert.match(revised.body, /- Confidence: high/);
+
+  const weak = assertJsonCommand(
+    runOrange(["remember", "revise", proposal.data.id, "--candidate", "fix", "--json"], cwd),
+    "remember.revise"
+  );
+  assert.equal(weak.data.validation.valid, true);
+  assert.match(weak.data.validation.warnings.join("\n"), /Candidate Memory is very short or generic/);
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, true);
+  assert.match(doctor.warnings.join("\n"), /Candidate Memory is very short or generic/);
+});
+
+test("remember revise rejects accepted rejected and duplicate pending proposal edits", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+
+  const accepted = createMemoryProposal(cwd, "remember accepted revise protection");
+  acceptMemoryDelta(cwd, accepted.data.id);
+  const acceptedResult = runOrange([
+    "remember",
+    "revise",
+    accepted.data.id,
+    "--candidate",
+    "Accepted proposals should not be revised.",
+    "--json"
+  ], cwd);
+  assert.equal(acceptedResult.status, 1);
+  const acceptedPayload = parseJsonOnly(acceptedResult.stdout);
+  assertJsonEnvelope(acceptedPayload, false, "remember.revise");
+  assert.match(acceptedPayload.error.message, /already accepted/);
+
+  const rejected = createMemoryProposal(cwd, "remember rejected revise protection");
+  rejectMemoryDelta(cwd, rejected.data.id);
+  const rejectedResult = runOrange([
+    "remember",
+    "revise",
+    rejected.data.id,
+    "--candidate",
+    "Rejected proposals should not be revised.",
+    "--json"
+  ], cwd);
+  assert.equal(rejectedResult.status, 1);
+  const rejectedPayload = parseJsonOnly(rejectedResult.stdout);
+  assertJsonEnvelope(rejectedPayload, false, "remember.revise");
+  assert.match(rejectedPayload.error.message, /already rejected/);
+
+  const first = createMemoryProposal(cwd, "remember duplicate revise first proposal");
+  const second = createMemoryProposal(cwd, "remember duplicate revise second proposal");
+  const shared = "Pending proposal duplicate candidate memory should stop unsafe revise writes.";
+  reviseMemoryDeltaProposal(cwd, first.data.id, { candidate: shared }, {
+    clock: new Date("2026-06-16T00:10:00.000Z")
+  });
+  const duplicate = runOrange(["remember", "revise", second.data.id, "--candidate", shared, "--json"], cwd);
+  assert.equal(duplicate.status, 1);
+  const duplicatePayload = parseJsonOnly(duplicate.stdout);
+  assertJsonEnvelope(duplicatePayload, false, "remember.revise");
+  assert.match(duplicatePayload.error.message, new RegExp(`duplicates pending proposal ${first.data.id}`));
+});
+
 test("remember propose is idempotent for matching pending candidate memory", () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd);
@@ -578,6 +730,27 @@ test("doctor catches memory proposal source quest and status problems", () => {
   const result = runDoctor(cwd);
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /source_quest not found: quest_missing/);
+});
+
+test("doctor warns when memory proposal updated_at is earlier than created_at", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember proposal timestamp ordering");
+  fs.writeFileSync(
+    proposal.filePath,
+    stringifyFrontmatter(
+      {
+        ...proposal.data,
+        created_at: "2026-06-16T00:02:00.000Z",
+        updated_at: "2026-06-16T00:01:00.000Z"
+      },
+      proposal.body
+    )
+  );
+
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, true);
+  assert.match(result.warnings.join("\n"), /updated_at is earlier than created_at/);
 });
 
 test("memory proposal quality validation reports warnings and errors", () => {
@@ -766,6 +939,8 @@ test("remember selectors reject path traversal", async () => {
   assert.ok(readMemoryDeltaProposalFile(proposal.filePath));
   for (const selector of ["../../package.json", "../README.md", "pending/../../bad"]) {
     await assert.rejects(() => main(["remember", "show", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
+    await assert.rejects(() => main(["remember", "validate", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
+    await assert.rejects(() => main(["remember", "revise", selector, "--candidate", "safe"], { cwd, io: silentIo() }), /must be an id, not a path/);
     await assert.rejects(() => main(["remember", "accept", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
     await assert.rejects(() => main(["remember", "reject", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
   }
@@ -774,7 +949,7 @@ test("remember selectors reject path traversal", async () => {
 test("identity summary includes memory proposal and accepted node counts", async () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd, { projectName: "memory-identity-demo" });
-  const pendingQuest = createQuest(cwd, "remember pending decision", {
+  const pendingQuest = createQuest(cwd, "fix", {
     layer: "L2",
     clock: new Date("2026-06-16T00:00:00.000Z")
   });
@@ -821,6 +996,7 @@ test("identity summary includes memory proposal and accepted node counts", async
   const payload = parseJsonOnly(output.join(""));
   assertJsonEnvelope(payload, true, "identity.build");
   assert.equal(payload.data.summary.pendingMemoryProposals, 1);
+  assert.equal(payload.data.summary.pendingMemoryProposalsWithWarnings, 1);
   assert.equal(payload.data.summary.acceptedMemoryProposals, 1);
   assert.equal(payload.data.summary.rejectedMemoryProposals, 1);
   assert.equal(payload.data.summary.acceptedMemoryNodes, 1);
@@ -894,7 +1070,7 @@ test("identity build writes generated placeholder html", async () => {
   const html = fs.readFileSync(paths.identityHtml, "utf8");
   assert.match(html, /identity-demo/);
   assert.match(html, /Level: Seed/);
-  assert.match(html, /Memory proposals are active\./);
+  assert.match(html, /Memory proposal review is active in v0\.2\./);
   assert.match(html, /Graph rendering is not active yet\./);
   assert.match(html, /Accepted memory nodes are candidate project memory\./);
 });
@@ -919,7 +1095,7 @@ test("identity build --json prints generated html path and summary", async () =>
   assert.equal(payload.data.summary.completedCount, 1);
   assert.equal(payload.data.summary.verifiedCount, 1);
   assert.deepEqual(payload.data.summary.statusMessages, [
-    "Memory proposals are active.",
+    "Memory proposal review is active in v0.2.",
     "Graph rendering is not active yet.",
     "Accepted memory nodes are candidate project memory."
   ]);
@@ -961,6 +1137,18 @@ test("all JSON success envelopes include contract version and dot command ids", 
   const proposalId = proposed.data.proposal.id;
   assertJsonCommand(runOrange(["remember", "list", "--json"], cwd), "remember.list");
   assertJsonCommand(runOrange(["remember", "show", proposalId, "--json"], cwd), "remember.show");
+  assertJsonCommand(runOrange(["remember", "validate", proposalId, "--json"], cwd), "remember.validate");
+  assertJsonCommand(
+    runOrange([
+      "remember",
+      "revise",
+      proposalId,
+      "--candidate",
+      "Adapter contract freeze is a durable project memory candidate.",
+      "--json"
+    ], cwd),
+    "remember.revise"
+  );
   assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
 
   const rejectedQuest = assertJsonCommand(
@@ -979,6 +1167,20 @@ test("all JSON success envelopes include contract version and dot command ids", 
   assertJsonCommand(runOrange(["doctor", "--json"], cwd), "doctor.run");
   assertJsonCommand(runOrange(["identity", "build", "--json"], cwd), "identity.build");
 });
+
+function createMemoryProposal(cwd, title, options = {}) {
+  const quest = createQuest(cwd, title, {
+    layer: "L2",
+    clock: options.questClock
+  });
+  completeQuest(cwd, quest.id, {
+    clock: options.completedClock,
+    evidence: [options.evidence || "npm test passed"]
+  });
+  return proposeMemoryDelta(cwd, quest.id, {
+    clock: options.proposalClock
+  });
+}
 
 function silentIo() {
   return {

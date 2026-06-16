@@ -1,5 +1,66 @@
 # Release Notes
 
+## v0.2.0-alpha.2
+
+Memory Proposal Review UX release.
+
+This release lets users and adapters safely inspect, validate, revise, and
+re-validate pending Memory Delta Proposals before accepting them. It does not
+enable Memory Graph rendering, MCP, hooks, subagents, role evolution, auto
+planning, automatic execution loops, or automatic memory writes.
+
+- Package version is `0.2.0-alpha.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- New command: `orange remember validate <proposal-id> [--json]`.
+- New command: `orange remember revise <proposal-id> --candidate "..." [--json]`.
+- New command: `orange remember revise <proposal-id> --why "..." [--json]`.
+- New command: `orange remember revise <proposal-id> --confidence low|medium|high [--json]`.
+- JSON command ids are `remember.validate` and `remember.revise`.
+- `remember validate` works for pending, accepted, and rejected proposals.
+- `remember revise` is limited to pending proposals. Accepted/rejected proposals
+  remain protected user decision records.
+- Successful revise writes the proposal through the kernel, updates
+  `updated_at`, and reruns quality validation.
+- Revising `Candidate Memory` to duplicate another pending proposal fails with a
+  clear JSON/human error.
+- `doctor` now warns when proposal `updated_at` is earlier than `created_at`.
+- `identity build` remains a placeholder. It now reports the v0.2 proposal
+  review stage and includes `pendingMemoryProposalsWithWarnings` in JSON
+  summary.
+
+Explicitly not included:
+
+- Memory Graph rendering
+- Obsidian-style dashboard graph
+- MCP/hooks/subagents/role evolution
+- auto planner or auto execution loop
+- raw prompt archive
+- automatic memory write
+
+### Verification Checklist
+
+```bash
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+```
+
+Fresh temp smoke:
+
+```bash
+node bin/orange.js init
+node bin/orange.js quest new "remember a durable decision" --layer L2 --json
+node bin/orange.js quest done <quest-id> --evidence "manual smoke passed" --json
+node bin/orange.js remember propose --quest <quest-id> --json
+node bin/orange.js remember validate <proposal-id> --json
+node bin/orange.js remember revise <proposal-id> --candidate "Durable project memory candidate." --json
+node bin/orange.js remember validate <proposal-id> --json
+node bin/orange.js remember accept <proposal-id> --json
+node bin/orange.js doctor --json
+node bin/orange.js identity build --json
+```
+
 ## v0.2.0-alpha.1
 
 Memory Proposal Quality Hardening release.

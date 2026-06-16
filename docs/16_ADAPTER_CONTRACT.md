@@ -54,6 +54,8 @@ and failure envelopes.
 - `remember.propose`
 - `remember.list`
 - `remember.show`
+- `remember.validate`
+- `remember.revise`
 - `remember.accept`
 - `remember.reject`
 - `doctor.run`
@@ -265,6 +267,89 @@ If a matching pending proposal already exists for the same `source_quest`,
 existing proposal instead of creating another file. In that case
 `data.duplicated` and `data.proposal.duplicated` are `true`.
 
+### `remember validate --json`
+
+```bash
+orange remember validate mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "remember.validate",
+  "data": {
+    "proposal": {
+      "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "status": "pending",
+      "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "node_type": "decision",
+      "confidence": "medium",
+      "created_at": "2026-06-16T00:04:00.000Z",
+      "updated_at": "2026-06-16T00:04:00.000Z",
+      "title": "Implement adapter JSON contract",
+      "duplicated": false
+    },
+    "validation": {
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}
+```
+
+`remember validate` works for pending, accepted, and rejected proposals. It
+checks frontmatter, required sections, quality validation, and source Quest
+existence. If validation fails in JSON mode, the command returns a structured
+error envelope with command id `remember.validate` and includes the same
+proposal/validation data under top-level `data`.
+
+### `remember revise --json`
+
+```bash
+orange remember revise mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision \
+  --candidate "Adapters must validate and revise memory proposals before accepting them." \
+  --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "remember.revise",
+  "data": {
+    "revised": true,
+    "revisions": ["candidate"],
+    "proposal": {
+      "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "status": "pending",
+      "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "node_type": "decision",
+      "confidence": "medium",
+      "created_at": "2026-06-16T00:04:00.000Z",
+      "updated_at": "2026-06-16T00:05:00.000Z",
+      "title": "Implement adapter JSON contract",
+      "duplicated": false
+    },
+    "validation": {
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    }
+  }
+}
+```
+
+Accepted and rejected proposals are protected from revise. `remember revise`
+also supports `--why "..."` and `--confidence low|medium|high`. A successful
+revise updates `updated_at`, writes the proposal file through the kernel, and
+reruns quality validation. If the revised `Candidate Memory` duplicates another
+pending proposal, revise fails with a JSON error envelope. Adapters should show
+that conflict to the user instead of editing `.orange-hyper` files directly.
+
 ### `remember list --json` with filters
 
 ```bash
@@ -348,7 +433,8 @@ candidate, and its JSON payload includes node provenance:
 ```
 
 Adapters must not create memory proposal or graph node files directly. They
-should call `remember propose` and wait for user approval through
+should call `remember propose`, review with `remember show`,
+`remember validate`, and `remember revise`, then wait for user approval through
 `remember accept` or `remember reject`.
 
 ### `doctor --json`
@@ -441,6 +527,7 @@ orange identity build --json
       "verifiedCount": 1,
       "unverifiedCount": 0,
       "pendingMemoryProposals": 0,
+      "pendingMemoryProposalsWithWarnings": 0,
       "acceptedMemoryProposals": 1,
       "rejectedMemoryProposals": 0,
       "acceptedMemoryNodes": 1,

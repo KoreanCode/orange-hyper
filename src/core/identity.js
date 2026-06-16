@@ -1,13 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readConfig, requireInitialized } from "./config.js";
-import { listMemoryGraphNodes, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
+import { listMemoryGraphNodes, pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
 import { nowIso } from "./time.js";
 
 const IDENTITY_STATUS_MESSAGES = [
-  "Memory proposals are active.",
+  "Memory proposal review is active in v0.2.",
   "Graph rendering is not active yet.",
   "Accepted memory nodes are candidate project memory."
 ];
@@ -23,6 +23,7 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const unverified = completed.filter((quest) => quest.data.verification_status === "unverified");
   const routeDistribution = readRouteDistribution(paths.routeTrace);
   const memoryProposalCounts = proposalCountsByStatus(cwd);
+  const pendingWarnings = pendingProposalWarningCount(cwd);
   const acceptedMemoryNodes = listMemoryGraphNodes(cwd).length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const generatedAt = nowIso(options.clock);
@@ -38,6 +39,7 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     unverifiedCount: unverified.length,
     routeDistribution,
     pendingMemoryProposals: memoryProposalCounts.pending,
+    pendingMemoryProposalsWithWarnings: pendingWarnings,
     acceptedMemoryProposals: memoryProposalCounts.accepted,
     rejectedMemoryProposals: memoryProposalCounts.rejected,
     acceptedMemoryNodes,
@@ -56,6 +58,7 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
       unverifiedCount: unverified.length,
       routeDistribution,
       pendingMemoryProposals: memoryProposalCounts.pending,
+      pendingMemoryProposalsWithWarnings: pendingWarnings,
       acceptedMemoryProposals: memoryProposalCounts.accepted,
       rejectedMemoryProposals: memoryProposalCounts.rejected,
       acceptedMemoryNodes,
@@ -129,6 +132,7 @@ function renderIdentityHtml(model) {
       <div class="card"><div class="label">Verified</div><div class="value">${model.verifiedCount}</div></div>
       <div class="card"><div class="label">Unverified</div><div class="value">${model.unverifiedCount}</div></div>
       <div class="card"><div class="label">Pending Memory Proposals</div><div class="value">${model.pendingMemoryProposals}</div></div>
+      <div class="card"><div class="label">Pending Review Warnings</div><div class="value">${model.pendingMemoryProposalsWithWarnings}</div></div>
       <div class="card"><div class="label">Accepted Memory Proposals</div><div class="value">${model.acceptedMemoryProposals}</div></div>
       <div class="card"><div class="label">Rejected Memory Proposals</div><div class="value">${model.rejectedMemoryProposals}</div></div>
       <div class="card"><div class="label">Accepted Memory Nodes</div><div class="value">${model.acceptedMemoryNodes}</div></div>

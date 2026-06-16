@@ -167,6 +167,71 @@ export function findMemoryDeltaProposal(cwd, selector) {
   return matches[0];
 }
 
+export function validateMemoryDeltaProposalBySelector(cwd, selector) {
+  requireInitialized(cwd);
+  const proposal = findMemoryDeltaProposal(cwd, selector);
+  const validation = validateMemoryDeltaProposalDetailed(proposal, { cwd });
+  return {
+    proposal: withProposalMetadata(proposal, { warnings: validation.warnings }),
+    validation
+  };
+}
+
+export function reviseMemoryDeltaProposal(cwd, selector, revisions = {}, options = {}) {
+  requireInitialized(cwd);
+  const proposal = findMemoryDeltaProposal(cwd, selector);
+  assertPendingProposal(proposal);
+
+  const normalized = normalizeProposalRevisions(revisions);
+  let body = proposal.body;
+  if (normalized.candidate !== undefined) {
+    body = replaceSection(body, "Candidate Memory", normalized.candidate);
+  }
+  if (normalized.why !== undefined) {
+    body = replaceSection(body, "Why this should be remembered", normalized.why);
+  }
+
+  const updatedAt = nowIso(options.clock);
+  const data = {
+    ...proposal.data,
+    updated_at: updatedAt
+  };
+  if (normalized.confidence !== undefined) {
+    data.confidence = normalized.confidence;
+    body = updateSuggestedNodeConfidence(body, normalized.confidence);
+  }
+
+  const draft = {
+    ...proposal,
+    data,
+    body,
+    source: stringifyFrontmatter(data, body)
+  };
+  const validation = validateMemoryDeltaProposalDetailed(draft, {
+    cwd,
+    expectedStatus: "pending"
+  });
+  if (validation.errors.length) {
+    throw new Error(`Cannot revise memory proposal ${proposal.data.id}: ${validation.errors.join("; ")}`);
+  }
+
+  const duplicate = findDuplicatePendingCandidateMemory(cwd, body, {
+    excludeId: proposal.data.id
+  });
+  if (duplicate) {
+    throw new Error(`Cannot revise memory proposal ${proposal.data.id}: Candidate Memory duplicates pending proposal ${duplicate.data.id}`);
+  }
+
+  fs.writeFileSync(proposal.filePath, stringifyFrontmatter(data, body));
+  const saved = readMemoryDeltaProposalFile(proposal.filePath);
+  const savedValidation = validateMemoryDeltaProposalDetailed(saved, { cwd });
+  return {
+    proposal: withProposalMetadata(saved, { warnings: savedValidation.warnings }),
+    validation: savedValidation,
+    revisions: Object.keys(normalized)
+  };
+}
+
 export function acceptMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
   const proposal = findMemoryDeltaProposal(cwd, selector);
@@ -287,6 +352,12 @@ export function topProposalNodeTypes(cwd) {
     .map(([nodeType, count]) => ({ nodeType, count }));
 }
 
+export function pendingProposalWarningCount(cwd) {
+  return listMemoryDeltaProposals(cwd, "pending")
+    .filter((proposal) => validateMemoryDeltaProposalDetailed(proposal, { cwd }).warnings.length > 0)
+    .length;
+}
+
 export function validateMemoryDeltaProposal(proposal, options = {}) {
   return validateMemoryDeltaProposalDetailed(proposal, options).errors;
 }
@@ -335,6 +406,9 @@ export function validateMemoryDeltaProposalDetailed(proposal, options = {}) {
   }
   if (options.expectedStatus && data.status !== options.expectedStatus) {
     errors.push(`memory proposal ${label} expected ${options.expectedStatus} status but has ${data.status}`);
+  }
+  if (data.created_at && data.updated_at && String(data.updated_at) < String(data.created_at)) {
+    warnings.push(`memory proposal ${label} updated_at is earlier than created_at`);
   }
   for (const section of REQUIRED_PROPOSAL_SECTIONS) {
     const pattern = new RegExp(`^## ${escapeRegExp(section)}\\s*$`, "m");
@@ -497,6 +571,81 @@ function findDuplicatePendingProposal(cwd, sourceQuest, nodeType, body) {
     proposal.data.node_type === nodeType &&
     normalizeCandidateMemory(extractSection(proposal.body, "Candidate Memory")) === candidateMemory
   );
+}
+
+function findDuplicatePendingCandidateMemory(cwd, body, options = {}) {
+  const candidateMemory = normalizeCandidateMemory(extractSection(body, "Candidate Memory"));
+  if (!candidateMemory) {
+    return null;
+  }
+  return listMemoryDeltaProposals(cwd, "pending").find((proposal) =>
+    proposal.data.id !== options.excludeId &&
+    normalizeCandidateMemory(extractSection(proposal.body, "Candidate Memory")) === candidateMemory
+  ) || null;
+}
+
+function normalizeProposalRevisions(revisions) {
+  const normalized = {};
+  if (Object.hasOwn(revisions, "candidate")) {
+    normalized.candidate = normalizeRevisionText(revisions.candidate, "--candidate");
+  }
+  if (Object.hasOwn(revisions, "why")) {
+    normalized.why = normalizeRevisionText(revisions.why, "--why");
+  }
+  if (Object.hasOwn(revisions, "confidence")) {
+    const confidence = normalizeRevisionText(revisions.confidence, "--confidence");
+    if (!MEMORY_CONFIDENCE_LEVELS.has(confidence)) {
+      throw new Error(`Unsupported memory proposal confidence: ${confidence}`);
+    }
+    normalized.confidence = confidence;
+  }
+  if (!Object.keys(normalized).length) {
+    throw new Error("remember revise requires --candidate, --why, or --confidence.");
+  }
+  return normalized;
+}
+
+function normalizeRevisionText(value, flag) {
+  if (Array.isArray(value)) {
+    throw new Error(`${flag} can only be provided once.`);
+  }
+  if (value === true || value === false || value === undefined || value === null) {
+    throw new Error(`${flag} requires a value.`);
+  }
+  return String(value).trim();
+}
+
+function replaceSection(body, sectionName, content) {
+  const pattern = new RegExp(`^## ${escapeRegExp(sectionName)}\\s*$`, "m");
+  const match = body.match(pattern);
+  if (!match) {
+    throw new Error(`Memory proposal is missing section ${sectionName}.`);
+  }
+  const sectionEnd = match.index + match[0].length;
+  const rest = body.slice(sectionEnd);
+  const next = rest.search(/^## /m);
+  const replacement = `\n\n${String(content).trim()}\n\n`;
+  if (next === -1) {
+    return `${body.slice(0, sectionEnd)}${replacement}`.trimEnd();
+  }
+  return `${body.slice(0, sectionEnd)}${replacement}${rest.slice(next)}`.trimEnd();
+}
+
+function updateSuggestedNodeConfidence(body, confidence) {
+  const suggestedNode = extractSection(body, "Suggested Node");
+  const lines = suggestedNode.split(/\r?\n/);
+  let replaced = false;
+  const updated = lines.map((line) => {
+    if (/^\s*-\s*Confidence:\s*/i.test(line)) {
+      replaced = true;
+      return `- Confidence: ${confidence}`;
+    }
+    return line;
+  });
+  if (!replaced) {
+    updated.push(`- Confidence: ${confidence}`);
+  }
+  return replaceSection(body, "Suggested Node", updated.join("\n"));
 }
 
 function nextAvailableProposalId(cwd, baseId) {
