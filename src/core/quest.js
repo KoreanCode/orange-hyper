@@ -228,6 +228,9 @@ export function completeQuest(cwd, selector, options = {}) {
   if (!evidence.length && !unverifiedReason) {
     throw new Error("Completion requires --evidence or --unverified.");
   }
+  if (evidence.length && unverifiedReason) {
+    throw new Error("Completion cannot combine verification evidence with --unverified.");
+  }
 
   const quest = findQuest(cwd, selector);
   if (quest.data.status === "completed") {

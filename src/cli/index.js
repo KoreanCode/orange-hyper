@@ -84,7 +84,15 @@ async function questCommand(cwd, io, argv) {
       unknowns: asArray(args.flags.unknown),
       expectedVerification: asArray(args.flags.verify)
     });
-    write(io, `Wrote ${path.relative(cwd, quest.filePath)}`);
+    if (args.flags.json) {
+      writeJson(io, formatQuestNewJson(cwd, quest));
+      return;
+    }
+    write(io, `Created quest: ${quest.id}`);
+    write(io, `File: ${path.relative(cwd, quest.filePath)}`);
+    write(io, "Next:");
+    write(io, `  orange route --quest ${quest.id}`);
+    write(io, `  orange capsule --quest ${quest.id}`);
     write(io, formatRouteLine(quest.contract));
     write(io, `Quest policy: ${quest.contract.quest_policy}`);
     if (quest.contract.quest_policy === "not_recommended") {
@@ -117,9 +125,14 @@ async function questCommand(cwd, io, argv) {
     if (!selector) {
       throw new Error("Quest selector is required.");
     }
+    const evidenceValues = asArray(args.flags.evidence);
+    const evidenceFiles = asArray(args.flags["evidence-file"]);
+    if (args.flags.unverified && (evidenceValues.length || evidenceFiles.length)) {
+      throw new Error("Completion cannot combine verification evidence with --unverified.");
+    }
     const evidence = [
-      ...asArray(args.flags.evidence),
-      ...readEvidenceFiles(cwd, asArray(args.flags["evidence-file"]))
+      ...evidenceValues,
+      ...readEvidenceFiles(cwd, evidenceFiles)
     ];
     const completed = completeQuest(cwd, selector, {
       evidence,
@@ -185,6 +198,7 @@ async function routeCommand(cwd, io, argv) {
 function parseArgs(argv) {
   const flags = {};
   const positionals = [];
+  const booleanFlags = new Set(["all", "completed", "force", "json", "open"]);
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (!value.startsWith("--")) {
@@ -195,7 +209,7 @@ function parseArgs(argv) {
     const eq = withoutPrefix.indexOf("=");
     const key = eq === -1 ? withoutPrefix : withoutPrefix.slice(0, eq);
     let flagValue = eq === -1 ? true : withoutPrefix.slice(eq + 1);
-    if (eq === -1 && argv[index + 1] && !argv[index + 1].startsWith("--")) {
+    if (eq === -1 && !booleanFlags.has(key) && argv[index + 1] && !argv[index + 1].startsWith("--")) {
       flagValue = argv[index + 1];
       index += 1;
     }
@@ -260,11 +274,51 @@ function extractRequest(body) {
 }
 
 function readEvidenceFiles(cwd, files) {
-  return files.map((file) => fs.readFileSync(path.isAbsolute(file) ? file : path.join(cwd, file), "utf8").trim());
+  return files.map((file) => {
+    if (typeof file !== "string" || !file.trim()) {
+      throw new Error("--evidence-file requires a UTF-8 text file path.");
+    }
+    const evidencePath = path.isAbsolute(file) ? file : path.join(cwd, file);
+    try {
+      return fs.readFileSync(evidencePath, "utf8").trim();
+    } catch (error) {
+      const reason = error?.code === "ENOENT" ? "file does not exist" : error.message;
+      throw new Error(`Could not read evidence file ${file}: ${reason}`);
+    }
+  });
 }
 
 function write(io, value) {
   io.stdout.write(`${value}\n`);
+}
+
+function writeJson(io, value) {
+  write(io, JSON.stringify(value, null, 2));
+}
+
+function formatQuestNewJson(cwd, quest) {
+  const routeCommand = `orange route --quest ${quest.id}`;
+  const capsuleCommand = `orange capsule --quest ${quest.id}`;
+  const warning = quest.contract.quest_policy === "not_recommended"
+    ? "This looks like a lightweight task. A Quest was created because you explicitly requested quest new, but Orange Hyper would not require one for this layer."
+    : null;
+  return {
+    quest: {
+      id: quest.id,
+      file: path.relative(cwd, quest.filePath),
+      status: quest.data.status,
+      layer: quest.data.layer,
+      quest_policy: quest.data.quest_policy,
+      output_contract: quest.data.output_contract,
+      verification_status: quest.data.verification_status
+    },
+    contract: quest.contract,
+    next: {
+      route: routeCommand,
+      capsule: capsuleCommand
+    },
+    warning
+  };
 }
 
 function usage() {
@@ -273,10 +327,10 @@ function usage() {
     "",
     "Commands:",
     "  init [--project <name>] [--force]",
-    "  quest new <request> [--title <title>] [--layer L2] [--verify <check>]",
+    "  quest new <request> [--title <title>] [--layer L2] [--verify <check>] [--json]",
     "  quest list [--completed|--all]",
     "  quest show <id-or-file>",
-    "  quest done <id> (--evidence <text> | --unverified <reason>)",
+    "  quest done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>)",
     "  route <request> [--quest <id>] [--layer L2] [--json]",
     "  capsule [quest-id|--quest <id>]",
     "  identity build",
@@ -289,10 +343,10 @@ function questUsage() {
     "orange quest <command>",
     "",
     "Commands:",
-    "  new <request>",
+    "  new <request> [--json]",
     "  list [--completed|--all]",
     "  show <id-or-file>",
-    "  done <id> (--evidence <text> | --unverified <reason>)"
+    "  done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>)"
   ].join("\n");
 }
 

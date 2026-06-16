@@ -110,6 +110,36 @@ test("unverified completion records unverified status and reason", () => {
   assert.equal(completed.data.unverified_reason, "Manual verification is not available in seed test");
 });
 
+test("quest done merges inline evidence and evidence-file into verified completion", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "complete with evidence file", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const evidencePath = path.join(cwd, "verification.txt");
+  fs.writeFileSync(evidencePath, "npm test passed\nCLI smoke passed\n");
+  await main(["quest", "done", created.id, "--evidence", "git diff --check passed", "--evidence-file", "verification.txt"], {
+    cwd,
+    io: silentIo()
+  });
+  const completed = listQuests(cwd, "completed")[0];
+  assert.equal(completed.data.status, "completed");
+  assert.equal(completed.data.verification_status, "verified");
+  assert.deepEqual(completed.data.verification_evidence, ["git diff --check passed", "npm test passed\nCLI smoke passed"]);
+});
+
+test("quest done rejects evidence and unverified together", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "reject conflicting completion state", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  await assert.rejects(
+    () => main(["quest", "done", created.id, "--evidence", "npm test passed", "--unverified", "not checked"], { cwd, io: silentIo() }),
+    /cannot combine verification evidence with --unverified/
+  );
+});
+
 test("route --quest preserves the quest layer unless explicitly overridden", async () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
@@ -124,6 +154,54 @@ test("route --quest preserves the quest layer unless explicitly overridden", asy
   };
   await main(["route", "--quest", created.id], { cwd, io });
   assert.match(output.join(""), /Orange route: L3/);
+});
+
+test("quest new prints quest id as its own line and next kernel commands", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const { output, io } = captureIo();
+  await main(["quest", "new", "implement seed kernel output hardening"], { cwd, io });
+  const quest = listQuests(cwd, "active")[0];
+  const lines = output.join("").trimEnd().split(/\r?\n/);
+  assert.equal(lines[0], `Created quest: ${quest.data.id}`);
+  assert.equal(lines[1], `File: .orange-hyper/quests/active/${quest.data.id}.md`);
+  assert.ok(lines.includes("Next:"));
+  assert.ok(lines.includes(`  orange route --quest ${quest.data.id}`));
+  assert.ok(lines.includes(`  orange capsule --quest ${quest.data.id}`));
+});
+
+test("quest new --json prints valid JSON without human-readable output", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const { output, io } = captureIo();
+  await main(["quest", "new", "--json", "implement JSON quest creation output"], { cwd, io });
+  const raw = output.join("");
+  const payload = JSON.parse(raw);
+  assert.match(payload.quest.id, /^quest_/);
+  assert.equal(payload.quest.file, `.orange-hyper/quests/active/${payload.quest.id}.md`);
+  assert.equal(payload.next.route, `orange route --quest ${payload.quest.id}`);
+  assert.equal(payload.next.capsule, `orange capsule --quest ${payload.quest.id}`);
+  assert.doesNotMatch(raw, /Created quest:/);
+  assert.doesNotMatch(raw, /Next:/);
+  assert.doesNotMatch(raw, /Orange route:/);
+});
+
+test("route --json prints valid JSON without human-readable output", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "implement route JSON output", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const { output, io } = captureIo();
+  await main(["route", "--quest", created.id, "--json"], { cwd, io });
+  const raw = output.join("");
+  const payload = JSON.parse(raw);
+  assert.equal(payload.trace.quest_id, created.id);
+  assert.equal(payload.trace.contract.route, payload.contract.route);
+  assert.equal(payload.contract.output_contract, created.data.output_contract);
+  assert.doesNotMatch(raw, /Output contract:/);
+  assert.doesNotMatch(raw, /Quest policy:/);
+  assert.doesNotMatch(raw, /Trace:/);
 });
 
 test("route trace lines are JSON parseable", async () => {
@@ -276,5 +354,16 @@ function silentIo() {
   return {
     stdout: { write: () => {} },
     stderr: { write: () => {} }
+  };
+}
+
+function captureIo() {
+  const output = [];
+  return {
+    output,
+    io: {
+      stdout: { write: (chunk) => output.push(chunk) },
+      stderr: { write: () => {} }
+    }
   };
 }

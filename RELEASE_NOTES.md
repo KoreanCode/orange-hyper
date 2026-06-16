@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.1.0-alpha.2
+
+Seed Kernel UX/API hardening release.
+
+- `orange quest new` now prints a copy-friendly quest id line, file path, and next kernel commands.
+- `orange quest new --json` and `orange route --quest <id> --json` provide machine-readable output for skills and adapters without mixing human text.
+- `orange quest done` accepts `--evidence-file <path>` for longer UTF-8 verification evidence.
+- Completion now rejects evidence and `--unverified` together.
+- README clarifies that the CLI is the Seed Kernel interface, not the final user experience.
+
 ## v0.1.0-alpha.0
 
 Orange Hyper Seed Kernel의 첫 alpha 릴리즈입니다. 이 릴리즈는 강한 자동화 하네스가 아니라 repo-local Quest, Route, Capsule 기록을 남기는 최소 커널입니다.
