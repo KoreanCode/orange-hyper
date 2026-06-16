@@ -1,0 +1,25 @@
+{
+  "name": "orange-hyper",
+  "version": "0.1.0-alpha.0",
+  "description": "Lightweight quest and capsule kernel for coding agents.",
+  "type": "module",
+  "bin": {
+    "orange": "./bin/orange.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "doctor": "node bin/orange.js doctor"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "RELEASE_NOTES.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT"
+}

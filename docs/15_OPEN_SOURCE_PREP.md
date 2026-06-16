@@ -65,7 +65,7 @@ MIT도 가능하지만, 장기적으로 외부 기여와 기업 사용을 고려
 ## 6. 보안 문서에 넣을 내용
 
 - secrets를 memory node에 저장하지 말 것
-- `.orange/local/`은 gitignore 권장
+- `.orange-hyper/local/`은 gitignore 권장
 - MCP install은 사용자 승인 필요
 - hook은 optional이며 trust review 필요
 - raw prompt trace는 opt-in
@@ -188,7 +188,7 @@ Orange Hyper automatically manages your whole workflow.
 [ ] no default subagents
 [ ] no role zoo
 [ ] memory proposal-first
-[ ] .orange/local gitignore 안내
+[ ] .orange-hyper/local gitignore 안내
 [ ] token trace schema 문서화
 [ ] evals는 behavioral checks라고 명시
 [ ] examples 2개 이상

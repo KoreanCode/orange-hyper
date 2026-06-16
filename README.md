@@ -1,3 +1,5 @@
+![Orange Hyper](readme-hero.png)
+
 # Orange Hyper Documentation Pack
 
 이 문서 세트는 `orange-hyper`를 실제로 개발하기 위한 초기 설계 문서입니다.
@@ -19,8 +21,12 @@
 11. `docs/10_DEVELOPMENT_ROADMAP.md` — 개발 로드맵
 12. `docs/11_REPOSITORY_SCAFFOLD.md` — 초기 repo 구조
 13. `docs/12_IMPLEMENTATION_PROMPTS.md` — Codex에게 줄 구현 프롬프트
-14. `docs/13_OPEN_SOURCE_PREP.md` — 공개 준비 체크리스트
-15. `docs/99_RESEARCH_NOTES.md` — 조사 참고 자료
+14. `docs/13_DISTRIBUTION_RELEASE_STRATEGY.md` — 배포 및 릴리즈 전략
+15. `docs/14_IDENTITY_DASHBOARD_SPEC.md` — Identity dashboard 설계
+16. `docs/15_OPEN_SOURCE_PREP.md` — 공개 준비 체크리스트
+17. `docs/99_RESEARCH_NOTES.md` — 조사 참고 자료
+
+릴리즈 노트는 `RELEASE_NOTES.md`에 정리합니다.
 
 ## 핵심 한 줄
 
@@ -37,3 +43,64 @@ Orange Hyper is an RPG-style adaptive project-memory harness that starts as a li
 - 현재 작업에 필요한 memory node slice만 Context Capsule로 조립한다.
 - 검증은 작업 level에 따라 강해진다.
 - 반복 증거가 쌓일 때만 role, MCP, hook, loop가 성장한다.
+
+## v0.1 Seed Kernel CLI
+
+v0.1은 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다.
+
+설치 없이 저장소에서 바로 실행할 수 있습니다.
+
+```bash
+node bin/orange.js init
+node bin/orange.js route "검색 결과 정렬 버그 원인 찾아줘"
+node bin/orange.js quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
+node bin/orange.js quest list
+node bin/orange.js route --quest <quest-id>
+node bin/orange.js capsule
+node bin/orange.js quest show <quest-id>
+node bin/orange.js quest done <quest-id> --unverified "Manual verification is not available in seed test"
+node bin/orange.js doctor
+node bin/orange.js identity build
+```
+
+초기 저장 구조는 다음과 같습니다.
+
+```text
+.orange-hyper/
+  config.json
+  quests/
+    active/
+    completed/
+  capsules/
+    current.md
+  traces/
+    route.jsonl
+  identity/
+    orange-hyper.html
+```
+
+`orange init`은 `.orange-hyper/.gitignore`도 생성합니다. 기본 ignore 대상은 generated/private state인 `capsules/`, `traces/`, `proposals/`, `identity/`, `local/`입니다. `config.json`과 `quests/`는 팀 정책에 따라 선택적으로 추적할 수 있도록 막지 않습니다.
+
+Quest는 Markdown + YAML frontmatter 파일입니다. 사용자가 직접 읽고 수정할 수 있으며, 완료할 때는 `--evidence` 또는 `--unverified` 중 하나를 반드시 남겨야 합니다. `--unverified`는 성공 검증이 아닙니다. 작업은 완료했지만 seed test에서 검증 증거를 만들 수 없었다는 상태를 명시적으로 남기는 장치입니다.
+
+Route는 chain-of-thought가 아니라 공개 작업 계약입니다. `L0`/`L1`은 기본적으로 Quest가 필요하지 않고 `not_recommended`로 표시됩니다. `orange quest new`는 사용자가 명시적으로 Quest 생성을 요청한 명령이므로 `L0`/`L1`도 생성은 허용하지만 경고를 출력합니다. `L2`는 `recommended`, `L3` 이상은 `required`입니다.
+
+v0.1의 frontmatter parser는 full YAML 구현이 아닙니다. 지원 범위는 문자열, 숫자, boolean, 빈 배열, 문자열 배열, 단순 nested object에 한정합니다. Quest 파일은 이 subset 안에서 사람이 읽고 고칠 수 있게 유지합니다.
+
+`orange identity build`는 v0.1 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`에 Seed Kernel 상태 요약만 self-contained HTML로 생성합니다.
+
+npm 배포 예정 구조는 `orange-hyper` package와 `orange` CLI입니다. alpha 후보는 Node 20 이상을 요구하고, package에는 `bin/`, `src/`, `docs/`, `RELEASE_NOTES.md`, `README.md`, `LICENSE`만 포함합니다.
+
+v0.1에서 의도적으로 하지 않는 것:
+
+- hook 구현
+- MCP 구현
+- subagent 구현
+- role evolution 구현
+- 자동 planner 또는 execution loop 구현
+- branch/PR/spec workflow 강제
+- 모든 요청의 Quest 강제 생성
+- runtime automation
+- telemetry/network behavior
+- postinstall mutation
+- provider/model bridge
