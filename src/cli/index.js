@@ -3,6 +3,7 @@ import path from "node:path";
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
+import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
 import { buildIdentityPlaceholder } from "../core/identity.js";
 import {
   acceptMemoryDelta,
@@ -30,6 +31,12 @@ export const JSON_CONTRACT_VERSION = "0.1";
 const COMMAND_IDS = {
   capsule: "capsule.build",
   doctor: "doctor.run",
+  graph: {
+    list: "graph.list",
+    show: "graph.show",
+    search: "graph.search",
+    "rebuild-index": "graph.rebuildIndex"
+  },
   identity: {
     build: "identity.build"
   },
@@ -117,6 +124,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "identity") {
     await identityCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "graph") {
+    await graphCommand(cwd, io, rest);
     return;
   }
 
@@ -236,6 +248,81 @@ async function identityCommand(cwd, io, argv) {
   if (args.flags.open) {
     write(io, "Warning: identity build --open is not implemented in v0.1; HTML was generated without opening it.");
   }
+}
+
+async function graphCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, graphUsage());
+    return;
+  }
+  if (subcommand === "list") {
+    const args = parseArgs(rest);
+    const result = listGraphNodes(cwd);
+    const data = formatGraphListJson(result);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.graph.list, data));
+      return;
+    }
+    write(io, formatGraphNodeList(result.nodes));
+    writeGraphWarnings(io, result.warnings);
+    return;
+  }
+  if (subcommand === "show") {
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const result = showGraphNode(cwd, selector);
+    const data = {
+      project: formatGraphProject(result.project),
+      node: formatGraphNodeForJson(result.node, { includeContent: true }),
+      warnings: result.warnings
+    };
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.graph.show, data));
+      return;
+    }
+    write(io, result.node.content.trimEnd());
+    writeGraphWarnings(io, result.warnings);
+    return;
+  }
+  if (subcommand === "search") {
+    const args = parseArgs(rest);
+    const query = args.positionals.join(" ").trim();
+    const result = searchGraphNodes(cwd, query);
+    const data = {
+      project: formatGraphProject(result.project),
+      query: result.query,
+      count: result.nodes.length,
+      nodes: result.nodes.map((node) => formatGraphNodeForJson(node, { includeMatches: true })),
+      warnings: result.warnings
+    };
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.graph.search, data));
+      return;
+    }
+    write(io, formatGraphSearchResult(result));
+    writeGraphWarnings(io, result.warnings);
+    return;
+  }
+  if (subcommand === "rebuild-index") {
+    const args = parseArgs(rest);
+    const result = rebuildGraphIndex(cwd);
+    const data = {
+      project: formatGraphProject(result.project),
+      file: path.relative(cwd, result.filePath),
+      count: result.index.nodes.length,
+      index: result.index,
+      warnings: result.warnings
+    };
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.graph["rebuild-index"], data));
+      return;
+    }
+    write(io, `Rebuilt ${path.relative(cwd, result.filePath)} with ${result.index.nodes.length} node${result.index.nodes.length === 1 ? "" : "s"}.`);
+    writeGraphWarnings(io, result.warnings);
+    return;
+  }
+  throw new Error(`Unknown graph command: ${subcommand}`);
 }
 
 async function rememberCommand(cwd, io, argv) {
@@ -497,6 +584,58 @@ function formatMemoryProposalList(proposals) {
     `${row.status.padEnd(widths.status)}  ${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.confidence.padEnd(widths.confidence)}  ${row.source.padEnd(widths.source)}  ${row.title}`
   );
   return [header, ...lines].join("\n");
+}
+
+function formatGraphNodeList(nodes) {
+  if (!nodes.length) {
+    return "No accepted memory graph nodes found for this project.";
+  }
+  const rows = nodes.map((node) => ({
+    id: node.id,
+    type: node.node_type,
+    source: node.source_quest,
+    accepted: node.accepted_at,
+    title: node.title
+  }));
+  const widths = {
+    id: Math.max(2, ...rows.map((row) => row.id.length)),
+    type: Math.max(4, ...rows.map((row) => row.type.length)),
+    source: Math.max(6, ...rows.map((row) => row.source.length)),
+    accepted: Math.max(11, ...rows.map((row) => row.accepted.length))
+  };
+  const header = `${"ID".padEnd(widths.id)}  ${"TYPE".padEnd(widths.type)}  ${"SOURCE".padEnd(widths.source)}  ${"ACCEPTED_AT".padEnd(widths.accepted)}  TITLE`;
+  const lines = rows.map((row) =>
+    `${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.source.padEnd(widths.source)}  ${row.accepted.padEnd(widths.accepted)}  ${row.title}`
+  );
+  return [header, ...lines].join("\n");
+}
+
+function formatGraphSearchResult(result) {
+  if (!result.nodes.length) {
+    return `No graph nodes matched: ${result.query}`;
+  }
+  const rows = result.nodes.map((node) => ({
+    id: node.id,
+    type: node.node_type,
+    matches: node.matches.join(","),
+    title: node.title
+  }));
+  const widths = {
+    id: Math.max(2, ...rows.map((row) => row.id.length)),
+    type: Math.max(4, ...rows.map((row) => row.type.length)),
+    matches: Math.max(7, ...rows.map((row) => row.matches.length))
+  };
+  const header = `${"ID".padEnd(widths.id)}  ${"TYPE".padEnd(widths.type)}  ${"MATCHES".padEnd(widths.matches)}  TITLE`;
+  const lines = rows.map((row) =>
+    `${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.matches.padEnd(widths.matches)}  ${row.title}`
+  );
+  return [header, ...lines].join("\n");
+}
+
+function writeGraphWarnings(io, warnings) {
+  for (const warning of warnings || []) {
+    write(io, `Warning: ${warning}`);
+  }
 }
 
 function formatDoctor(result) {
@@ -795,6 +934,55 @@ function formatMemoryProposalListFilters(filters) {
   };
 }
 
+function formatGraphListJson(result) {
+  return {
+    project: formatGraphProject(result.project),
+    count: result.nodes.length,
+    nodes: result.nodes.map((node) => formatGraphNodeForJson(node)),
+    warnings: result.warnings
+  };
+}
+
+function formatGraphProject(project) {
+  return {
+    project_id: project.project_id || null,
+    project_name: project.project_name || ""
+  };
+}
+
+function formatGraphNodeForJson(node, options = {}) {
+  const data = {
+    id: node.id,
+    file: node.file,
+    project_id: node.project_id || null,
+    project_name: node.project_name || "",
+    kind: node.kind,
+    node_type: node.node_type,
+    status: node.status,
+    confidence: node.confidence,
+    title: node.title,
+    source_quest: node.source_quest,
+    source_proposal: node.source_proposal,
+    accepted_at: node.accepted_at,
+    origin: node.origin,
+    candidate_memory: node.candidate_memory,
+    summary: node.summary,
+    tags: node.tags,
+    keywords: node.keywords
+  };
+  if (options.includeMatches) {
+    data.matches = node.matches || [];
+  }
+  if (options.includeContent) {
+    data.evidence = node.evidence;
+    data.source_proposal_section = node.source_proposal_section;
+    data.source_proposal_hash = node.source_proposal_hash;
+    data.provenance = node.provenance;
+    data.content = node.content;
+  }
+  return data;
+}
+
 function formatMemoryNodeJson(cwd, node) {
   return {
     id: node.data.id,
@@ -851,6 +1039,10 @@ function usage() {
     "  remember revise <proposal-id> [--candidate <text>] [--why <text>] [--confidence low|medium|high] [--json]",
     "  remember accept <proposal-id> [--json]",
     "  remember reject <proposal-id> [--json]",
+    "  graph list [--json]",
+    "  graph show <node-id> [--json]",
+    "  graph search <query> [--json]",
+    "  graph rebuild-index [--json]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
   ].join("\n");
@@ -874,6 +1066,18 @@ function identityUsage() {
     "",
     "Commands:",
     "  build [--json]"
+  ].join("\n");
+}
+
+function graphUsage() {
+  return [
+    "orange graph <command>",
+    "",
+    "Commands:",
+    "  list [--json]",
+    "  show <node-id> [--json]",
+    "  search <query> [--json]",
+    "  rebuild-index [--json]"
   ].join("\n");
 }
 

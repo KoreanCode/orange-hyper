@@ -60,9 +60,13 @@ export function ensureMemoryGraphDirs(cwd = process.cwd()) {
     fs.writeFileSync(paths.graphEdges, "");
   }
   if (!fs.existsSync(paths.graphIndex)) {
-    writeGraphIndex(paths.graphIndex, {
+    writeGraphIndexFile(paths.graphIndex, {
       schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
+      index_version: "0.3.0-alpha.0",
+      project_id: null,
+      project_name: "",
       updated_at: null,
+      source: "graph-node-markdown",
       nodes: []
     });
   }
@@ -267,19 +271,29 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   const accepted = moveProposal(cwd, proposal, "accepted", acceptedAt);
   const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt, project);
   fs.writeFileSync(nodeFilePath, stringifyFrontmatter(node.data, node.body));
+  const summary = extractSection(node.body, "Summary") || proposal.data.title || node.data.id;
+  const keywords = inferGraphIndexKeywords([
+    node.data.id,
+    node.data.node_type,
+    proposal.data.title,
+    summary,
+    proposal.data.source_quest,
+    proposal.data.id
+  ]);
   updateGraphIndex(paths.graphIndex, {
     id: node.data.id,
+    file: path.relative(cwd, nodeFilePath),
     project_id: node.data.project_id,
     project_name: node.data.project_name,
-    kind: node.data.kind,
-    status: node.data.status,
-    file: path.relative(paths.root, nodeFilePath),
+    title: titleFromCandidate(summary),
     source_proposal: proposal.data.id,
     source_quest: proposal.data.source_quest,
     accepted_at: node.data.accepted_at,
     node_type: node.data.node_type,
-    origin: node.data.origin,
-    source_proposal_hash: node.data.source_proposal_hash
+    candidate_memory: summary,
+    summary,
+    tags: tagsForGraphIndexEntry(node, keywords),
+    keywords
   }, acceptedAt);
 
   return {
@@ -858,6 +872,32 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
   return { data, body };
 }
 
+function titleFromCandidate(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (!text) {
+    return "";
+  }
+  return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+}
+
+function tagsForGraphIndexEntry(node, keywords) {
+  return Array.from(new Set([
+    node.data.node_type,
+    node.data.kind,
+    ...keywords.slice(0, 8)
+  ].filter(Boolean))).sort((left, right) => left.localeCompare(right));
+}
+
+function inferGraphIndexKeywords(values) {
+  const text = values.filter(Boolean).join(" ").toLowerCase();
+  const words = text
+    .split(/[^a-z0-9가-힣_.-]+/i)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3)
+    .filter((word) => !GRAPH_INDEX_STOP_WORDS.has(word));
+  return Array.from(new Set(words)).slice(0, 24);
+}
+
 function graphNodeIdForProposal(proposal) {
   return `${proposal.data.node_type}.${proposal.data.id}`;
 }
@@ -865,7 +905,11 @@ function graphNodeIdForProposal(proposal) {
 function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   let index = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
+    index_version: "0.3.0-alpha.0",
+    project_id: nodeEntry.project_id || null,
+    project_name: nodeEntry.project_name || "",
     updated_at: null,
+    source: "graph-node-markdown",
     nodes: []
   };
   if (fs.existsSync(indexPath)) {
@@ -874,15 +918,19 @@ function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   const nodes = Array.isArray(index.nodes) ? index.nodes.filter((node) => node.id !== nodeEntry.id) : [];
   nodes.push(nodeEntry);
   nodes.sort((left, right) => left.id.localeCompare(right.id));
-  writeGraphIndex(indexPath, {
+  writeGraphIndexFile(indexPath, {
     ...index,
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
+    index_version: "0.3.0-alpha.0",
+    project_id: nodeEntry.project_id || index.project_id || null,
+    project_name: nodeEntry.project_name || index.project_name || "",
     updated_at: updatedAt,
+    source: "graph-node-markdown",
     nodes
   });
 }
 
-function writeGraphIndex(indexPath, index) {
+export function writeGraphIndexFile(indexPath, index) {
   fs.mkdirSync(path.dirname(indexPath), { recursive: true });
   fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
 }
@@ -991,3 +1039,22 @@ function extractSection(body, sectionName) {
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+const GRAPH_INDEX_STOP_WORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "that",
+  "this",
+  "from",
+  "source",
+  "quest",
+  "proposal",
+  "memory",
+  "node",
+  "orange",
+  "hyper",
+  "candidate",
+  "remember"
+]);

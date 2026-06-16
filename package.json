@@ -1,6 +1,6 @@
 {
   "name": "orange-hyper",
-  "version": "0.2.1",
+  "version": "0.3.0-alpha.0",
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
   "bin": {
@@ -20,6 +20,9 @@
     "docs",
     "RELEASE_NOTES.md",
     "README.md",
+    "README.en.md",
+    "README.zh-CN.md",
+    "README.ja.md",
     "LICENSE"
   ],
   "license": "MIT"

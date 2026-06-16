@@ -16,7 +16,9 @@
 ## 2.1 v0.2 Memory Delta Proposal 범위
 
 v0.2.0 stable은 Memory Graph 전체 구현이 아니라 "기억 후보 제안/승인" 단계다.
-Graph rendering과 Obsidian-style dashboard graph는 v0.3+ 범위다.
+Obsidian-style dashboard graph와 graph editing은 v0.3+ 범위가 아니라 더 먼
+후속 범위다. v0.3.0-alpha.0은 accepted node 탐색과 read-only identity preview까지만
+다룬다.
 
 포함:
 
@@ -206,6 +208,105 @@ provenance:
 `doctor`는 accepted proposal과 graph node의 `source_proposal`, `source_quest`,
 `accepted_at`, `node_type`, `origin`, `source_proposal_hash` provenance가
 일치하는지 확인한다.
+
+## 2.2 v0.3 Memory Graph Usability 범위
+
+v0.3.0-alpha.0은 accepted memory node 탐색과 read-only preview만 제공한다.
+Graph는 source state를 수정하지 않는다. `graph rebuild-index`는 재생성 가능한
+read model인 `graph/index.json`만 다시 쓴다.
+
+포함:
+
+```text
+orange graph list
+orange graph show <node-id>
+orange graph search <query>
+orange graph rebuild-index
+orange identity build read-only graph preview
+doctor graph/index.json consistency checks
+```
+
+JSON command id:
+
+```text
+graph.list
+graph.show
+graph.search
+graph.rebuildIndex
+```
+
+제외:
+
+```text
+graph state editing
+automatic memory write
+pending/rejected proposal as graph node
+external source import
+fuzzy search
+semantic/vector search
+D3/Cytoscape/heavy graph engine
+Obsidian-grade editor
+MCP/hooks/subagents/role evolution
+auto planner / auto execution loop
+```
+
+Project Boundary:
+
+- 현재 config의 `project_id`와 일치하는 accepted memory node만 v0.3 graph
+  대상이다.
+- pending/rejected Memory Delta Proposal은 graph node가 아니다.
+- 다른 `project_id`를 가진 graph node는 `doctor` error이며 `list`/`search`
+  결과에 포함하지 않는다.
+- legacy graph node에 `project_id`가 없으면 warning 대상이며 v0.3 기본 graph
+  대상에서 제외한다.
+
+Index read model:
+
+```json
+{
+  "schema_version": 1,
+  "index_version": "0.3.0-alpha.0",
+  "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+  "project_name": "orange-hyper",
+  "updated_at": "2026-06-16T00:00:00.000Z",
+  "source": "graph-node-markdown",
+  "nodes": [
+    {
+      "id": "decision.mem_delta_...",
+      "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_....md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "node_type": "decision",
+      "title": "Adapter contract stays stable.",
+      "source_quest": "quest_...",
+      "source_proposal": "mem_delta_...",
+      "accepted_at": "2026-06-16T00:05:00.000Z",
+      "candidate_memory": "Adapter contract stays stable.",
+      "summary": "Adapter contract stays stable.",
+      "tags": ["adapter", "contract", "decision"],
+      "keywords": ["adapter", "contract", "decision"]
+    }
+  ]
+}
+```
+
+Search is plain text only. Search fields:
+
+- node id
+- title
+- Candidate Memory / summary
+- node_type
+- source quest/proposal
+- tags/keywords
+
+Doctor v0.3 graph checks:
+
+- `graph/index.json` parses.
+- index entries match source graph node Markdown.
+- orphan index entries are reported.
+- accepted proposal without a graph node is reported.
+- graph node provenance/project_id matches source proposal and source quest.
+- graph node/index selectors and paths cannot escape `.orange-hyper/graph/nodes`.
 
 ## 3. Node 타입
 

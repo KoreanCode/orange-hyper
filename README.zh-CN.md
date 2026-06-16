@@ -1,0 +1,168 @@
+# Orange Hyper
+
+[한국어](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+
+Base README: [README.md](README.md)
+README version: `0.3-doc.0`
+Package version: see [package.json](package.json)
+Adapter JSON contract: `0.1`
+Base language: `ko`
+Synced translations: `en` / `zh-CN` / `ja`
+
+If this translation is behind, trust the Korean base README.
+
+[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper)
+[![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+
+README version、package version 和 Adapter JSON contract version 是彼此独立的版本轴。
+
+## 问题定义
+
+强 SDD harness 对大型任务有帮助。但如果小任务也必须走 branch、spec、review、verification、PR loop，就会造成疲劳。
+
+无 harness 的流程很轻。它也容易失去 memory、验证、重复学习和 context boundary。
+
+顺序式 SPEC 不适合协作和非线性思考。决策、约束、验证和风险应该互相连接。
+
+用户想轻松对话。项目却不能失去记忆和验证。
+
+## 对 Harness 的思考
+
+harness 可以提供流程。流程可以带来安全感。但如果所有任务都套同一种流程，用户就会为 harness 工作。
+
+Orange Hyper 不会一开始就打开强 harness。它也不会把一切都交给模型指令。
+
+目标是中间地带。小请求保持小。较大的请求留下意图、约束、memory 和验证证据。
+
+## 方向
+
+- Intent 应该被编译。
+- 工作应该按 level 和 layer 划分。
+- Verification 应该随工作 level 变强。
+- Memory 应该像 node graph 一样成长，而不是顺序 SPEC 链。
+- role、MCP、hook、subagent 不会从一开始启用。
+- role、MCP、hook、subagent 只从重复证据中成长。
+- 轻量开始，逐步成长。
+- 不做 automatic memory write。
+- 只从 completed Quest 创建 Memory Delta Proposal。
+- 只有用户 accept 的 proposal 才会成为 graph node candidate。
+- 只有匹配当前 `project_id` 的 memory 才是当前项目 memory。
+- CLI 是 skill、agent、adapter 调用的 kernel interface，不是最终用户 UX。
+
+## Orange Hyper 是什么？
+
+Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
+
+用户请求会被整理成 Quest 和 Route Contract。结果和验证证据会记录在 completed Quest 中。需要时，completed Quest 可以生成 Memory Delta Proposal。只有用户批准的 proposal 才会成为 project memory candidate。
+
+目标不是巨大的自动化系统。用户继续自然地提出请求。项目只记住该记住的内容，并只在工作 level 需要时增强验证。
+
+## 当前功能
+
+以 v0.3.0-alpha.0 为基准，Orange Hyper 提供以下 Seed Kernel 和 read-only graph preview 功能。
+
+- `orange init` 创建 repo-local `.orange-hyper/` 结构。
+- Quest markdown 和 YAML frontmatter 记录工作意图。
+- Route Contract 记录 work level、procedure、tool、verification budget。
+- Context Capsule 汇总当前任务需要的上下文。
+- `quest done` 要求 verification evidence 或 unverified reason。
+- completed Quest 可以创建 Memory Delta Proposal。
+- pending proposal 可以 list、show、validate、revise、accept、reject。
+- accepted proposal 会成为带 provenance 的 graph node candidate。
+- `graph list`、`graph show`、`graph search`、`graph rebuild-index` 可以 read-only 浏览当前项目的 accepted memory node。
+- Project Boundary 不把不同 `project_id` 的 memory 当作当前项目 memory。
+- `doctor` 检查 Quest、proposal、accepted node 和 Project Boundary 状态。
+- `identity build` 创建汇总 Seed Kernel 状态和 read-only Identity Graph Preview 的 Identity Dashboard 文件。
+- Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
+
+## 安装与使用
+
+Node 20 或更高版本可以直接用 `npx` 运行。npm package name 是 `orange-hyper`，primary CLI command 是 `orange`。
+
+推荐用法：
+
+```bash
+npx -y --package orange-hyper@latest orange init
+npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
+```
+
+Alpha channel:
+
+```bash
+npx -y --package orange-hyper@alpha orange init
+```
+
+Source checkout:
+
+```bash
+node bin/orange.js init
+```
+
+Local linked development:
+
+```bash
+npm link
+orange init
+```
+
+常用命令：
+
+```bash
+npx -y --package orange-hyper@latest orange quest list
+npx -y --package orange-hyper@latest orange route "查找搜索排序 bug 的原因"
+npx -y --package orange-hyper@latest orange capsule
+npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
+npx -y --package orange-hyper@latest orange doctor
+```
+
+从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
+
+```bash
+orange doctor --json
+orange doctor --repair-project-id
+orange doctor
+```
+
+`--repair-project-id` 只填补缺失的 legacy project identity。它不会覆盖已经属于其他项目的文件。
+
+## Roadmap
+
+详情见 [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)。
+
+- v0.1 Seed Kernel
+- v0.2 Memory Delta Proposal
+- v0.3 Memory Graph Usability + Identity Graph Preview
+- v0.4 Minimal Hook Preview
+- v0.5 MCP Advisor
+- v0.6 Growth System
+- v0.7 Adapter Layer
+- v0.8 Eval and Reports
+- v1.0 Stable product boundary
+
+## Non-goals
+
+Orange Hyper 不打算成为：
+
+- 某个模型或 provider 的 clone
+- 对所有任务强制 SPEC 的 SDD framework
+- 对所有任务强制 branch、PR、review loop 的 workflow manager
+- automatic memory write
+- 未经用户批准的 memory accept
+- raw prompt archive
+- 从第一天就启用的 role zoo、MCP bundle、hook system 或 subagent orchestration
+- auto planner 或 auto execution loop
+- 必须依赖 graph DB 或 vector DB 的系统
+- 自动把外部 report、clipboard、file 当作 project memory 的系统
+
+## Docs Links
+
+- [Project Definition](docs/00_PROJECT_DEFINITION.md)
+- [Architecture](docs/01_ARCHITECTURE.md)
+- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
+- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
+- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
+- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
+- [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- [Release Notes](RELEASE_NOTES.md)

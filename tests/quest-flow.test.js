@@ -921,6 +921,122 @@ test("accept creates graph node provenance and reject does not create graph node
   assert.equal(runDoctor(cwd).ok, true);
 });
 
+test("graph commands list show search and rebuild-index in human and JSON modes", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd, { projectName: "graph-cli-demo" });
+  const config = readConfig(cwd);
+
+  const accepted = createMemoryProposal(cwd, "remember durable graph usability decision", {
+    proposalClock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  const acceptedResult = assertJsonCommand(
+    runOrange(["remember", "accept", accepted.data.id, "--json"], cwd),
+    "remember.accept"
+  );
+  const nodeId = acceptedResult.data.node.id;
+
+  const pending = createMemoryProposal(cwd, "remember pending proposal is not a graph node");
+  const rejected = createMemoryProposal(cwd, "remember rejected proposal is not a graph node");
+  rejectMemoryDelta(cwd, rejected.data.id);
+
+  const humanList = runOrange(["graph", "list"], cwd);
+  assert.equal(humanList.status, 0);
+  assert.match(humanList.stdout, new RegExp(escapeRegExp(nodeId)));
+  assert.doesNotMatch(humanList.stdout, new RegExp(escapeRegExp(pending.data.id)));
+  assert.doesNotMatch(humanList.stdout, new RegExp(escapeRegExp(rejected.data.id)));
+
+  const listed = assertJsonCommand(runOrange(["graph", "list", "--json"], cwd), "graph.list");
+  assert.equal(listed.data.project.project_id, config.project_id);
+  assert.equal(listed.data.project.project_name, "graph-cli-demo");
+  assert.equal(listed.data.count, 1);
+  assert.equal(listed.data.nodes[0].id, nodeId);
+  assert.equal(listed.data.nodes[0].source_proposal, accepted.data.id);
+  assert.match(listed.data.nodes[0].candidate_memory, /durable graph usability decision/);
+
+  const humanShow = runOrange(["graph", "show", nodeId], cwd);
+  assert.equal(humanShow.status, 0);
+  assert.match(humanShow.stdout, /## Summary/);
+  assert.match(humanShow.stdout, /durable graph usability decision/);
+
+  const shown = assertJsonCommand(runOrange(["graph", "show", nodeId, "--json"], cwd), "graph.show");
+  assert.equal(shown.data.node.id, nodeId);
+  assert.match(shown.data.node.content, /## Source Proposal/);
+
+  const humanSearch = runOrange(["graph", "search", "usability"], cwd);
+  assert.equal(humanSearch.status, 0);
+  assert.match(humanSearch.stdout, new RegExp(escapeRegExp(nodeId)));
+
+  const searched = assertJsonCommand(runOrange(["graph", "search", "usability", "--json"], cwd), "graph.search");
+  assert.equal(searched.data.query, "usability");
+  assert.equal(searched.data.count, 1);
+  assert.deepEqual(searched.data.nodes.map((node) => node.id), [nodeId]);
+  assert.ok(searched.data.nodes[0].matches.includes("candidate_memory") || searched.data.nodes[0].matches.includes("title"));
+
+  const pendingSearch = assertJsonCommand(runOrange(["graph", "search", "pending proposal", "--json"], cwd), "graph.search");
+  assert.equal(pendingSearch.data.count, 0);
+
+  const humanRebuild = runOrange(["graph", "rebuild-index"], cwd);
+  assert.equal(humanRebuild.status, 0);
+  assert.match(humanRebuild.stdout, /Rebuilt \.orange-hyper\/graph\/index\.json with 1 node/);
+
+  const rebuilt = assertJsonCommand(runOrange(["graph", "rebuild-index", "--json"], cwd), "graph.rebuildIndex");
+  assert.equal(rebuilt.data.file, ".orange-hyper/graph/index.json");
+  assert.equal(rebuilt.data.count, 1);
+  assert.equal(rebuilt.data.index.project_id, config.project_id);
+  assert.equal(rebuilt.data.index.nodes[0].id, nodeId);
+  assert.equal(rebuilt.data.index.nodes[0].file, `.orange-hyper/graph/nodes/decision/${nodeId}.md`);
+  assert.ok(fs.existsSync(paths.graphIndex));
+});
+
+test("graph list and search exclude cross-project nodes and doctor errors", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember graph boundary exclusion");
+  const accepted = acceptMemoryDelta(cwd, proposal.data.id);
+  fs.writeFileSync(
+    accepted.node.filePath,
+    stringifyFrontmatter(
+      {
+        ...accepted.node.data,
+        project_id: "project_other",
+        provenance: {
+          ...accepted.node.data.provenance,
+          project_id: "project_other"
+        }
+      },
+      accepted.node.body
+    )
+  );
+
+  const listed = assertJsonCommand(runOrange(["graph", "list", "--json"], cwd), "graph.list");
+  assert.equal(listed.data.count, 0);
+  const searched = assertJsonCommand(runOrange(["graph", "search", "boundary", "--json"], cwd), "graph.search");
+  assert.equal(searched.data.count, 0);
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, false);
+  assert.match(doctor.errors.join("\n"), /graph node .* project_id project_other does not match config project_id/);
+});
+
+test("graph legacy missing project_id nodes are excluded with warnings", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember legacy graph warning");
+  const accepted = acceptMemoryDelta(cwd, proposal.data.id);
+  const legacyData = { ...accepted.node.data };
+  delete legacyData.project_id;
+  delete legacyData.project_name;
+  fs.writeFileSync(accepted.node.filePath, stringifyFrontmatter(legacyData, accepted.node.body));
+
+  const listed = assertJsonCommand(runOrange(["graph", "list", "--json"], cwd), "graph.list");
+  assert.equal(listed.data.count, 0);
+  assert.match(listed.data.warnings.join("\n"), /graph node .* missing project_id/);
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, true);
+  assert.match(doctor.warnings.join("\n"), /graph node .* missing project_id/);
+});
+
 test("doctor catches accepted memory graph provenance mismatch", () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
@@ -986,6 +1102,69 @@ test("doctor catches invalid graph index JSON after memory accept", () => {
   const result = runDoctor(cwd);
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /graph\/index\.json is not valid JSON/);
+});
+
+test("doctor catches graph index mismatch orphan entries and missing graph nodes", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember graph index mismatch detection");
+  const accepted = acceptMemoryDelta(cwd, proposal.data.id);
+  const index = JSON.parse(fs.readFileSync(paths.graphIndex, "utf8"));
+  fs.writeFileSync(
+    paths.graphIndex,
+    `${JSON.stringify({
+      ...index,
+      nodes: [
+        {
+          ...index.nodes[0],
+          title: "Wrong title"
+        },
+        {
+          id: "decision.orphan",
+          file: ".orange-hyper/graph/nodes/decision/decision.orphan.md",
+          project_id: readConfig(cwd).project_id,
+          project_name: readConfig(cwd).project_name,
+          node_type: "decision",
+          title: "Orphan",
+          source_quest: "quest_orphan",
+          source_proposal: "proposal_orphan",
+          accepted_at: "2026-06-16T00:00:00.000Z",
+          candidate_memory: "Orphan",
+          summary: "Orphan",
+          tags: ["decision"],
+          keywords: ["orphan"]
+        }
+      ]
+    }, null, 2)}\n`
+  );
+
+  const mismatch = runDoctor(cwd);
+  assert.equal(mismatch.ok, false);
+  assert.match(mismatch.errors.join("\n"), /does not match source graph node/);
+  assert.match(mismatch.errors.join("\n"), /is orphaned from source graph nodes/);
+
+  fs.unlinkSync(accepted.node.filePath);
+  const missing = runDoctor(cwd);
+  assert.equal(missing.ok, false);
+  assert.match(missing.errors.join("\n"), /accepted memory proposal .* is missing graph node/);
+});
+
+test("graph selectors reject path traversal", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const proposal = createMemoryProposal(cwd, "remember graph selector safety");
+  acceptMemoryDelta(cwd, proposal.data.id);
+  for (const selector of ["../../package.json", "../README.md", "decision/../../bad"]) {
+    await assert.rejects(
+      () => main(["graph", "show", selector], { cwd, io: silentIo() }),
+      /Graph node selector must be an id, not a path/
+    );
+    const result = runOrange(["graph", "show", selector, "--json"], cwd);
+    assert.equal(result.status, 1);
+    const payload = parseJsonOnly(result.stdout);
+    assertJsonEnvelope(payload, false, "graph.show");
+    assert.match(payload.error.message, /must be an id, not a path/);
+  }
 });
 
 test("remember selectors reject path traversal", async () => {
@@ -1070,6 +1249,11 @@ test("identity summary includes memory proposal and accepted node counts", async
   assert.equal(payload.data.summary.acceptedMemoryProposals, 1);
   assert.equal(payload.data.summary.rejectedMemoryProposals, 1);
   assert.equal(payload.data.summary.acceptedMemoryNodes, 1);
+  assert.equal(payload.data.summary.graphPreview.acceptedMemoryNodes, 1);
+  assert.deepEqual(payload.data.summary.graphPreview.nodeTypeDistribution, { decision: 1 });
+  assert.equal(payload.data.summary.graphPreview.readOnly, true);
+  assert.equal(payload.data.summary.graphPreview.editingSupported, false);
+  assert.equal(payload.data.summary.graphPreview.nodes[0].project_id, config.project_id);
   assert.deepEqual(payload.data.summary.topProposalNodeTypes, [
     { nodeType: "decision", count: 2 },
     { nodeType: "risk", count: 1 }
@@ -1235,9 +1419,11 @@ test("identity build writes generated placeholder html", async () => {
   assert.match(html, /identity-demo/);
   assert.match(html, new RegExp(`Project ID: ${escapeRegExp(config.project_id)}`));
   assert.match(html, /Level: Seed/);
-  assert.match(html, /Memory proposal review is active in v0\.2\./);
-  assert.match(html, /Graph rendering is not active yet\./);
+  assert.match(html, /Memory Graph Preview/);
+  assert.match(html, /Graph preview is read-only\./);
+  assert.match(html, /Graph editing is not supported\./);
   assert.match(html, /Accepted memory nodes are candidate project memory\./);
+  assert.match(html, /orange-hyper-state/);
 });
 
 test("identity build --json prints generated html path and summary", async () => {
@@ -1263,9 +1449,13 @@ test("identity build --json prints generated html path and summary", async () =>
   assert.equal(payload.data.summary.projectName, "identity-json-demo");
   assert.equal(payload.data.summary.completedCount, 1);
   assert.equal(payload.data.summary.verifiedCount, 1);
+  assert.equal(payload.data.summary.graphPreview.readOnly, true);
+  assert.equal(payload.data.summary.graphPreview.editingSupported, false);
+  assert.deepEqual(payload.data.summary.graphPreview.nodeTypeDistribution, {});
   assert.deepEqual(payload.data.summary.statusMessages, [
-    "Memory proposal review is active in v0.2.",
-    "Graph rendering is not active yet.",
+    "Memory proposal review is active.",
+    "Graph preview is read-only.",
+    "Graph editing is not supported.",
     "Accepted memory nodes are candidate project memory."
   ]);
   assert.doesNotMatch(raw, /^Wrote /m);
@@ -1318,7 +1508,12 @@ test("all JSON success envelopes include contract version and dot command ids", 
     ], cwd),
     "remember.revise"
   );
-  assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
+  const accepted = assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
+  const nodeId = accepted.data.node.id;
+  assertJsonCommand(runOrange(["graph", "list", "--json"], cwd), "graph.list");
+  assertJsonCommand(runOrange(["graph", "show", nodeId, "--json"], cwd), "graph.show");
+  assertJsonCommand(runOrange(["graph", "search", "contract", "--json"], cwd), "graph.search");
+  assertJsonCommand(runOrange(["graph", "rebuild-index", "--json"], cwd), "graph.rebuildIndex");
 
   const rejectedQuest = assertJsonCommand(
     runOrange(["quest", "new", "--json", "remember rejected adapter contract risk"], cwd),
@@ -1376,7 +1571,7 @@ function assertJsonEnvelope(payload, ok, command) {
   assert.equal(payload.ok, ok);
   assert.equal(payload.contract_version, JSON_CONTRACT_VERSION);
   assert.equal(payload.command, command);
-  assert.match(payload.command, /^[a-z0-9]+(?:\.[a-z0-9]+)+$/);
+  assert.match(payload.command, /^[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+$/);
 }
 
 function runOrange(args, cwd) {

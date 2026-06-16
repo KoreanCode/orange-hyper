@@ -1,5 +1,92 @@
 # Release Notes
 
+## v0.3.0-alpha.0
+
+Memory Graph Usability, Identity Graph Preview, and README Identity Rewrite
+alpha.
+
+- Package version is `0.3.0-alpha.0`.
+- README version is `0.3-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+
+### Memory Graph Usability
+
+- New command: `orange graph list [--json]`.
+- New command: `orange graph show <node-id> [--json]`.
+- New command: `orange graph search <query> [--json]`.
+- New command: `orange graph rebuild-index [--json]`.
+- New JSON command ids are `graph.list`, `graph.show`, `graph.search`, and
+  `graph.rebuildIndex`.
+- Graph commands return only accepted memory nodes whose `project_id` matches
+  the current `.orange-hyper/config.json`.
+- Pending and rejected Memory Delta Proposals are not graph nodes.
+- `graph/index.json` is a read model regenerated from graph node Markdown.
+- `graph search` is simple text search over node id, title, Candidate
+  Memory/summary, node type, source quest/proposal, tags, and keywords.
+- `doctor` now checks graph index parseability, source/index mismatch, orphan
+  index entries, accepted proposals missing graph nodes, graph provenance
+  consistency, project boundary mismatches, and graph selector/path safety.
+
+### Identity Graph Preview
+
+- `identity build` remains a single self-contained HTML file and now includes a
+  read-only graph preview with accepted memory node count, node type
+  distribution, source quest/proposal table, simple SVG node-link preview, and
+  selected node detail.
+- Identity output explicitly displays `Graph preview is read-only.` and
+  `Graph editing is not supported.`
+
+### README Identity Rewrite
+
+- Internal documentation work name: `v0.3-doc-prep`.
+- Korean is the base README language.
+- Added synchronized English, Simplified Chinese, and Japanese README files.
+- Clarified that README version, package version, and Adapter JSON contract
+  version are separate version axes.
+- Reframed the README around problem definition, harness reflection, project
+  direction, Orange Hyper identity, current features, usage, roadmap,
+  non-goals, and docs links.
+- Kept current recommended `npx --package orange-hyper@latest orange ...`
+  usage, alpha channel usage, source checkout usage, and `npm link` usage.
+
+### Explicitly not included
+
+- automatic memory write
+- graph state editing
+- Obsidian-grade editor
+- fuzzy/semantic/vector search
+- D3/Cytoscape/heavy graph dependency
+- external source import
+- MCP/hooks/subagents/role evolution
+- auto planner or auto execution loop
+
+### Verification checklist
+
+```bash
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+```
+
+README package inclusion check: confirm the `npm pack --dry-run` file list
+includes `README.md`, `README.en.md`, `README.zh-CN.md`, and `README.ja.md`.
+
+### Fresh temp smoke
+
+```bash
+node bin/orange.js init
+node bin/orange.js quest new "remember graph usability" --layer L2 --json
+node bin/orange.js quest done <quest-id> --evidence "manual smoke passed" --json
+node bin/orange.js remember propose --quest <quest-id> --json
+node bin/orange.js remember accept <proposal-id> --json
+node bin/orange.js graph rebuild-index --json
+node bin/orange.js graph list --json
+node bin/orange.js graph search "graph usability" --json
+node bin/orange.js doctor --json
+node bin/orange.js identity build --json
+```
+
 ## v0.2.1
 
 This patch release includes two bounded release-surface fixes before v0.3 Memory

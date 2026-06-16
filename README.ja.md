@@ -1,0 +1,168 @@
+# Orange Hyper
+
+[한국어](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+
+Base README: [README.md](README.md)
+README version: `0.3-doc.0`
+Package version: see [package.json](package.json)
+Adapter JSON contract: `0.1`
+Base language: `ko`
+Synced translations: `en` / `zh-CN` / `ja`
+
+If this translation is behind, trust the Korean base README.
+
+[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper)
+[![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+
+README version、package version、Adapter JSON contract version は別々のバージョン軸です。
+
+## 問題定義
+
+強い SDD harness は大きな作業に役立ちます。けれど、小さな作業にも branch、spec、review、verification、PR loop を強制すると疲れがたまります。
+
+harnessless な進め方は軽いです。一方で、memory、検証、反復学習、context boundary を保ちにくくなります。
+
+順番に積む SPEC は、協業や非線形な思考に弱いです。決定、制約、検証、リスクは互いにつながります。
+
+ユーザーは軽く話したい。けれどプロジェクトは memory と検証を失ってはいけません。
+
+## Harness への考察
+
+harness は手順を作れます。手順は安全性を上げます。ただし、すべての作業に同じ手順をかけると、ユーザーが harness のために働くことになります。
+
+Orange Hyper は最初から強い harness を有効にしません。すべてをモデル指示だけに任せることもしません。
+
+狙うのは中間です。小さな依頼は小さく終える。大きな依頼は意図、制約、memory、検証証拠を残す。
+
+## 方向性
+
+- Intent はコンパイルされるべきです。
+- 作業は level と layer に分けるべきです。
+- Verification は作業 level に応じて強くするべきです。
+- Memory は sequential SPEC ではなく node graph のように育つべきです。
+- role、MCP、hook、subagent は最初から有効にしません。
+- role、MCP、hook、subagent は反復した証拠があるときだけ成長します。
+- 軽く始めて、段階的に育てます。
+- automatic memory write はしません。
+- completed Quest からだけ Memory Delta Proposal を作ります。
+- ユーザーが accept した proposal だけが graph node candidate になります。
+- 現在の `project_id` と一致する memory だけを現在のプロジェクト memory と扱います。
+- CLI は skill、agent、adapter が呼び出す kernel interface です。最終ユーザー UX ではありません。
+
+## Orange Hyper とは
+
+Orange Hyper は coding agent のための repo-local project-memory kernel です。
+
+ユーザーの依頼は Quest と Route Contract に整理されます。結果と検証証拠は completed Quest に残ります。必要なときは completed Quest から Memory Delta Proposal を作り、ユーザーが承認した proposal だけが project memory candidate になります。
+
+目標は巨大な自動化システムではありません。ユーザーは自然に依頼し続けます。プロジェクトは必要なものだけを記憶し、必要な level でだけ検証を強めます。
+
+## 現在の機能
+
+v0.3.0-alpha.0 時点で、Orange Hyper は次の Seed Kernel と read-only graph preview 機能を提供します。
+
+- `orange init` が repo-local な `.orange-hyper/` 構造を作ります。
+- Quest markdown と YAML frontmatter が作業意図を記録します。
+- Route Contract が work level、procedure、tool、verification budget を記録します。
+- Context Capsule が現在の作業に必要な要約を作ります。
+- `quest done` は verification evidence または unverified reason を要求します。
+- completed Quest から Memory Delta Proposal を作れます。
+- pending proposal は list、show、validate、revise、accept、reject できます。
+- accepted proposal は provenance 付きの graph node candidate になります。
+- `graph list`、`graph show`、`graph search`、`graph rebuild-index` で現在のプロジェクトの accepted memory node を read-only に探索できます。
+- Project Boundary は別の `project_id` を持つ memory を現在のプロジェクト memory と扱いません。
+- `doctor` は Quest、proposal、accepted node、Project Boundary の状態を確認します。
+- `identity build` は Seed Kernel 状態と read-only Identity Graph Preview を要約する Identity Dashboard ファイルを作ります。
+- Adapter JSON Contract は `--json` envelope、command id、stdout/stderr、exit-code の規則を定義します。
+
+## インストールと使い方
+
+Node 20 以上で `npx` から実行できます。npm package name は `orange-hyper`、primary CLI command は `orange` です。
+
+推奨:
+
+```bash
+npx -y --package orange-hyper@latest orange init
+npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
+```
+
+Alpha channel:
+
+```bash
+npx -y --package orange-hyper@alpha orange init
+```
+
+Source checkout:
+
+```bash
+node bin/orange.js init
+```
+
+Local linked development:
+
+```bash
+npm link
+orange init
+```
+
+よく使うコマンド:
+
+```bash
+npx -y --package orange-hyper@latest orange quest list
+npx -y --package orange-hyper@latest orange route "検索結果の並び替え bug の原因を探す"
+npx -y --package orange-hyper@latest orange capsule
+npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
+npx -y --package orange-hyper@latest orange doctor
+```
+
+v0.2.0 のプロジェクトを v0.2.1 Project Boundary Guard に上げるときは、先に実行します。
+
+```bash
+orange doctor --json
+orange doctor --repair-project-id
+orange doctor
+```
+
+`--repair-project-id` は欠けている legacy project identity だけを埋めます。すでに別プロジェクトに属しているファイルは上書きしません。
+
+## Roadmap
+
+詳しくは [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) を参照してください。
+
+- v0.1 Seed Kernel
+- v0.2 Memory Delta Proposal
+- v0.3 Memory Graph Usability + Identity Graph Preview
+- v0.4 Minimal Hook Preview
+- v0.5 MCP Advisor
+- v0.6 Growth System
+- v0.7 Adapter Layer
+- v0.8 Eval and Reports
+- v1.0 Stable product boundary
+
+## Non-goals
+
+Orange Hyper は次を目指しません。
+
+- 特定の model や provider の clone
+- すべての作業に SPEC を強制する SDD framework
+- すべての作業に branch、PR、review loop を強制する workflow manager
+- automatic memory write
+- ユーザー承認なしの memory accept
+- raw prompt archive
+- 初日から有効な role zoo、MCP bundle、hook system、subagent orchestration
+- auto planner または auto execution loop
+- graph DB や vector DB を必須にする system
+- 外部 report、clipboard、file を自動的に project memory と扱う system
+
+## Docs Links
+
+- [Project Definition](docs/00_PROJECT_DEFINITION.md)
+- [Architecture](docs/01_ARCHITECTURE.md)
+- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
+- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
+- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
+- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
+- [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- [Release Notes](RELEASE_NOTES.md)

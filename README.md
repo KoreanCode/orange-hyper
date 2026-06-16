@@ -1,25 +1,84 @@
-![Orange Hyper](readme-hero.png)
-
 # Orange Hyper
+
+[한국어](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+
+README version: `0.3-doc.0`
+Package version: see [package.json](package.json)
+Adapter JSON contract: `0.1`
+Base language: `ko`
+Synced translations: `en` / `zh-CN` / `ja`
+
+README version, package version, Adapter JSON contract version은 서로 다른 축입니다.
 
 [![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper)
 [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
-[![Status: v0.2 stable](https://img.shields.io/badge/status-v0.2%20stable-orange.svg)](RELEASE_NOTES.md)
 
-Orange Hyper is an RPG-style adaptive project-memory harness that starts as a lightweight intent compiler and grows project-specific memory, roles, tools, and verification loops only when repeated work proves they are useful.
+## 문제 정의
 
-`orange-hyper`는 `codex-fable-mode`의 후속 버전이 아니라 별도 프로젝트입니다. `codex-fable-mode`에서 얻은 작업 레벨링, 의도 잠금, 검증 정직성의 힌트는 유지하되, `orange-hyper`는 메모리 그래프와 최소 하네스를 갖는 성장형 프로젝트로 설계합니다.
+강한 SDD 하네스는 큰 작업에 유용합니다. 하지만 작은 작업에도 branch, spec, review, verification, PR loop를 강제하면 금방 피로해집니다.
 
-## Install
+하네스리스 방식은 가볍지만 memory, 검증, 반복 학습, context boundary를 오래 유지하기 어렵습니다.
 
-Node 20 이상에서 설치 없이 `npx`로 실행할 수 있습니다. npm package name은
-`orange-hyper`이고 primary CLI command는 `orange`입니다. `npx orange-hyper
-...` 형태는 npm/npx 환경에 따라 package name/bin name inference가 혼동될
-수 있으므로, 문서의 기본 예시는 explicit package 실행 형태를 사용합니다.
+순차 SPEC 방식은 협업과 비선형 사고에 약합니다. 결정, 제약, 검증, 위험은 일렬로 쌓이기보다 서로 연결됩니다.
 
-General users:
+사용자는 가볍게 대화하고 싶습니다. 그렇다고 프로젝트가 기억과 검증을 잃어서는 안 됩니다.
+
+## 하네스에 대한 고찰
+
+하네스는 절차를 만들고, 절차는 안전을 줍니다. 하지만 모든 작업에 같은 절차를 강제하면 사용자는 하네스를 운영하기 위해 일하게 됩니다.
+
+Orange Hyper는 강한 하네스를 바로 켜지 않습니다. 하네스리스처럼 모든 것을 모델 지침에 맡기지도 않습니다.
+
+필요한 것은 그 사이의 지대입니다. 작은 요청은 작게 끝나야 합니다. 큰 작업은 의도, 제약, memory, 검증 증거를 남겨야 합니다.
+
+## 그래서 정한 방향
+
+- 의도는 컴파일돼야 합니다.
+- 작업은 level과 layer로 나뉘어야 합니다.
+- 검증은 작업 level에 따라 강해져야 합니다.
+- memory는 sequential SPEC이 아니라 node graph처럼 자라야 합니다.
+- role, MCP, hook, subagent는 처음부터 켜 두지 않습니다.
+- role, MCP, hook, subagent는 반복 증거가 있을 때만 성장합니다.
+- 가볍게 시작하고 점진적으로 성장합니다.
+- 자동 memory write는 하지 않습니다.
+- completed Quest에서만 Memory Delta Proposal을 만듭니다.
+- 사용자가 `accept`한 proposal만 graph node 후보가 됩니다.
+- 현재 `project_id`와 일치하는 memory만 현재 프로젝트 memory로 취급합니다.
+- CLI는 최종 사용자 UX가 아니라 skill, agent, adapter가 호출하는 kernel interface입니다.
+
+## Orange Hyper 소개
+
+Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다.
+
+사용자의 요청은 Quest와 Route Contract로 정리됩니다. 작업 결과와 검증 증거는 completed Quest에 남습니다. 필요하면 completed Quest에서 Memory Delta Proposal을 만들고, 사용자가 승인한 것만 project memory 후보가 됩니다.
+
+목표는 거대한 자동화 시스템이 아닙니다. 사용자는 계속 가볍게 요청합니다. 프로젝트는 필요한 만큼만 기억하고, 필요한 수준으로 검증을 강화합니다.
+
+## 현재 제공 기능
+
+v0.3.0-alpha.0 기준으로 Orange Hyper는 다음 Seed Kernel 및 read-only graph preview 기능을 제공합니다.
+
+- `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
+- Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
+- Route Contract로 작업 level, procedure, tool, verification budget을 남깁니다.
+- Context Capsule로 현재 작업에 필요한 요약을 만듭니다.
+- `quest done`에서 verification evidence 또는 unverified reason을 요구합니다.
+- completed Quest에서 Memory Delta Proposal을 만듭니다.
+- pending proposal을 list, show, validate, revise, accept, reject할 수 있습니다.
+- accepted proposal은 provenance가 있는 graph node 후보가 됩니다.
+- `graph list`, `graph show`, `graph search`, `graph rebuild-index`로 현재 프로젝트의 accepted memory node를 read-only로 탐색할 수 있습니다.
+- Project Boundary는 `project_id`가 다른 memory를 현재 프로젝트 memory로 보지 않습니다.
+- `doctor`는 Quest, proposal, accepted node, Project Boundary 상태를 점검합니다.
+- `identity build`는 Seed Kernel 상태와 read-only Identity Graph Preview를 요약하는 Identity Dashboard 파일을 만듭니다.
+- Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
+
+## 설치/사용법
+
+Node 20 이상이면 설치 없이 `npx`로 실행할 수 있습니다. npm package name은 `orange-hyper`, primary CLI command는 `orange`입니다.
+
+권장 실행법:
 
 ```bash
 npx -y --package orange-hyper@latest orange init
@@ -31,9 +90,6 @@ Alpha channel:
 ```bash
 npx -y --package orange-hyper@alpha orange init
 ```
-
-After the stable publish, npm dist-tags should keep `latest` on `0.2.1` and
-`alpha` on `0.2.0-alpha.2`.
 
 Source checkout:
 
@@ -48,7 +104,7 @@ npm link
 orange init
 ```
 
-Stable release command examples:
+자주 쓰는 명령:
 
 ```bash
 npx -y --package orange-hyper@latest orange quest list
@@ -58,12 +114,7 @@ npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "np
 npx -y --package orange-hyper@latest orange doctor
 ```
 
-v0.2 stable은 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다. 완료된 Quest에서만 Memory Delta Proposal을 만들 수 있고, 자동 memory write는 없습니다. 사용자가 `accept`한 proposal만 graph node 후보로 저장됩니다. v0.2.x Project Boundary Guard는 현재 `.orange-hyper/config.json`의 `project_id`와 일치하는 Quest/Proposal/Accepted Node만 project memory로 취급합니다.
-
-## Upgrading from v0.2.0 to v0.2.1
-
-Existing projects may have legacy Quest, Proposal, or accepted node files without
-`project_id`. Run:
+v0.2.0 프로젝트를 v0.2.1 Project Boundary Guard로 올릴 때는 다음을 먼저 실행합니다.
 
 ```bash
 orange doctor --json
@@ -71,220 +122,44 @@ orange doctor --repair-project-id
 orange doctor
 ```
 
-`--repair-project-id` only fills missing project identity fields. It does not
-overwrite files that already belong to another project.
+`--repair-project-id`는 누락된 legacy project identity만 채웁니다. 이미 다른 프로젝트에 속한 파일은 덮어쓰지 않습니다.
 
-## 문서 읽는 순서
+## Roadmap
 
-1. `docs/00_PROJECT_DEFINITION.md` — 프로젝트 정의서
-2. `docs/01_ARCHITECTURE.md` — 전체 아키텍처
-3. `docs/02_MEMORY_GRAPH_SPEC.md` — LLMWiki식 node memory 구조
-4. `docs/03_INTENT_COMPILER.md` — 의도 컴파일러 설계
-5. `docs/04_ROUTE_LEVEL_SYSTEM.md` — 작업 레벨, 검증 레벨, 예산 체계
-6. `docs/05_MINIMAL_HOOK_STRATEGY.md` — hook을 어디까지 쓸지
-7. `docs/06_MCP_ADVISOR.md` — MCP 역제안 구조
-8. `docs/07_MODEL_ADAPTERS_AND_SUBAGENTS.md` — 모델/에이전트 추상화
-9. `docs/08_RPG_GROWTH_SYSTEM.md` — RPG식 성장 시스템
-10. `docs/09_TOKEN_EVAL_TELEMETRY.md` — 토큰/평가/텔레메트리 설계
-11. `docs/10_DEVELOPMENT_ROADMAP.md` — 개발 로드맵
-12. `docs/11_REPOSITORY_SCAFFOLD.md` — 초기 repo 구조
-13. `docs/12_IMPLEMENTATION_PROMPTS.md` — Codex에게 줄 구현 프롬프트
-14. `docs/13_DISTRIBUTION_RELEASE_STRATEGY.md` — 배포 및 릴리즈 전략
-15. `docs/14_IDENTITY_DASHBOARD_SPEC.md` — Identity dashboard 설계
-16. `docs/15_OPEN_SOURCE_PREP.md` — 공개 준비 체크리스트
-17. `docs/16_ADAPTER_CONTRACT.md` — Seed Kernel adapter JSON 계약
-18. `docs/99_RESEARCH_NOTES.md` — 조사 참고 자료
+자세한 내용은 [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)을 참고하세요.
 
-릴리즈 노트는 `RELEASE_NOTES.md`에 정리합니다.
+- v0.1 Seed Kernel
+- v0.2 Memory Delta Proposal
+- v0.3 Memory Graph Usability + Identity Graph Preview
+- v0.4 Minimal Hook Preview
+- v0.5 MCP Advisor
+- v0.6 Growth System
+- v0.7 Adapter Layer
+- v0.8 Eval and Reports
+- v1.0 Stable product boundary
 
-## 초기 개발 원칙
+## Non-goals
 
-- 처음부터 강한 SDD 하네스를 만들지 않는다.
-- 처음부터 역할 zoo를 만들지 않는다.
-- 처음부터 MCP를 모두 연결하지 않는다.
-- 처음부터 subagent orchestration을 만들지 않는다.
-- 처음부터 모든 memory를 읽지 않는다.
-- 사용자의 자연어 요청을 먼저 Intent Capsule로 컴파일한다.
-- 현재 작업에 필요한 memory node slice만 Context Capsule로 조립한다.
-- 검증은 작업 level에 따라 강해진다.
-- 반복 증거가 쌓일 때만 role, MCP, hook, loop가 성장한다.
+Orange Hyper는 다음을 목표로 하지 않습니다.
 
-## v0.2 Seed Kernel CLI
+- 특정 모델이나 provider의 clone
+- 모든 작업에 SPEC을 강제하는 SDD framework
+- 모든 작업에 branch, PR, review loop를 강제하는 workflow manager
+- 자동 memory write
+- 사용자 승인 없는 memory accept
+- raw prompt archive
+- 처음부터 켜는 role zoo, MCP bundle, hook system, subagent orchestration
+- auto planner 또는 auto execution loop
+- graph DB나 vector DB 필수화
+- 외부 report, clipboard, file import를 자동으로 project memory로 취급하는 기능
 
-CLI는 최종 사용자 경험이 아니라 Seed Kernel interface입니다.
+## Docs links
 
-- CLI is the Seed Kernel interface, not the final user experience.
-- Skills and adapters should call `--json` mode and must not parse human-readable output.
-- Orange Hyper should eventually be usable through skills/adapters without requiring users to type CLI commands.
-- Users are not expected to manually drive every Orange Hyper command long-term.
-- CLI commands must remain deterministic and adapter-friendly.
-- Natural-language workflows should call the kernel, not duplicate its state logic.
-
-The full adapter JSON envelope, command id, stdout/stderr, and exit-code
-contract is defined in [`docs/16_ADAPTER_CONTRACT.md`](docs/16_ADAPTER_CONTRACT.md).
-
-v0.2 stable에서 포함하는 CLI 표면은 다음 범위로 제한합니다.
-
-```bash
-orange init
-orange quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
-orange quest new "Quest/Goal Capsule 기능 구현" --json
-orange quest list
-orange quest show <quest-id>
-orange route "검색 결과 정렬 버그 원인 찾아줘"
-orange route --quest <quest-id> --json
-orange capsule
-orange capsule --quest <quest-id> --json
-orange quest done <quest-id> --unverified "Manual verification is not available in seed test"
-orange quest done <quest-id> --evidence-file ./verification.txt
-orange quest done <quest-id> --evidence "npm test passed" --json
-orange remember propose --quest <quest-id>
-orange remember propose --quest <quest-id> --json
-orange remember list
-orange remember list --status pending --json
-orange remember list --type decision --json
-orange remember list --quest <quest-id> --json
-orange remember list --json
-orange remember show <proposal-id>
-orange remember validate <proposal-id>
-orange remember validate <proposal-id> --json
-orange remember revise <proposal-id> --candidate "Durable project memory..."
-orange remember revise <proposal-id> --why "This will guide future work..."
-orange remember revise <proposal-id> --confidence medium --json
-orange remember accept <proposal-id>
-orange remember reject <proposal-id>
-orange doctor
-orange doctor --json
-orange doctor --repair-project-id
-orange identity build
-orange identity build --json
-```
-
-초기 저장 구조는 다음과 같습니다.
-
-```text
-.orange-hyper/
-  config.json
-  quests/
-    active/
-    completed/
-  capsules/
-    current.md
-  proposals/
-    memory-delta/
-      pending/
-      accepted/
-      rejected/
-  traces/
-    route.jsonl
-  identity/
-    orange-hyper.html
-    summary.json
-```
-
-`orange init`은 `.orange-hyper/.gitignore`도 생성합니다. 기본 ignore 대상은 generated/private state인 `capsules/`, `traces/`, `proposals/`, `identity/`, `local/`입니다. `config.json`과 `quests/`는 팀 정책에 따라 선택적으로 추적할 수 있도록 막지 않습니다. `config.json`에는 stable random `project_id`와 사람이 읽는 `project_name`이 저장되며, 공유 config에는 절대 경로를 저장하지 않습니다.
-
-Quest는 Markdown + YAML frontmatter 파일입니다. 사용자가 직접 읽고 수정할 수 있으며, 완료할 때는 `--evidence`, `--evidence-file`, 또는 `--unverified` 중 하나를 반드시 남겨야 합니다. `--evidence`와 `--evidence-file`은 함께 사용할 수 있지만, 검증 증거와 `--unverified`는 함께 사용할 수 없습니다. `--unverified`는 성공 검증이 아닙니다. 작업은 완료했지만 seed test에서 검증 증거를 만들 수 없었다는 상태를 명시적으로 남기는 장치입니다.
-
-Route는 chain-of-thought가 아니라 공개 작업 계약입니다. `L0`/`L1`은 기본적으로 Quest가 필요하지 않고 `not_recommended`로 표시됩니다. `orange quest new`는 사용자가 명시적으로 Quest 생성을 요청한 명령이므로 `L0`/`L1`도 생성은 허용하지만 경고를 출력합니다. `L2`는 `recommended`, `L3` 이상은 `required`입니다.
-
-## v0.2 Memory Delta Proposal
-
-`orange remember`는 완료된 Quest에서 프로젝트 기억 후보를 제안하고, 사용자가 수동으로 승인하거나 거절하는 단계만 제공합니다.
-
-```bash
-orange quest done <quest-id> --evidence "npm test passed"
-orange remember propose --quest <completed-quest-id>
-orange remember list
-orange remember list --status pending
-orange remember list --type decision
-orange remember list --quest <quest-id>
-orange remember show <proposal-id>
-orange remember validate <proposal-id>
-orange remember revise <proposal-id> --candidate "Durable project memory..."
-orange remember revise <proposal-id> --why "This should be remembered because..."
-orange remember revise <proposal-id> --confidence high
-orange remember validate <proposal-id>
-orange remember accept <proposal-id>
-orange remember reject <proposal-id>
-orange doctor
-orange identity build
-```
-
-권장 review lifecycle:
-
-1. `quest done`으로 Quest를 완료하고 검증 증거 또는 unverified reason을 남깁니다.
-2. `remember propose`로 completed Quest에서 pending Memory Delta Proposal을 만듭니다.
-3. `remember validate`로 frontmatter, 필수 섹션, source Quest, quality validation을 확인합니다.
-4. `remember revise`로 pending proposal의 `Candidate Memory`, `Why this should be remembered`, `confidence`만 필요한 만큼 고칩니다.
-5. `remember accept` 또는 `remember reject`로 사용자가 명시적으로 승인/거절합니다.
-6. `doctor`로 proposal 상태, graph node 후보 provenance, graph JSON을 검증합니다.
-7. `identity build`로 Seed Kernel summary count/message HTML을 갱신합니다.
-
-Proposal은 `.orange-hyper/proposals/memory-delta/pending/`에 Markdown + YAML frontmatter로 저장됩니다. 필수 섹션은 `Candidate Memory`, `Why this should be remembered`, `Evidence`, `Suggested Node`입니다. `accept`는 pending proposal을 accepted로 옮기고 `.orange-hyper/graph/nodes/<type>/`에 provenance가 포함된 graph node 후보를 생성합니다. `reject`는 proposal을 rejected로 옮기며 graph node를 만들지 않습니다.
-
-Proposal review flow는 accept 전 검토 단계입니다. `remember validate`는 pending, accepted, rejected proposal 모두에서 frontmatter, 필수 섹션, quality validation, source Quest 존재 여부를 검사합니다. `remember revise`는 pending proposal만 수정할 수 있으며 `Candidate Memory`, `Why this should be remembered`, `confidence`를 바꾼 뒤 `updated_at`을 갱신하고 quality validation을 다시 실행합니다. accepted/rejected proposal은 과거 사용자 결정 기록이므로 revise가 실패합니다.
-
-`remember list`는 `--status pending|accepted|rejected`, `--type decision|constraint|component|risk|verification`, `--quest <quest-id>` 필터를 지원합니다. `--json` 모드에서도 같은 필터가 적용되며, adapter는 human-readable table을 파싱하지 말고 JSON envelope의 `data.proposals`와 `data.filters`를 읽어야 합니다.
-
-`remember propose`는 pending proposal에 대해서만 idempotent합니다. 같은 `source_quest`, `node_type`, `Candidate Memory` 내용이 이미 pending 상태로 있으면 새 파일을 만들지 않고 기존 proposal id/path를 반환하며, JSON 출력은 `data.duplicated: true`를 포함합니다. accepted/rejected proposal은 사용자의 과거 결정 기록으로 보존됩니다. v0.2에서는 accepted/rejected까지 중복 제거하지 않으며, 같은 Quest를 다시 제안해야 하면 새 pending proposal id를 할당할 수 있습니다.
-
-`remember revise`가 다른 pending proposal과 같은 `Candidate Memory`를 만들면 안전하게 실패합니다. 이 검사는 accepted/rejected 기록을 다시 쓰지 않고, pending review 단계의 충돌만 막습니다.
-
-Proposal 품질 검증은 생성과 `doctor`에서 수행됩니다. 비어 있는 `Candidate Memory`, 비어 있는 `Why this should be remembered`, source Quest나 verification 정보를 참조하지 않는 `Evidence`, frontmatter `node_type`과 충돌하는 `Suggested Node`, `low|medium|high`가 아닌 confidence는 오류입니다. 너무 짧거나 일반적인 `Candidate Memory`는 v0.2 stable에서는 hard error가 아니라 warning입니다.
-
-accepted graph node 후보에는 `project_id`, `project_name`, `source_proposal`, `source_quest`, `accepted_at`, `node_type`, `origin: memory-delta-proposal`, `source_proposal_hash` provenance가 남습니다. `doctor`는 accepted proposal과 graph node provenance가 일치하는지 확인합니다.
-
-Project Boundary 원칙:
-
-- `project_id`가 현재 config와 일치하는 Quest, Memory Delta Proposal, Accepted Memory Node만 project memory로 취급합니다.
-- legacy 파일에 `project_id`가 없으면 `doctor`는 warning을 냅니다. `orange doctor --repair-project-id`는 누락된 legacy project identity 필드만 현재 값으로 채웁니다.
-- 이미 다른 `project_id`가 있는 파일은 cross-project mismatch로 보고 error를 냅니다. repair는 이 값을 덮어쓰지 않습니다.
-- Capsule 상단의 `Project Boundary` header는 unrelated pasted reports, external project docs, 다른 repo 문서를 명시적 import 없이는 memory로 취급하지 말라고 표시합니다.
-- external source memory import는 future feature입니다. v0.2.x에서는 `remember propose --from-file`, external report import, clipboard/pasted report 자동 memory proposal을 지원하지 않으며, 명시적 `orange` command 없이 외부 문서를 project memory로 취급하지 않습니다.
-
-중요한 경계:
-
-- 자동 memory write는 없습니다.
-- `L0`/`L1` Quest는 v0.2에서 기본 proposal 대상이 아닙니다.
-- raw prompt 전체를 저장하지 않습니다.
-- Memory Graph rendering, MCP, hook, subagent, role system, auto planner, auto execution loop는 포함하지 않습니다.
-
-현재 frontmatter parser는 full YAML 구현이 아닙니다. 지원 범위는 문자열, 숫자, boolean, 빈 배열, 문자열 배열, 단순 nested object에 한정합니다. Quest와 Memory Delta Proposal 파일은 이 subset 안에서 사람이 읽고 고칠 수 있게 유지합니다.
-
-`orange identity build`는 v0.2에서도 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`과 `.orange-hyper/identity/summary.json`에 Seed Kernel 상태 요약과 memory proposal/node count만 생성합니다. identity summary JSON도 현재 `project_id` 기준으로 생성됩니다. 상태 메시지는 `Memory proposal review is active in v0.2.`, `Graph rendering is not active yet.`, `Accepted memory nodes are candidate project memory.`입니다.
-
-## Source checkout usage
-
-저장소를 checkout한 상태에서는 npm package를 거치지 않고 source CLI를 직접 실행할 수 있습니다.
-
-```bash
-node bin/orange.js init
-node bin/orange.js quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
-node bin/orange.js route --quest <quest-id>
-node bin/orange.js capsule
-node bin/orange.js remember propose --quest <completed-quest-id>
-node bin/orange.js identity build
-```
-
-npm package는 `orange-hyper` package와 primary `orange` CLI, compatibility
-`orange-hyper` alias로 배포됩니다. Node 20 이상을 요구하고, package에는
-`bin/`, `src/`, `docs/`, `RELEASE_NOTES.md`, `README.md`, `LICENSE`만
-포함합니다.
-
-v0.2에서 의도적으로 하지 않는 것:
-
-- hook 구현
-- MCP 구현
-- subagent 구현
-- role evolution 구현
-- 자동 planner 또는 execution loop 구현
-- branch/PR/spec workflow 강제
-- 모든 요청의 Quest 강제 생성
-- runtime automation
-- telemetry/network behavior
-- postinstall mutation
-- provider/model bridge
-- Memory Graph rendering
-- automatic memory write
-- external report/file import or clipboard 자동 memory proposal
+- [Project Definition](docs/00_PROJECT_DEFINITION.md)
+- [Architecture](docs/01_ARCHITECTURE.md)
+- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
+- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
+- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
+- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
+- [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- [Release Notes](RELEASE_NOTES.md)

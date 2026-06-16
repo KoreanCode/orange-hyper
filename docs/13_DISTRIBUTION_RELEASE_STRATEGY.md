@@ -214,7 +214,7 @@ npm publish --tag latest
 릴리즈 전 반드시 통과할 기준:
 
 ```text
-1. npm package dry-run 통과
+1. npm package dry-run 통과 및 다국어 README 포함 확인
 2. CLI smoke test 통과
 3. schema validation 통과
 4. generated files deterministic 확인
@@ -240,8 +240,11 @@ node bin/orange.js capsule --quest <quest-id>
 node bin/orange.js quest done <quest-id> --unverified "Manual verification is not available in seed test"
 node bin/orange.js doctor
 node bin/orange.js identity build
-npm pack --dry-run
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
 ```
+
+`npm pack --dry-run` 출력에 `README.md`, `README.en.md`,
+`README.zh-CN.md`, `README.ja.md`가 모두 포함되어야 한다.
 
 ## 5. CI/CD 제안
 

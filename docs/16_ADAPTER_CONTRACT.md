@@ -1,7 +1,7 @@
 # Adapter Contract
 
-Orange Hyper v0.2.0 stable is still a Seed Kernel. The `orange` CLI is the kernel
-control plane, not the final end-user UX.
+Orange Hyper v0.3.0-alpha.0 is still a Seed Kernel. The `orange` CLI is the
+kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -75,6 +75,10 @@ and failure envelopes.
 - `remember.revise`
 - `remember.accept`
 - `remember.reject`
+- `graph.list`
+- `graph.show`
+- `graph.search`
+- `graph.rebuildIndex`
 - `doctor.run`
 - `identity.build`
 
@@ -493,6 +497,181 @@ should call `remember propose`, review with `remember show`,
 `remember validate`, and `remember revise`, then wait for user approval through
 `remember accept` or `remember reject`.
 
+### `graph list --json`
+
+```bash
+orange graph list --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "graph.list",
+  "data": {
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "count": 1,
+    "nodes": [
+      {
+        "id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+        "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision.md",
+        "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+        "project_name": "orange-hyper",
+        "kind": "decision",
+        "node_type": "decision",
+        "status": "candidate",
+        "confidence": "medium",
+        "title": "Adapter JSON contract remains stable.",
+        "source_quest": "quest_20260616_000000Z_adapter-contract",
+        "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+        "accepted_at": "2026-06-16T00:05:00.000Z",
+        "origin": "memory-delta-proposal",
+        "candidate_memory": "Adapter JSON contract remains stable.",
+        "summary": "Adapter JSON contract remains stable.",
+        "tags": ["adapter", "contract", "decision"],
+        "keywords": ["adapter", "contract", "decision"]
+      }
+    ],
+    "warnings": []
+  }
+}
+```
+
+`graph.list` returns only accepted memory nodes for the current config
+`project_id`. Pending and rejected proposals are not graph nodes. Cross-project
+nodes are excluded from graph results and reported by `doctor`.
+
+### `graph show --json`
+
+```bash
+orange graph show decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "graph.show",
+  "data": {
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "node": {
+      "id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+      "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision.md",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "node_type": "decision",
+      "title": "Adapter JSON contract remains stable.",
+      "source_quest": "quest_20260616_000000Z_adapter-contract",
+      "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+      "accepted_at": "2026-06-16T00:05:00.000Z",
+      "candidate_memory": "Adapter JSON contract remains stable.",
+      "summary": "Adapter JSON contract remains stable.",
+      "content": "---\\nschema_version: 1\\n...\\n"
+    },
+    "warnings": []
+  }
+}
+```
+
+The selector must be a graph node id, not a path. Path traversal selectors fail
+with a structured JSON error envelope.
+
+### `graph search --json`
+
+```bash
+orange graph search "adapter contract" --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "graph.search",
+  "data": {
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "query": "adapter contract",
+    "count": 1,
+    "nodes": [
+      {
+        "id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+        "node_type": "decision",
+        "title": "Adapter JSON contract remains stable.",
+        "candidate_memory": "Adapter JSON contract remains stable.",
+        "source_quest": "quest_20260616_000000Z_adapter-contract",
+        "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+        "matches": ["title", "candidate_memory", "keywords"]
+      }
+    ],
+    "warnings": []
+  }
+}
+```
+
+v0.3 search is plain text search over node id, title, Candidate Memory/summary,
+node type, source quest/proposal, tags, and keywords. It is not fuzzy, semantic,
+or vector search.
+
+### `graph rebuild-index --json`
+
+```bash
+orange graph rebuild-index --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "graph.rebuildIndex",
+  "data": {
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "file": ".orange-hyper/graph/index.json",
+    "count": 1,
+    "index": {
+      "schema_version": 1,
+      "index_version": "0.3.0-alpha.0",
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "updated_at": "2026-06-16T00:06:00.000Z",
+      "source": "graph-node-markdown",
+      "nodes": [
+        {
+          "id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+          "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision.md",
+          "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+          "project_name": "orange-hyper",
+          "node_type": "decision",
+          "title": "Adapter JSON contract remains stable.",
+          "source_quest": "quest_20260616_000000Z_adapter-contract",
+          "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+          "accepted_at": "2026-06-16T00:05:00.000Z",
+          "candidate_memory": "Adapter JSON contract remains stable.",
+          "summary": "Adapter JSON contract remains stable.",
+          "tags": ["adapter", "contract", "decision"],
+          "keywords": ["adapter", "contract", "decision"]
+        }
+      ]
+    },
+    "warnings": []
+  }
+}
+```
+
+`graph/index.json` is a read model. `rebuild-index` regenerates it from graph
+node Markdown and does not edit graph node source files, proposal status, or
+memory content.
+
 ### `doctor --json`
 
 ```bash
@@ -647,6 +826,46 @@ orange identity build --json
           "nodeType": "decision",
           "count": 1
         }
+      ],
+      "graphPreview": {
+        "readOnly": true,
+        "editingSupported": false,
+        "acceptedMemoryNodes": 1,
+        "nodeTypeDistribution": {
+          "decision": 1
+        },
+        "nodes": [
+          {
+            "id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+            "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+            "project_name": "orange-hyper",
+            "node_type": "decision",
+            "title": "Adapter JSON contract remains stable.",
+            "source_quest": "quest_20260616_000000Z_adapter-contract",
+            "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+            "accepted_at": "2026-06-16T00:05:00.000Z",
+            "summary": "Adapter JSON contract remains stable.",
+            "tags": ["adapter", "contract", "decision"],
+            "keywords": ["adapter", "contract", "decision"]
+          }
+        ],
+        "sourceLinks": [
+          {
+            "node_id": "decision.mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+            "node_type": "decision",
+            "title": "Adapter JSON contract remains stable.",
+            "source_quest": "quest_20260616_000000Z_adapter-contract",
+            "source_proposal": "mem_delta_quest_20260616_000000Z_adapter-contract_decision",
+            "accepted_at": "2026-06-16T00:05:00.000Z"
+          }
+        ]
+      },
+      "graphWarnings": [],
+      "statusMessages": [
+        "Memory proposal review is active.",
+        "Graph preview is read-only.",
+        "Graph editing is not supported.",
+        "Accepted memory nodes are candidate project memory."
       ],
       "routeDistribution": {
         "L2": 1

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CONFIG_VERSION, ORANGE_GITIGNORE, normalizeConfigProjectIdentity, projectIdentityFromConfig } from "./config.js";
 import { stringifyFrontmatter } from "./frontmatter.js";
+import { validateGraphReadModel } from "./graph.js";
 import {
   findGraphNodesForProposal,
   hashMemoryDeltaProposalSource,
@@ -288,6 +289,10 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   const graphJson = validateGraphJson(cwd);
   errors.push(...graphJson.errors);
   checks.push(...graphJson.checks);
+  const graphReadModel = validateGraphReadModel(cwd, { projectIdentity });
+  errors.push(...graphReadModel.errors);
+  warnings.push(...graphReadModel.warnings);
+  checks.push(...graphReadModel.checks);
 
   return {
     ok: errors.length === 0,

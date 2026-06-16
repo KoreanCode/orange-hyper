@@ -6,7 +6,10 @@
 
 v0.2.0 stable의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, memory proposal/node count, Seed mode 메시지를 보여주는 것이다.
 
-v0.3 이후의 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화한다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
+v0.3.0-alpha.0은 placeholder를 read-only graph preview로 확장한다. Heavy graph
+engine, editor, graph state mutation은 포함하지 않는다.
+
+v0.4 이후 후보 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
 ```text
 1. 프로젝트가 어떤 기억을 쌓고 있는지 보여준다.
@@ -72,7 +75,14 @@ v0.2 명령:
 orange identity build
 ```
 
-v0.3+ 후보 명령:
+v0.3 alpha 명령:
+
+```bash
+orange identity build
+orange identity build --json
+```
+
+v0.4+ 후보 명령:
 
 ```bash
 orange identity build --open
@@ -93,7 +103,7 @@ orange dashboard build
 .orange-hyper/identity/orange-hyper.html
 ```
 
-v0.3+ 후보 출력:
+v0.4+ 후보 출력:
 
 ```text
 .orange-hyper/identity/state.json        # optional debug artifact
@@ -124,7 +134,11 @@ v0.3+ 후보 출력:
     unlocks.jsonl
 ```
 
-v0.2에서는 최소 입력만 허용한다. 실제 stable 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count, route distribution, Seed Kernel 상태 메시지만 계산한다. Graph view와 node/edge visualization은 v0.3+ 범위다.
+v0.2에서는 최소 입력만 허용한다. 실제 stable 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count, route distribution, Seed Kernel 상태 메시지만 계산한다.
+
+v0.3.0-alpha.0은 같은 단일 HTML 산출물에 current-project accepted memory node
+preview를 추가한다. Graph view와 node/edge visualization은 작은 SVG/static table
+수준으로 제한한다.
 
 ```text
 config.json
@@ -135,10 +149,11 @@ graph/index.json
 graph/nodes/*
 ```
 
-v0.2 placeholder가 표시하는 최소 항목:
+v0.3 alpha가 표시하는 최소 항목:
 
 ```text
 Project
+project_id / project_name
 Level: Seed
 Active Quests count
 Completed Quests count
@@ -150,7 +165,13 @@ Accepted Memory Proposals count
 Rejected Memory Proposals count
 Accepted Memory Nodes count
 Top Proposal Node Types
-This project is still in Seed Kernel mode. Memory graph is not active yet.
+acceptedMemoryNodes
+Node type distribution
+Source quest/proposal connection table
+Simple SVG node-link preview
+Selected node detail panel
+Graph preview is read-only
+Graph editing is not supported
 ```
 
 ## 5. Dashboard 화면 구조 (v0.3+ target)
@@ -364,7 +385,7 @@ subagent_context_tokens
 trace_tokens_by_route
 ```
 
-## 7. HTML State Contract (v0.3+ target)
+## 7. HTML State Contract (v0.4+ target)
 
 HTML 안에 다음 형태로 embed한다.
 
@@ -431,7 +452,34 @@ Vanilla HTML/CSS only placeholder.
 - bias/risk health 계산
 ```
 
-### 8.2 v0.3+
+### 8.2 v0.3 alpha
+
+Vanilla HTML/CSS/SVG only read-only preview.
+
+목표:
+
+```text
+- single self-contained HTML 유지
+- 현재 project_id의 accepted memory node만 표시
+- node type별 table
+- source quest/proposal 연결 table
+- 간단한 SVG node-link preview
+- selected node detail panel
+- Graph preview is read-only 문구 표시
+- Graph editing is not supported 문구 표시
+```
+
+제외:
+
+```text
+- graph editing
+- force simulation
+- D3/Cytoscape/Sigma
+- external source import
+- automatic memory write
+```
+
+### 8.3 v0.4+
 
 선택지:
 
@@ -445,8 +493,8 @@ Sigma.js: 수천 node 이상 large graph가 필요할 때 적합.
 
 ```text
 v0.2: vanilla placeholder
-v0.3: bundled graph renderer preview
-v0.4+: graph가 커지면 Cytoscape.js 또는 Sigma.js 검토
+v0.3 alpha: vanilla static read-only preview
+v0.4+: graph가 커지면 bundled renderer 또는 Cytoscape.js/Sigma.js 검토
 ```
 
 CDN은 사용하지 말고 bundle해서 single HTML에 포함한다.
@@ -511,19 +559,21 @@ orange identity build --include-local
 13. 생성 결과가 deterministic하다.
 ```
 
-### 10.2 v0.3+ graph 기준
+### 10.2 v0.3 alpha graph preview 기준
 
 ```text
-1. node/edge state가 HTML에 embed된다.
-2. project summary, graph, metrics panel이 보인다.
-3. private local memory는 기본 제외된다.
-4. stale/conflict/orphan count가 표시된다.
-5. completed quest의 verification status가 graph/metrics에 연결된다.
-6. bias/risk health가 표시된다.
-7. selected node detail이 표시된다.
-8. route/memory timeline이 표시된다.
-9. filter/search가 작은 graph에서 동작한다.
-10. orange doctor가 graph identity build 가능 여부를 검사한다.
+1. `orange identity build`가 단일 HTML을 생성한다.
+2. HTML state가 `orange-hyper-state` script에 embed된다.
+3. `project_id`와 `project_name`이 표시된다.
+4. `acceptedMemoryNodes`가 표시된다.
+5. node type distribution이 표시된다.
+6. source quest/proposal 연결 table이 표시된다.
+7. 간단한 SVG node-link preview가 표시된다.
+8. selected node detail panel이 표시된다.
+9. `Graph preview is read-only`가 표시된다.
+10. `Graph editing is not supported`가 표시된다.
+11. pending/rejected proposal은 graph preview node로 표시되지 않는다.
+12. 현재 config의 `project_id`와 일치하는 accepted node만 표시된다.
 ```
 
 ## 11. 구현 단계
