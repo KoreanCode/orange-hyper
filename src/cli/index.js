@@ -8,6 +8,14 @@ import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/r
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
 
+export const EXIT_CODES = {
+  success: 0,
+  userInput: 1,
+  validation: 2,
+  filesystem: 3,
+  internal: 4
+};
+
 export async function main(argv = process.argv.slice(2), env = {}) {
   const cwd = env.cwd || process.cwd();
   const io = env.io || {
@@ -40,15 +48,34 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     const args = parseArgs(rest);
     const selector = args.flags.quest || args.positionals[0];
     const capsule = generateCapsule(cwd, selector);
+    if (args.flags.json) {
+      writeJson(io, jsonOk("capsule", formatCapsuleJson(cwd, capsule)));
+      return;
+    }
     write(io, `Wrote ${path.relative(cwd, capsule.filePath)}`);
     return;
   }
 
   if (command === "doctor") {
+    const args = parseArgs(rest);
     const result = runDoctor(cwd);
+    if (args.flags.json) {
+      if (result.ok) {
+        writeJson(io, jsonOk("doctor", result));
+      } else {
+        writeJson(io, jsonError("doctor", {
+          code: "DOCTOR_FAILED",
+          message: `Orange doctor found ${result.errors.length} problem(s).`,
+          hint: "Run `orange doctor` without --json for human-readable diagnostics.",
+          data: result
+        }));
+        process.exitCode = EXIT_CODES.validation;
+      }
+      return;
+    }
     write(io, formatDoctor(result));
     if (!result.ok) {
-      process.exitCode = 1;
+      process.exitCode = EXIT_CODES.validation;
     }
     return;
   }
@@ -85,7 +112,7 @@ async function questCommand(cwd, io, argv) {
       expectedVerification: asArray(args.flags.verify)
     });
     if (args.flags.json) {
-      writeJson(io, formatQuestNewJson(cwd, quest));
+      writeJson(io, jsonOk("quest new", formatQuestNewJson(cwd, quest)));
       return;
     }
     write(io, `Created quest: ${quest.id}`);
@@ -138,6 +165,10 @@ async function questCommand(cwd, io, argv) {
       evidence,
       unverifiedReason: args.flags.unverified
     });
+    if (args.flags.json) {
+      writeJson(io, jsonOk("quest done", formatQuestDoneJson(cwd, completed)));
+      return;
+    }
     write(io, `Completed ${completed.data.id}`);
     write(io, `Moved to ${path.relative(cwd, completed.filePath)}`);
     write(io, `Verification status: ${completed.data.verification_status}`);
@@ -157,6 +188,10 @@ async function identityCommand(cwd, io, argv) {
   }
   const args = parseArgs(rest);
   const identity = buildIdentityPlaceholder(cwd);
+  if (args.flags.json) {
+    writeJson(io, jsonOk("identity build", formatIdentityJson(cwd, identity, args)));
+    return;
+  }
   write(io, `Wrote ${path.relative(cwd, identity.filePath)}`);
   if (args.flags.open) {
     write(io, "Warning: identity build --open is not implemented in v0.1; HTML was generated without opening it.");
@@ -186,7 +221,7 @@ async function routeCommand(cwd, io, argv) {
   });
   const trace = appendRouteTrace(cwd, rawRequest, contract, { questId });
   if (args.flags.json) {
-    write(io, JSON.stringify({ trace, contract }, null, 2));
+    writeJson(io, jsonOk("route", { trace, contract }));
     return;
   }
   write(io, formatRouteLine(contract));
@@ -288,6 +323,108 @@ function readEvidenceFiles(cwd, files) {
   });
 }
 
+export function isJsonMode(argv = []) {
+  return argv.includes("--json");
+}
+
+export function commandName(argv = []) {
+  const [command, subcommand] = argv;
+  if (!command) {
+    return "unknown";
+  }
+  if (command === "quest" && subcommand) {
+    return `quest ${subcommand}`;
+  }
+  if (command === "identity" && subcommand) {
+    return `identity ${subcommand}`;
+  }
+  return command;
+}
+
+export function jsonErrorFor(error, argv = []) {
+  const normalized = normalizeError(error);
+  return jsonError(commandName(argv), normalized);
+}
+
+export function exitCodeForError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (error?.exitCode && Number.isInteger(error.exitCode)) {
+    return error.exitCode;
+  }
+  if (isFilesystemError(error, message)) {
+    return EXIT_CODES.filesystem;
+  }
+  if (isValidationError(message)) {
+    return EXIT_CODES.validation;
+  }
+  if (/internal|invariant/i.test(message)) {
+    return EXIT_CODES.internal;
+  }
+  return EXIT_CODES.userInput;
+}
+
+function jsonOk(command, data) {
+  return {
+    ok: true,
+    command,
+    data
+  };
+}
+
+function jsonError(command, error) {
+  const payload = {
+    ok: false,
+    command,
+    error: {
+      code: error.code,
+      message: error.message,
+      hint: error.hint || defaultErrorHint(command)
+    }
+  };
+  if (error.data !== undefined) {
+    payload.data = error.data;
+  }
+  return payload;
+}
+
+function normalizeError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    code: errorCodeFor(error, message),
+    message,
+    hint: defaultErrorHint()
+  };
+}
+
+function errorCodeFor(error, message) {
+  if (error?.orangeCode) {
+    return error.orangeCode;
+  }
+  if (isFilesystemError(error, message)) {
+    return "FILESYSTEM_ERROR";
+  }
+  if (isValidationError(message)) {
+    return "VALIDATION_ERROR";
+  }
+  if (/internal|invariant/i.test(message)) {
+    return "INTERNAL_INVARIANT_ERROR";
+  }
+  return "USER_INPUT_ERROR";
+}
+
+function isFilesystemError(error, message) {
+  const filesystemCodes = new Set(["ENOENT", "EACCES", "EPERM", "ENOTDIR", "EISDIR"]);
+  return filesystemCodes.has(error?.code) || /Could not read evidence file|file does not exist|not a directory|permission denied/i.test(message);
+}
+
+function isValidationError(message) {
+  return /frontmatter|schema|invalid JSON|not valid JSON|unsupported layer|unsupported schema|route contract|doctor found/i.test(message);
+}
+
+function defaultErrorHint(command = "command") {
+  return "Run `orange --help` for command usage, or rerun without --json for human-readable diagnostics.";
+}
+
 function write(io, value) {
   io.stdout.write(`${value}\n`);
 }
@@ -321,6 +458,49 @@ function formatQuestNewJson(cwd, quest) {
   };
 }
 
+function formatQuestDoneJson(cwd, quest) {
+  return {
+    quest: formatQuestJson(cwd, quest)
+  };
+}
+
+function formatCapsuleJson(cwd, capsule) {
+  return {
+    capsule: {
+      file: path.relative(cwd, capsule.filePath),
+      content: capsule.content
+    },
+    quest: formatQuestJson(cwd, capsule.quest)
+  };
+}
+
+function formatIdentityJson(cwd, identity, args) {
+  const data = {
+    file: path.relative(cwd, identity.filePath),
+    summary: identity.summary
+  };
+  if (args.flags.open) {
+    data.warning = "identity build --open is not implemented in v0.1; HTML was generated without opening it.";
+  }
+  return data;
+}
+
+function formatQuestJson(cwd, quest) {
+  return {
+    id: quest.data.id,
+    file: path.relative(cwd, quest.filePath),
+    status: quest.data.status,
+    title: quest.data.title,
+    layer: quest.data.layer,
+    quest_policy: quest.data.quest_policy,
+    output_contract: quest.data.output_contract,
+    verification_status: quest.data.verification_status,
+    verification_evidence: asArray(quest.data.verification_evidence),
+    unverified_reason: quest.data.unverified_reason || "",
+    completed_at: quest.data.completed_at || null
+  };
+}
+
 function usage() {
   return [
     "orange <command>",
@@ -330,11 +510,11 @@ function usage() {
     "  quest new <request> [--title <title>] [--layer L2] [--verify <check>] [--json]",
     "  quest list [--completed|--all]",
     "  quest show <id-or-file>",
-    "  quest done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>)",
+    "  quest done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>) [--json]",
     "  route <request> [--quest <id>] [--layer L2] [--json]",
-    "  capsule [quest-id|--quest <id>]",
-    "  identity build",
-    "  doctor"
+    "  capsule [quest-id|--quest <id>] [--json]",
+    "  identity build [--json]",
+    "  doctor [--json]"
   ].join("\n");
 }
 
@@ -346,7 +526,7 @@ function questUsage() {
     "  new <request> [--json]",
     "  list [--completed|--all]",
     "  show <id-or-file>",
-    "  done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>)"
+    "  done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>) [--json]"
   ].join("\n");
 }
 
@@ -355,6 +535,6 @@ function identityUsage() {
     "orange identity <command>",
     "",
     "Commands:",
-    "  build"
+    "  build [--json]"
   ].join("\n");
 }

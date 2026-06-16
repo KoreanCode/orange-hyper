@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.1.0-alpha.3
+
+Seed Kernel Adapter Contract release.
+
+- `orange capsule --quest <id> --json`, `orange quest done ... --json`, `orange doctor --json`, and `orange identity build --json` now provide machine-readable output.
+- JSON success payloads use the `{ ok, command, data }` envelope.
+- JSON failures use the `{ ok, command, error }` envelope when the executable catches an error in `--json` mode.
+- `docs/16_ADAPTER_CONTRACT.md` defines adapter rules, command examples, error shape, and exit codes.
+- README clarifies that skills/adapters should call JSON mode and that users are not expected to manually drive every command long-term.
+
 ## v0.1.0-alpha.2
 
 Seed Kernel UX/API hardening release.

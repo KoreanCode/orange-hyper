@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +11,8 @@ import { stringifyFrontmatter } from "../src/core/frontmatter.js";
 import { runDoctor } from "../src/core/doctor.js";
 import { workspacePaths } from "../src/core/paths.js";
 import { completeQuest, createQuest, listQuests, readQuestFile } from "../src/core/quest.js";
+
+const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 
 function tempWorkspace() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "orange-hyper-test-"));
@@ -176,11 +179,13 @@ test("quest new --json prints valid JSON without human-readable output", async (
   const { output, io } = captureIo();
   await main(["quest", "new", "--json", "implement JSON quest creation output"], { cwd, io });
   const raw = output.join("");
-  const payload = JSON.parse(raw);
-  assert.match(payload.quest.id, /^quest_/);
-  assert.equal(payload.quest.file, `.orange-hyper/quests/active/${payload.quest.id}.md`);
-  assert.equal(payload.next.route, `orange route --quest ${payload.quest.id}`);
-  assert.equal(payload.next.capsule, `orange capsule --quest ${payload.quest.id}`);
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "quest new");
+  assert.match(payload.data.quest.id, /^quest_/);
+  assert.equal(payload.data.quest.file, `.orange-hyper/quests/active/${payload.data.quest.id}.md`);
+  assert.equal(payload.data.next.route, `orange route --quest ${payload.data.quest.id}`);
+  assert.equal(payload.data.next.capsule, `orange capsule --quest ${payload.data.quest.id}`);
   assert.doesNotMatch(raw, /Created quest:/);
   assert.doesNotMatch(raw, /Next:/);
   assert.doesNotMatch(raw, /Orange route:/);
@@ -195,10 +200,12 @@ test("route --json prints valid JSON without human-readable output", async () =>
   const { output, io } = captureIo();
   await main(["route", "--quest", created.id, "--json"], { cwd, io });
   const raw = output.join("");
-  const payload = JSON.parse(raw);
-  assert.equal(payload.trace.quest_id, created.id);
-  assert.equal(payload.trace.contract.route, payload.contract.route);
-  assert.equal(payload.contract.output_contract, created.data.output_contract);
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "route");
+  assert.equal(payload.data.trace.quest_id, created.id);
+  assert.equal(payload.data.trace.contract.route, payload.data.contract.route);
+  assert.equal(payload.data.contract.output_contract, created.data.output_contract);
   assert.doesNotMatch(raw, /Output contract:/);
   assert.doesNotMatch(raw, /Quest policy:/);
   assert.doesNotMatch(raw, /Trace:/);
@@ -227,6 +234,24 @@ test("capsule --quest writes current.md for the selected quest", async () => {
   await main(["capsule", "--quest", created.id], { cwd, io: silentIo() });
   const content = fs.readFileSync(paths.currentCapsule, "utf8");
   assert.match(content, /build selected capsule/);
+});
+
+test("capsule --json prints valid JSON without human-readable output", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "build selected JSON capsule", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const { output, io } = captureIo();
+  await main(["capsule", "--quest", created.id, "--json"], { cwd, io });
+  const raw = output.join("");
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "capsule");
+  assert.equal(payload.data.capsule.file, ".orange-hyper/capsules/current.md");
+  assert.equal(payload.data.quest.id, created.id);
+  assert.match(payload.data.capsule.content, /build selected JSON capsule/);
+  assert.doesNotMatch(raw, /^Wrote /m);
 });
 
 test("capsule without quests fails clearly", async () => {
@@ -333,6 +358,59 @@ test("L0/L1 quest new creates quest but prints not_recommended warning", async (
   assert.match(joined, /A Quest was created because you explicitly requested quest new/);
 });
 
+test("quest done --json prints completed quest information as valid JSON", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "complete through JSON mode", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const evidencePath = path.join(cwd, "verification.txt");
+  fs.writeFileSync(evidencePath, "npm test passed\n");
+  const { output, io } = captureIo();
+  await main(["quest", "done", created.id, "--evidence", "git diff --check passed", "--evidence-file", "verification.txt", "--json"], { cwd, io });
+  const raw = output.join("");
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "quest done");
+  assert.equal(payload.data.quest.id, created.id);
+  assert.equal(payload.data.quest.status, "completed");
+  assert.equal(payload.data.quest.verification_status, "verified");
+  assert.deepEqual(payload.data.quest.verification_evidence, ["git diff --check passed", "npm test passed"]);
+  assert.doesNotMatch(raw, /^Completed /m);
+  assert.doesNotMatch(raw, /^Moved to /m);
+  assert.doesNotMatch(raw, /^Verification status:/m);
+});
+
+test("doctor --json prints ok true diagnostics as valid JSON", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const { output, io } = captureIo();
+  await main(["doctor", "--json"], { cwd, io });
+  const raw = output.join("");
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "doctor");
+  assert.equal(payload.data.ok, true);
+  assert.deepEqual(payload.data.errors, []);
+  assert.doesNotMatch(raw, /^Orange doctor/m);
+  assert.doesNotMatch(raw, /^No problems found\./m);
+});
+
+test("doctor --json prints ok false diagnostics and exits non-zero for invalid state", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd);
+  fs.writeFileSync(path.join(paths.activeQuests, "broken.md"), "# Missing frontmatter\n");
+  const result = runOrange(["doctor", "--json"], cwd);
+  assert.equal(result.status, 2);
+  assert.equal(result.stderr, "");
+  const payload = parseJsonOnly(result.stdout);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.command, "doctor");
+  assert.equal(payload.error.code, "DOCTOR_FAILED");
+  assert.equal(payload.data.ok, false);
+  assert.match(payload.data.errors.join("\n"), /Missing YAML frontmatter/);
+});
+
 test("identity build writes generated placeholder html", async () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd, { projectName: "identity-demo" });
@@ -350,11 +428,63 @@ test("identity build writes generated placeholder html", async () => {
   assert.match(html, /Memory graph is not active yet/);
 });
 
+test("identity build --json prints generated html path and summary", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd, { projectName: "identity-json-demo" });
+  const created = createQuest(cwd, "build identity JSON summary", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, created.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["node --test passed"]
+  });
+  const { output, io } = captureIo();
+  await main(["identity", "build", "--json"], { cwd, io });
+  const raw = output.join("");
+  const payload = parseJsonOnly(raw);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.command, "identity build");
+  assert.equal(payload.data.file, ".orange-hyper/identity/orange-hyper.html");
+  assert.equal(payload.data.summary.projectName, "identity-json-demo");
+  assert.equal(payload.data.summary.completedCount, 1);
+  assert.equal(payload.data.summary.verifiedCount, 1);
+  assert.doesNotMatch(raw, /^Wrote /m);
+});
+
+test("JSON mode failures print machine-readable errors and exit non-zero", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "fail completion without evidence", {
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  const result = runOrange(["quest", "done", created.id, "--json"], cwd);
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "");
+  const payload = parseJsonOnly(result.stdout);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.command, "quest done");
+  assert.equal(payload.error.code, "USER_INPUT_ERROR");
+  assert.match(payload.error.message, /requires --evidence or --unverified/);
+});
+
 function silentIo() {
   return {
     stdout: { write: () => {} },
     stderr: { write: () => {} }
   };
+}
+
+function parseJsonOnly(raw) {
+  assert.equal(raw.trimStart().startsWith("{"), true);
+  assert.equal(raw.trimEnd().endsWith("}"), true);
+  return JSON.parse(raw);
+}
+
+function runOrange(args, cwd) {
+  return spawnSync(process.execPath, [ORANGE_BIN.pathname, ...args], {
+    cwd,
+    encoding: "utf8"
+  });
 }
 
 function captureIo() {
