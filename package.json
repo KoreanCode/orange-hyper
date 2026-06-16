@@ -1,6 +1,6 @@
 {
   "name": "orange-hyper",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0",
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
   "bin": {

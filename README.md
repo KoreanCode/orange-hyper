@@ -6,15 +6,26 @@
 [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
-[![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](RELEASE_NOTES.md)
+[![Status: v0.1 stable candidate](https://img.shields.io/badge/status-v0.1%20stable%20candidate-orange.svg)](RELEASE_NOTES.md)
 
 Orange Hyper is an RPG-style adaptive project-memory harness that starts as a lightweight intent compiler and grows project-specific memory, roles, tools, and verification loops only when repeated work proves they are useful.
 
 `orange-hyper`는 `codex-fable-mode`의 후속 버전이 아니라 별도 프로젝트입니다. `codex-fable-mode`에서 얻은 작업 레벨링, 의도 잠금, 검증 정직성의 힌트는 유지하되, `orange-hyper`는 메모리 그래프와 최소 하네스를 갖는 성장형 프로젝트로 설계합니다.
 
-## npm alpha quickstart
+## Install
 
-Node 20 이상에서, 초기 alpha는 설치 없이 `npx`로 실행할 수 있습니다. `orange-hyper` package는 `orange` CLI를 제공합니다.
+Node 20 이상에서 설치 없이 `npx`로 실행할 수 있습니다. `orange-hyper`
+package는 `orange` CLI를 제공합니다.
+
+Stable release, after v0.1.0 is published:
+
+```bash
+npx orange-hyper init
+npx orange-hyper quest new "README npm usage polish" --layer L2 --verify "npm test"
+npx orange-hyper identity build
+```
+
+Alpha channel:
 
 ```bash
 npx orange-hyper@alpha init
@@ -22,17 +33,17 @@ npx orange-hyper@alpha quest new "README npm usage polish" --layer L2 --verify "
 npx orange-hyper@alpha identity build
 ```
 
-자주 쓰는 seed kernel 명령:
+Stable release command examples, after v0.1.0 is published:
 
 ```bash
-npx orange-hyper@alpha quest list
-npx orange-hyper@alpha route "검색 결과 정렬 버그 원인 찾아줘"
-npx orange-hyper@alpha capsule
-npx orange-hyper@alpha quest done <quest-id> --evidence "npm test passed"
-npx orange-hyper@alpha doctor
+npx orange-hyper quest list
+npx orange-hyper route "검색 결과 정렬 버그 원인 찾아줘"
+npx orange-hyper capsule
+npx orange-hyper quest done <quest-id> --evidence "npm test passed"
+npx orange-hyper doctor
 ```
 
-v0.1 alpha는 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다.
+v0.1은 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다.
 
 ## 문서 읽는 순서
 
@@ -86,22 +97,22 @@ contract is defined in [`docs/16_ADAPTER_CONTRACT.md`](docs/16_ADAPTER_CONTRACT.
 v0.1에서 포함하는 CLI 표면은 다음 범위로 제한합니다.
 
 ```bash
-npx orange-hyper@alpha init
-npx orange-hyper@alpha quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
-npx orange-hyper@alpha quest new "Quest/Goal Capsule 기능 구현" --json
-npx orange-hyper@alpha quest list
-npx orange-hyper@alpha quest show <quest-id>
-npx orange-hyper@alpha route "검색 결과 정렬 버그 원인 찾아줘"
-npx orange-hyper@alpha route --quest <quest-id> --json
-npx orange-hyper@alpha capsule
-npx orange-hyper@alpha capsule --quest <quest-id> --json
-npx orange-hyper@alpha quest done <quest-id> --unverified "Manual verification is not available in seed test"
-npx orange-hyper@alpha quest done <quest-id> --evidence-file ./verification.txt
-npx orange-hyper@alpha quest done <quest-id> --evidence "npm test passed" --json
-npx orange-hyper@alpha doctor
-npx orange-hyper@alpha doctor --json
-npx orange-hyper@alpha identity build
-npx orange-hyper@alpha identity build --json
+orange init
+orange quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
+orange quest new "Quest/Goal Capsule 기능 구현" --json
+orange quest list
+orange quest show <quest-id>
+orange route "검색 결과 정렬 버그 원인 찾아줘"
+orange route --quest <quest-id> --json
+orange capsule
+orange capsule --quest <quest-id> --json
+orange quest done <quest-id> --unverified "Manual verification is not available in seed test"
+orange quest done <quest-id> --evidence-file ./verification.txt
+orange quest done <quest-id> --evidence "npm test passed" --json
+orange doctor
+orange doctor --json
+orange identity build
+orange identity build --json
 ```
 
 초기 저장 구조는 다음과 같습니다.
@@ -142,7 +153,7 @@ node bin/orange.js capsule
 node bin/orange.js identity build
 ```
 
-npm alpha package는 `orange-hyper` package와 `orange` CLI로 배포됩니다. Node 20 이상을 요구하고, package에는 `bin/`, `src/`, `docs/`, `RELEASE_NOTES.md`, `README.md`, `LICENSE`만 포함합니다.
+npm package는 `orange-hyper` package와 `orange` CLI로 배포됩니다. Node 20 이상을 요구하고, package에는 `bin/`, `src/`, `docs/`, `RELEASE_NOTES.md`, `README.md`, `LICENSE`만 포함합니다.
 
 v0.1에서 의도적으로 하지 않는 것:
 

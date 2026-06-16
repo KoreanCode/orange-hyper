@@ -41,8 +41,9 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. It is currently
-`"0.1"` and appears in both success and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. For the
+`v0.1.0` stable release, `"0.1"` is the stable Seed Kernel adapter contract and
+appears in both success and failure envelopes.
 
 `command` uses dot notation. The v0.1 Seed Kernel command ids are:
 

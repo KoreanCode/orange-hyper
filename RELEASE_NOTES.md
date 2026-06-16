@@ -1,5 +1,86 @@
 # Release Notes
 
+## v0.1.0
+
+Seed Kernel stable release.
+
+This stable release does not add new core features after `v0.1.0-alpha.4`.
+It promotes the frozen Seed Kernel CLI and Adapter Contract to `0.1.0`.
+
+- Package version is `0.1.0`.
+- Adapter JSON `contract_version` remains `"0.1"` and is the stable v0.1 contract.
+- Stable usage is `npx orange-hyper ...` after publish.
+- Alpha usage remains `npx orange-hyper@alpha ...` for the alpha channel.
+- This release keeps the Seed Kernel boundary: no Memory Graph, MCP, hooks,
+  subagents, role system, auto planner, or auto execution loop.
+
+### Stable Publish Method
+
+`0.1.0` is stable, so publish it to npm without an explicit prerelease tag.
+The npm `publish` command uses the
+[`tag` config](https://docs.npmjs.com/cli/v11/commands/npm-publish#tag) to
+decide which dist-tag to apply, and its default is `latest`; alpha releases
+should continue to use `npm publish --tag alpha`.
+
+Do not run the publishing commands until the release is explicitly approved.
+
+```bash
+npm version 0.1.0 --no-git-tag-version
+
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+
+git add -A
+git commit -m "chore: release orange-hyper v0.1.0 seed kernel stable"
+
+git tag -a v0.1.0 -m "orange-hyper v0.1.0"
+git push origin main
+git push origin v0.1.0
+
+gh release create v0.1.0 \
+  --title "orange-hyper v0.1.0" \
+  --notes-file RELEASE_NOTES.md
+
+npm publish
+```
+
+After publish:
+
+```bash
+npm dist-tag ls orange-hyper
+npx orange-hyper --help
+```
+
+Expected dist-tags:
+
+```text
+latest: 0.1.0
+alpha: 0.1.0-alpha.4
+```
+
+### Alpha Dogfooding Evidence
+
+The alpha channel was used to harden the stable Seed Kernel contract before
+`0.1.0`:
+
+- `v0.1.0-alpha.2` added adapter-friendly JSON output for `quest new` and
+  `route --quest`.
+- `v0.1.0-alpha.3` added JSON output for `capsule`, `quest done`, `doctor`, and
+  `identity build`.
+- `v0.1.0-alpha.4` froze the adapter envelope with `contract_version: "0.1"`,
+  dot-notation command ids, and explicit stdout/stderr behavior.
+- `npx orange-hyper@alpha --help` returned the Seed Kernel command list.
+- `npx orange-hyper@alpha` dogfooding in a fresh temp directory verified:
+  `init`, `quest new --json`, `route --json`, `capsule --json`,
+  `quest done --json`, `doctor --json`, and `identity build --json`.
+- The alpha dogfood JSON outputs returned `contract_version: "0.1"` with
+  command ids `quest.new`, `route.show`, `capsule.build`, `quest.done`,
+  `doctor.run`, and `identity.build`.
+- Pre-stable package dry-run produced `orange-hyper@0.1.0`; after publish,
+  `0.1.0` should become `latest` while `alpha` remains `0.1.0-alpha.4`.
+
 ## v0.1.0-alpha.4
 
 Adapter Contract Freeze release.
