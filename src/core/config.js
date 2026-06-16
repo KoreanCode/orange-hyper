@@ -60,6 +60,9 @@ export function initWorkspace(cwd = process.cwd(), options = {}) {
   fs.mkdirSync(paths.activeQuests, { recursive: true });
   fs.mkdirSync(paths.completedQuests, { recursive: true });
   fs.mkdirSync(paths.capsules, { recursive: true });
+  fs.mkdirSync(paths.pendingMemoryDeltaProposals, { recursive: true });
+  fs.mkdirSync(paths.acceptedMemoryDeltaProposals, { recursive: true });
+  fs.mkdirSync(paths.rejectedMemoryDeltaProposals, { recursive: true });
   fs.mkdirSync(paths.traces, { recursive: true });
 
   if (!fs.existsSync(paths.config) || options.force) {

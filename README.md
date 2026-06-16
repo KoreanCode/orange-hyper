@@ -6,7 +6,7 @@
 [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
-[![Status: v0.1 stable candidate](https://img.shields.io/badge/status-v0.1%20stable%20candidate-orange.svg)](RELEASE_NOTES.md)
+[![Status: v0.2 alpha](https://img.shields.io/badge/status-v0.2%20alpha-orange.svg)](RELEASE_NOTES.md)
 
 Orange Hyper is an RPG-style adaptive project-memory harness that starts as a lightweight intent compiler and grows project-specific memory, roles, tools, and verification loops only when repeated work proves they are useful.
 
@@ -43,7 +43,7 @@ npx orange-hyper quest done <quest-id> --evidence "npm test passed"
 npx orange-hyper doctor
 ```
 
-v0.1은 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다.
+v0.2 alpha는 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작은 요청은 계속 작게 처리하고, L2 이상 작업부터 Quest 생성을 권장하며, L3 이상 작업은 Quest를 만들어 의도와 검증 상태를 남기는 것을 기본 계약으로 봅니다. 완료된 Quest에서만 Memory Delta Proposal을 만들 수 있고, 사용자가 `accept`한 proposal만 graph node 후보로 저장됩니다.
 
 ## 문서 읽는 순서
 
@@ -80,7 +80,7 @@ v0.1은 강한 SDD 하네스가 아니라 repo-local 기록 커널입니다. 작
 - 검증은 작업 level에 따라 강해진다.
 - 반복 증거가 쌓일 때만 role, MCP, hook, loop가 성장한다.
 
-## v0.1 Seed Kernel CLI
+## v0.2 Seed Kernel CLI
 
 CLI는 최종 사용자 경험이 아니라 Seed Kernel interface입니다.
 
@@ -94,7 +94,7 @@ CLI는 최종 사용자 경험이 아니라 Seed Kernel interface입니다.
 The full adapter JSON envelope, command id, stdout/stderr, and exit-code
 contract is defined in [`docs/16_ADAPTER_CONTRACT.md`](docs/16_ADAPTER_CONTRACT.md).
 
-v0.1에서 포함하는 CLI 표면은 다음 범위로 제한합니다.
+v0.2 alpha에서 포함하는 CLI 표면은 다음 범위로 제한합니다.
 
 ```bash
 orange init
@@ -109,6 +109,13 @@ orange capsule --quest <quest-id> --json
 orange quest done <quest-id> --unverified "Manual verification is not available in seed test"
 orange quest done <quest-id> --evidence-file ./verification.txt
 orange quest done <quest-id> --evidence "npm test passed" --json
+orange remember propose --quest <quest-id>
+orange remember propose --quest <quest-id> --json
+orange remember list
+orange remember list --json
+orange remember show <proposal-id>
+orange remember accept <proposal-id>
+orange remember reject <proposal-id>
 orange doctor
 orange doctor --json
 orange identity build
@@ -125,6 +132,11 @@ orange identity build --json
     completed/
   capsules/
     current.md
+  proposals/
+    memory-delta/
+      pending/
+      accepted/
+      rejected/
   traces/
     route.jsonl
   identity/
@@ -137,9 +149,30 @@ Quest는 Markdown + YAML frontmatter 파일입니다. 사용자가 직접 읽고
 
 Route는 chain-of-thought가 아니라 공개 작업 계약입니다. `L0`/`L1`은 기본적으로 Quest가 필요하지 않고 `not_recommended`로 표시됩니다. `orange quest new`는 사용자가 명시적으로 Quest 생성을 요청한 명령이므로 `L0`/`L1`도 생성은 허용하지만 경고를 출력합니다. `L2`는 `recommended`, `L3` 이상은 `required`입니다.
 
-v0.1의 frontmatter parser는 full YAML 구현이 아닙니다. 지원 범위는 문자열, 숫자, boolean, 빈 배열, 문자열 배열, 단순 nested object에 한정합니다. Quest 파일은 이 subset 안에서 사람이 읽고 고칠 수 있게 유지합니다.
+## v0.2 Memory Delta Proposal
 
-`orange identity build`는 v0.1 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`에 Seed Kernel 상태 요약만 self-contained HTML로 생성합니다.
+`orange remember`는 완료된 Quest에서 프로젝트 기억 후보를 제안하고, 사용자가 수동으로 승인하거나 거절하는 단계만 제공합니다.
+
+```bash
+orange remember propose --quest <completed-quest-id>
+orange remember list
+orange remember show <proposal-id>
+orange remember accept <proposal-id>
+orange remember reject <proposal-id>
+```
+
+Proposal은 `.orange-hyper/proposals/memory-delta/pending/`에 Markdown + YAML frontmatter로 저장됩니다. 필수 섹션은 `Candidate Memory`, `Why this should be remembered`, `Evidence`, `Suggested Node`입니다. `accept`는 pending proposal을 accepted로 옮기고 `.orange-hyper/graph/nodes/<type>/`에 provenance가 포함된 graph node 후보를 생성합니다. `reject`는 proposal을 rejected로 옮기며 graph node를 만들지 않습니다.
+
+중요한 경계:
+
+- 자동 memory write는 없습니다.
+- `L0`/`L1` Quest는 v0.2에서 기본 proposal 대상이 아닙니다.
+- raw prompt 전체를 저장하지 않습니다.
+- Memory Graph rendering, MCP, hook, subagent, role system, auto planner, auto execution loop는 포함하지 않습니다.
+
+현재 frontmatter parser는 full YAML 구현이 아닙니다. 지원 범위는 문자열, 숫자, boolean, 빈 배열, 문자열 배열, 단순 nested object에 한정합니다. Quest와 Memory Delta Proposal 파일은 이 subset 안에서 사람이 읽고 고칠 수 있게 유지합니다.
+
+`orange identity build`는 v0.2에서도 placeholder입니다. Memory graph rendering은 아직 활성화하지 않으며, `.orange-hyper/identity/orange-hyper.html`에 Seed Kernel 상태 요약과 memory proposal/node count만 self-contained HTML로 생성합니다.
 
 ## Source checkout usage
 
@@ -150,12 +183,13 @@ node bin/orange.js init
 node bin/orange.js quest new "Quest/Goal Capsule 기능 구현" --layer L3 --verify "node --test"
 node bin/orange.js route --quest <quest-id>
 node bin/orange.js capsule
+node bin/orange.js remember propose --quest <completed-quest-id>
 node bin/orange.js identity build
 ```
 
 npm package는 `orange-hyper` package와 `orange` CLI로 배포됩니다. Node 20 이상을 요구하고, package에는 `bin/`, `src/`, `docs/`, `RELEASE_NOTES.md`, `README.md`, `LICENSE`만 포함합니다.
 
-v0.1에서 의도적으로 하지 않는 것:
+v0.2에서 의도적으로 하지 않는 것:
 
 - hook 구현
 - MCP 구현
@@ -169,3 +203,4 @@ v0.1에서 의도적으로 하지 않는 것:
 - postinstall mutation
 - provider/model bridge
 - Memory Graph rendering
+- automatic memory write

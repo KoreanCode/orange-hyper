@@ -1,5 +1,65 @@
 # Release Notes
 
+## v0.2.0-alpha.0
+
+Memory Delta Proposal alpha release.
+
+This release adds the proposal-first memory workflow without enabling full
+Memory Graph rendering or automatic memory writes.
+
+- Package version is `0.2.0-alpha.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- New CLI commands:
+  - `orange remember propose --quest <quest-id>`
+  - `orange remember list`
+  - `orange remember show <proposal-id>`
+  - `orange remember accept <proposal-id>`
+  - `orange remember reject <proposal-id>`
+- Completed L2+ Quests can produce pending Memory Delta Proposals when they have
+  verification evidence or an unverified reason.
+- L0/L1 Quests are blocked from default memory proposal generation.
+- `accept` moves a pending proposal to accepted and creates a graph node
+  candidate with proposal/source Quest provenance.
+- `reject` moves a pending proposal to rejected and does not create graph nodes.
+- `doctor` validates proposal schema, source Quest existence, status/location
+  consistency, accepted graph provenance, rejected no-node state, graph JSON,
+  and traversal-safe ids.
+- `identity build` remains a placeholder and adds memory proposal/node counts
+  plus top proposal node types. It does not render a graph.
+
+Explicitly not included:
+
+- Memory Graph rendering
+- Obsidian-style dashboard graph
+- MCP/hooks/subagents/role evolution
+- auto planner or auto execution loop
+- raw prompt archive
+- unapproved graph node creation
+- default L0/L1 memory proposal generation
+
+### Verification Checklist
+
+```bash
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+```
+
+Fresh temp smoke:
+
+```bash
+node bin/orange.js init
+node bin/orange.js quest new "remember a durable decision" --layer L2 --json
+node bin/orange.js quest done <quest-id> --evidence "manual smoke passed" --json
+node bin/orange.js remember propose --quest <quest-id> --json
+node bin/orange.js remember list --json
+node bin/orange.js remember show <proposal-id> --json
+node bin/orange.js remember accept <proposal-id> --json
+node bin/orange.js doctor --json
+node bin/orange.js identity build --json
+```
+
 ## v0.1.0
 
 Seed Kernel stable release.

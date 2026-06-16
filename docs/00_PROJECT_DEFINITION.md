@@ -102,15 +102,16 @@ orange-hyper
 
 ## 10. 첫 공개 버전의 제품 약속
 
-v0.1은 완성형 하네스가 아니다. v0.1은 다음만 보장한다.
+v0.2 alpha는 완성형 하네스가 아니다. v0.2 alpha는 다음만 보장한다.
 
-- repo-local `.orange/` 구조 생성
-- Intent Capsule 생성
-- Memory Node schema 정의
-- Context Capsule 생성
-- Memory Delta 제안
+- repo-local `.orange-hyper/` 구조 생성
+- Quest 생성/완료
 - Route Contract 기록
-- Token/Eval trace 기록
+- Current Capsule 생성
+- Memory Delta Proposal 생성
+- 사용자 accept 시 graph node 후보 생성
+- Doctor 검증
+- Identity placeholder count 생성
 - 자동 hook 없음
 - 자동 MCP 없음
 - 자동 subagent 없음

@@ -1,6 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CONFIG_VERSION, ORANGE_GITIGNORE } from "./config.js";
+import {
+  findGraphNodesForProposal,
+  memoryDeltaProposalFiles,
+  readMemoryDeltaProposalFile,
+  validateGraphJson,
+  validateMemoryDeltaProposal
+} from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { questFiles, readQuestFile, validateQuestDocument } from "./quest.js";
 
@@ -16,6 +23,9 @@ export function runDoctor(cwd = process.cwd()) {
   checkExists(paths.activeQuests, "directory", "quests/active", errors, checks);
   checkExists(paths.completedQuests, "directory", "quests/completed", errors, checks);
   checkExists(paths.currentCapsule, "file", "capsules/current.md", errors, checks);
+  checkExists(paths.pendingMemoryDeltaProposals, "directory", "proposals/memory-delta/pending", errors, checks);
+  checkExists(paths.acceptedMemoryDeltaProposals, "directory", "proposals/memory-delta/accepted", errors, checks);
+  checkExists(paths.rejectedMemoryDeltaProposals, "directory", "proposals/memory-delta/rejected", errors, checks);
   checkExists(paths.routeTrace, "file", "traces/route.jsonl", errors, checks);
 
   if (fs.existsSync(paths.config)) {
@@ -75,6 +85,52 @@ export function runDoctor(cwd = process.cwd()) {
     });
     checks.push(`traces/route.jsonl has ${lines.length} entr${lines.length === 1 ? "y" : "ies"}`);
   }
+
+  if (fs.existsSync(paths.memoryDeltaProposals)) {
+    for (const filePath of memoryDeltaProposalFiles(cwd, "all")) {
+      let proposal;
+      try {
+        proposal = readMemoryDeltaProposalFile(filePath);
+      } catch (error) {
+        errors.push(`${path.relative(cwd, filePath)} failed to parse: ${error.message}`);
+        continue;
+      }
+      errors.push(...validateMemoryDeltaProposal(proposal, { cwd }));
+      if (proposal.data.status === "accepted") {
+        try {
+          const nodes = findGraphNodesForProposal(cwd, proposal.data.id);
+          if (!nodes.length) {
+            errors.push(`accepted memory proposal ${proposal.data.id} has no graph node provenance`);
+          }
+          for (const node of nodes) {
+            if (node.data.source_quest !== proposal.data.source_quest || node.data.provenance?.source_quest !== proposal.data.source_quest) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} provenance does not match accepted proposal ${proposal.data.id}`);
+            }
+            if (node.data.source_proposal !== proposal.data.id || node.data.provenance?.proposal_id !== proposal.data.id) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} missing proposal provenance for ${proposal.data.id}`);
+            }
+          }
+        } catch (error) {
+          errors.push(`accepted memory proposal ${proposal.data.id} graph provenance check failed: ${error.message}`);
+        }
+      }
+      if (proposal.data.status === "rejected") {
+        try {
+          const nodes = findGraphNodesForProposal(cwd, proposal.data.id);
+          if (nodes.length) {
+            errors.push(`rejected memory proposal ${proposal.data.id} must not have graph nodes`);
+          }
+        } catch (error) {
+          errors.push(`rejected memory proposal ${proposal.data.id} graph check failed: ${error.message}`);
+        }
+      }
+      checks.push(`${path.relative(paths.root, proposal.filePath)} parses`);
+    }
+  }
+
+  const graphJson = validateGraphJson(cwd);
+  errors.push(...graphJson.errors);
+  checks.push(...graphJson.checks);
 
   return { ok: errors.length === 0, errors, warnings, checks };
 }

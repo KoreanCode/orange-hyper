@@ -1,7 +1,7 @@
 # Adapter Contract
 
-Orange Hyper v0.1 is a Seed Kernel. The `orange` CLI is the kernel control
-plane, not the final end-user UX.
+Orange Hyper v0.2 alpha is still a Seed Kernel. The `orange` CLI is the kernel
+control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -41,16 +41,21 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. For the
-`v0.1.0` stable release, `"0.1"` is the stable Seed Kernel adapter contract and
-appears in both success and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. v0.2 alpha keeps
+`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
+and failure envelopes.
 
-`command` uses dot notation. The v0.1 Seed Kernel command ids are:
+`command` uses dot notation. The Seed Kernel command ids are:
 
 - `quest.new`
 - `route.show`
 - `capsule.build`
 - `quest.done`
+- `remember.propose`
+- `remember.list`
+- `remember.show`
+- `remember.accept`
+- `remember.reject`
 - `doctor.run`
 - `identity.build`
 
@@ -225,6 +230,76 @@ orange quest done quest_20260616_000000Z_implement-adapter-json-contract --evide
 `--evidence-file <path>` is also valid in JSON mode. The kernel reads the UTF-8
 file and records the trimmed content as verification evidence.
 
+### `remember propose --json`
+
+```bash
+orange remember propose --quest quest_20260616_000000Z_implement-adapter-json-contract --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "remember.propose",
+  "data": {
+    "proposal": {
+      "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "status": "pending",
+      "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "node_type": "decision",
+      "confidence": "medium",
+      "created_at": "2026-06-16T00:04:00.000Z",
+      "updated_at": "2026-06-16T00:04:00.000Z",
+      "title": "Implement adapter JSON contract"
+    }
+  }
+}
+```
+
+`remember list --json`, `remember show --json`, `remember accept --json`, and
+`remember reject --json` use the same envelope. `accept` is the only command
+that creates a graph node candidate, and its JSON payload includes node
+provenance:
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "remember.accept",
+  "data": {
+    "proposal": {
+      "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "file": ".orange-hyper/proposals/memory-delta/accepted/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "status": "accepted",
+      "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "node_type": "decision",
+      "confidence": "medium",
+      "created_at": "2026-06-16T00:04:00.000Z",
+      "updated_at": "2026-06-16T00:05:00.000Z",
+      "title": "Implement adapter JSON contract"
+    },
+    "node": {
+      "id": "decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+      "kind": "decision",
+      "status": "candidate",
+      "confidence": "medium",
+      "source_proposal": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+      "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "provenance": {
+        "proposal_id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+        "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract"
+      }
+    }
+  }
+}
+```
+
+Adapters must not create memory proposal or graph node files directly. They
+should call `remember propose` and wait for user approval through
+`remember accept` or `remember reject`.
+
 ### `doctor --json`
 
 ```bash
@@ -247,6 +322,9 @@ orange doctor --json
       "quests/active exists",
       "quests/completed exists",
       "capsules/current.md exists",
+      "proposals/memory-delta/pending exists",
+      "proposals/memory-delta/accepted exists",
+      "proposals/memory-delta/rejected exists",
       "traces/route.jsonl exists",
       "config.json parses",
       ".orange-hyper/.gitignore policy checked",
@@ -311,6 +389,16 @@ orange identity build --json
       "completedCount": 1,
       "verifiedCount": 1,
       "unverifiedCount": 0,
+      "pendingMemoryProposals": 0,
+      "acceptedMemoryProposals": 1,
+      "rejectedMemoryProposals": 0,
+      "acceptedMemoryNodes": 1,
+      "topProposalNodeTypes": [
+        {
+          "nodeType": "decision",
+          "count": 1
+        }
+      ],
       "routeDistribution": {
         "L2": 1
       }
@@ -321,15 +409,15 @@ orange identity build --json
 
 ## Exit Codes
 
-| Code | Meaning | v0.1 expectation |
+| Code | Meaning | Seed Kernel expectation |
 | --- | --- | --- |
 | 0 | success | Command completed and any JSON payload has `"ok": true`. |
 | 1 | user/input error | Missing command input, invalid flag combination, unknown command, or missing required evidence. |
 | 2 | validation/schema error | Invalid kernel state, invalid quest/frontmatter/route schema, or failed `doctor` validation. |
 | 3 | filesystem error | Missing unreadable files, permission failures, or filesystem operations that cannot complete. |
-| 4 | internal invariant error | A kernel invariant failed unexpectedly. This should be rare in v0.1. |
+| 4 | internal invariant error | A kernel invariant failed unexpectedly. This should be rare in the Seed Kernel. |
 
-v0.1 prioritizes non-zero failure and clear error messages over perfect
+The Seed Kernel prioritizes non-zero failure and clear error messages over perfect
 subclassification. Adapters should branch first on `ok`, then on `error.code`
 and process exit code when they need more detail.
 
@@ -339,7 +427,9 @@ and process exit code when they need more detail.
 - Treat human-readable output as unstable display text.
 - Call `orange` commands instead of editing `.orange-hyper` state directly.
 - Preserve kernel ownership of Quest completion, Route trace, Capsule writes,
-  Doctor validation, and Identity generation.
+  Memory Delta Proposal transitions, Doctor validation, and Identity generation.
 - Do not duplicate Seed Kernel state logic in natural-language workflows.
 - Do not add Memory Graph, MCP, hooks, subagents, role evolution, auto planner,
-  or auto execution loop behavior in adapters for the v0.1 Seed Kernel contract.
+  or auto execution loop behavior in adapters for the Seed Kernel contract.
+- Do not write memory automatically. Only accepted proposals create graph node
+  candidates.

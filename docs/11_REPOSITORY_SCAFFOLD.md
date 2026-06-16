@@ -1,6 +1,6 @@
 # Repository Scaffold
 
-이 문서는 v0.1.0-alpha.0 Seed Kernel의 실제 저장소와 생성 파일 구조를 기준으로 한다. Memory Graph, MCP, Hook, Subagent, Role Evolution, 자동 planner, 자동 execution loop는 이 버전에 포함하지 않는다.
+이 문서는 v0.2.0-alpha.0 Seed Kernel의 실제 저장소와 생성 파일 구조를 기준으로 한다. Memory Graph rendering, MCP, Hook, Subagent, Role Evolution, 자동 planner, 자동 execution loop는 이 버전에 포함하지 않는다.
 
 ## 1. 현재 repo 구조
 
@@ -17,6 +17,7 @@ orange-hyper/
       doctor.js
       frontmatter.js
       identity.js
+      memory.js
       paths.js
       quest.js
       route.js
@@ -32,7 +33,7 @@ orange-hyper/
   package.json
 ```
 
-v0.1은 build step 없이 Node ESM source를 그대로 package에 포함한다. 외부 runtime dependency는 없다.
+v0.2 alpha는 build step 없이 Node ESM source를 그대로 package에 포함한다. 외부 runtime dependency는 없다.
 
 ## 2. `orange init` 생성 결과
 
@@ -45,8 +46,28 @@ v0.1은 build step 없이 Node ESM source를 그대로 package에 포함한다. 
     completed/
   capsules/
     current.md
+  proposals/
+    memory-delta/
+      pending/
+      accepted/
+      rejected/
   traces/
     route.jsonl
+```
+
+`orange remember accept` 실행 후에는 다음 graph candidate artifact가 추가된다.
+
+```text
+.orange-hyper/
+  graph/
+    nodes/
+      decision/
+      constraint/
+      component/
+      risk/
+      verification/
+    edges.jsonl
+    index.json
 ```
 
 `orange identity build` 실행 후에는 다음 generated artifact가 추가된다.
@@ -76,7 +97,7 @@ local/
 ```json
 {
   "name": "orange-hyper",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0-alpha.0",
   "type": "module",
   "bin": {
     "orange": "./bin/orange.js"
@@ -87,8 +108,8 @@ local/
   "files": [
     "bin",
     "src",
-    "templates",
     "docs",
+    "RELEASE_NOTES.md",
     "README.md",
     "LICENSE"
   ]
@@ -108,11 +129,16 @@ orange route <request>
 orange route --quest <quest-id>
 orange capsule --quest <quest-id>
 orange quest done <quest-id> (--evidence <text> | --unverified <reason>)
+orange remember propose --quest <quest-id>
+orange remember list
+orange remember show <proposal-id>
+orange remember accept <proposal-id>
+orange remember reject <proposal-id>
 orange doctor
 orange identity build
 ```
 
-## 6. v0.1 Release Checklist
+## 6. v0.2 Release Checklist
 
 ```text
 [ ] .DS_Store not tracked and not present in worktree
@@ -123,9 +149,13 @@ orange identity build
 [ ] route trace is JSONL
 [ ] capsule current.md generation works
 [ ] quest done requires evidence or unverified reason
+[ ] remember propose works only for completed L2+ quests
+[ ] remember accept creates graph node provenance
+[ ] remember reject does not create graph nodes
 [ ] doctor catches broken Quest/frontmatter/verification state
+[ ] doctor catches broken memory proposal/provenance state
 [ ] path traversal selectors fail safely
-[ ] identity build creates placeholder HTML
+[ ] identity build creates placeholder HTML with memory proposal counts
 [ ] npm test passes
 [ ] git diff --check passes
 [ ] npm pack --dry-run excludes generated/local files

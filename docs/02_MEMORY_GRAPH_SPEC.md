@@ -13,6 +13,87 @@
 - memory write는 기본적으로 proposal-first다.
 - retrieval은 token budget을 가져야 한다.
 
+## 2.1 v0.2 Memory Delta Proposal 범위
+
+v0.2는 Memory Graph 전체 구현이 아니라 "기억 후보 제안/승인" 단계다.
+
+포함:
+
+```text
+orange remember propose --quest <completed-quest-id>
+orange remember list
+orange remember show <proposal-id>
+orange remember accept <proposal-id>
+orange remember reject <proposal-id>
+```
+
+제외:
+
+```text
+Memory Graph rendering
+Obsidian-style dashboard graph
+MCP/hooks/subagents/role evolution
+auto planner / auto execution loop
+raw prompt 전체 저장
+사용자 승인 없는 graph node 생성
+L0/L1 작업의 기본 memory proposal 활성화
+```
+
+Proposal 저장 구조:
+
+```text
+.orange-hyper/
+  proposals/
+    memory-delta/
+      pending/
+      accepted/
+      rejected/
+```
+
+`accept`가 처음 실행되면 graph node 후보 저장소를 만든다.
+
+```text
+.orange-hyper/
+  graph/
+    nodes/
+      decision/
+      constraint/
+      component/
+      risk/
+      verification/
+    edges.jsonl
+    index.json
+```
+
+Memory Delta Proposal은 Markdown + YAML frontmatter다. 필수
+frontmatter:
+
+```yaml
+schema_version: 1
+id: mem_delta_...
+status: pending
+source_quest: quest_...
+node_type: decision
+confidence: medium
+created_at: 2026-06-16T00:00:00.000Z
+updated_at: 2026-06-16T00:00:00.000Z
+```
+
+필수 본문 섹션:
+
+```text
+## Candidate Memory
+## Why this should be remembered
+## Evidence
+## Suggested Node
+```
+
+`propose`는 completed Quest만 대상으로 하며, source Quest에는
+verification evidence 또는 unverified reason이 있어야 한다. `L0`/`L1`
+Quest는 기본적으로 proposal 대상이 아니다. `accept`는 pending proposal을
+accepted로 옮기고 proposal id와 source quest provenance가 포함된 graph node
+후보를 생성한다. `reject`는 rejected로 옮기며 graph node를 생성하지 않는다.
+
 ## 3. Node 타입
 
 ### 3.1 Intent Node
@@ -282,22 +363,43 @@ Potentially stale:
 proposal 예시:
 
 ```md
-# Memory Delta Proposal
+---
+schema_version: 1
+id: mem_delta_quest_20260616_000000Z_signup-policy_decision
+status: pending
+source_quest: quest_20260616_000000Z_signup-policy
+node_type: decision
+confidence: medium
+created_at: 2026-06-16T00:00:00.000Z
+updated_at: 2026-06-16T00:00:00.000Z
+---
 
-Type: decision
-Summary: 탈퇴 사용자는 같은 이메일로 재가입 가능하다
-Evidence: UserServiceTest passed, SignupIntegrationTest passed
-Scope: component.auth
-Confidence: 0.8
-Accept command: orange remember accept proposal_001
-Reject command: orange remember reject proposal_001
+# Memory Delta Proposal: 탈퇴 이메일 재가입 정책
+
+## Candidate Memory
+
+탈퇴 사용자는 같은 이메일로 재가입 가능하다.
+
+## Why this should be remembered
+
+반복될 가능성이 있는 프로젝트 정책 결정이다.
+
+## Evidence
+
+- Source Quest: quest_20260616_000000Z_signup-policy
+- Evidence: UserServiceTest passed
+
+## Suggested Node
+
+- Type: decision
+- Confidence: medium
 ```
 
 ## 10. Privacy 원칙
 
 - secrets는 memory에 저장하지 않는다.
 - token, password, private key, customer PII는 redaction 대상이다.
-- `.orange/local/`은 기본적으로 gitignore한다.
+- `.orange-hyper/local/`은 기본적으로 gitignore한다.
 - team-shared memory와 personal memory를 분리한다.
 
 ## 11. 좋은 memory와 나쁜 memory
@@ -319,15 +421,15 @@ AuthIntegrationTest는 embedded redis가 필요하다.
 일회성 파일 경로 without durable meaning.
 ```
 
-## 12. MVP 구현 기준
+## 12. v0.2 구현 기준
 
-v0.1은 다음만 구현한다.
+v0.2는 다음만 구현한다.
 
-- markdown node parser
-- edges.jsonl reader/writer
-- index builder
-- simple keyword + kind filtering
-- Context Capsule builder
 - Memory Delta proposal writer
+- proposal list/show
+- manual accept/reject
+- accepted graph node candidate writer
+- doctor validation for proposal/provenance state
+- identity placeholder counts
 
-vector DB, graph DB, embeddings는 v0.1에서 제외한다.
+active retrieval, graph rendering, vector DB, graph DB, embeddings는 v0.2에서 제외한다.

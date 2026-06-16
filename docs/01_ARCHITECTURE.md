@@ -25,7 +25,7 @@ Runtime Adapter Layer
 - future IDE adapter
 
 Storage Layer
-- .orange/graph nodes
+- .orange-hyper/graph nodes
 - edges.jsonl
 - index.json
 - traces
@@ -138,46 +138,36 @@ Excluded memory:
 
 반복되는 evidence를 기반으로 role, tool, MCP, verification routine을 unlock한다. 성장 규칙은 자동 적용이 아니라 proposal-first다.
 
-## 4. `.orange/` 디렉터리 설계
+## 4. `.orange-hyper/` 디렉터리 설계
 
 ```text
-.orange/
-  config.yaml
+.orange-hyper/
+  config.json
+  quests/
+    active/
+    completed/
   graph/
     nodes/
-      intent/
       decision/
       constraint/
       component/
       risk/
       verification/
-      convention/
-      tool/
-      role/
-      episode/
     edges.jsonl
     index.json
   capsules/
     current.md
-    archive/
   traces/
     route.jsonl
-    token.jsonl
-    verification.jsonl
   proposals/
     memory-delta/
-    mcp/
-    role/
-    hook/
-  growth/
-    profile.yaml
-    unlocks.jsonl
+      pending/
+      accepted/
+      rejected/
   local/
-    user-preferences.md
-    private-notes.md
 ```
 
-`local/`은 기본적으로 `.gitignore` 대상이다. 팀이 공유해야 하는 것은 `graph/`, `config.yaml`, `docs/`에 둔다.
+`local/`은 기본적으로 `.gitignore` 대상이다. v0.2에서 `graph/`는 accepted proposal이 만드는 node 후보 저장소이며, active retrieval이나 graph rendering은 아직 하지 않는다.
 
 ## 5. 상태 변경 원칙
 
@@ -191,19 +181,21 @@ observed → proposed → accepted/rejected → indexed → retrieved
 
 ## 6. MVP 구현 범위
 
-v0.1에서 필요한 최소 컴포넌트:
+v0.2에서 필요한 최소 컴포넌트:
 
 ```text
 orange init
-orange intent <prompt>
-orange route <intent-file>
-orange capsule <intent-file>
-orange remember --propose
-orange trace list
+orange quest new <request>
+orange route --quest <quest-id>
+orange capsule --quest <quest-id>
+orange quest done <quest-id>
+orange remember propose --quest <quest-id>
+orange remember list/show/accept/reject
 orange doctor
+orange identity build
 ```
 
-v0.1에서 하지 않을 것:
+v0.2에서 하지 않을 것:
 
 - hook 자동 설치
 - MCP 자동 설치
@@ -211,6 +203,8 @@ v0.1에서 하지 않을 것:
 - role 자동 생성
 - branch/PR workflow 생성
 - LLM API 호출 필수화
+- Memory Graph rendering
+- 자동 memory write
 
 ## 7. 기술 스택 제안
 

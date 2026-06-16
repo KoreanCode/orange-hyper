@@ -39,7 +39,7 @@ orange
 ```json
 {
   "name": "orange-hyper",
-  "version": "0.1.0-alpha.0",
+  "version": "0.2.0-alpha.0",
   "type": "module",
   "bin": {
     "orange": "./bin/orange.js"
@@ -47,8 +47,8 @@ orange
   "files": [
     "bin",
     "src",
-    "templates",
     "docs",
+    "RELEASE_NOTES.md",
     "README.md",
     "LICENSE"
   ],
@@ -72,7 +72,7 @@ pnpm add -D orange-hyper
 - 자동 dotfile 수정 금지.
 - `orange init`도 기본적으로 생성 파일을 명확히 보여준다.
 - 위험 작업은 `--yes` 또는 명시 승인 필요.
-- v0.1 alpha package에는 `.orange-hyper/`, `.DS_Store`, tests, coverage, local traces, generated identity HTML을 포함하지 않는다.
+- alpha package에는 `.orange-hyper/`, `.DS_Store`, tests, coverage, local traces, generated identity HTML을 포함하지 않는다.
 
 ### 2.2 Secondary: GitHub Releases
 
@@ -94,8 +94,8 @@ GitHub Release는 npm 배포의 보조 채널이다.
 ```text
 v0.1.0-alpha.0 — Seed Kernel
 v0.1.0 — Seed Kernel Stable
-v0.2.0 — Memory Graph Usability
-v0.3.0 — Identity Dashboard
+v0.2.0-alpha.0 — Memory Delta Proposal
+v0.3.0 — Memory Graph Usability + Identity Graph Preview
 v0.4.0 — Minimal Hook Preview
 v0.5.0 — MCP Advisor
 ```

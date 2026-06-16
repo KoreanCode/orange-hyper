@@ -50,9 +50,10 @@ identity build는 Seed Kernel 상태 요약 placeholder HTML만 생성한다.
 - `.orange-hyper/proposals/memory-delta/`
 - proposal markdown schema
 - source Quest/evidence link
-- accepted/rejected/manual-review status
-- proposal list/show commands
+- pending/accepted/rejected status
+- `orange remember propose/list/show/accept/reject`
 - doctor checks for malformed proposals
+- accept 시 graph node 후보와 provenance 생성
 
 제외:
 
@@ -60,12 +61,15 @@ identity build는 Seed Kernel 상태 요약 placeholder HTML만 생성한다.
 - active Memory Graph search
 - node/edge graph rendering
 - hook-triggered proposal generation
+- raw prompt 전체 저장
+- L0/L1 Quest의 기본 proposal 활성화
 
 완료 기준:
 
 ```text
-완료된 Quest에서 decision/constraint/verification 후보를 proposal file로 남기고,
-사용자가 수동으로 accept/reject/revise할 수 있다.
+완료된 L2+ Quest에서 decision/constraint/component/risk/verification 후보를
+proposal file로 남기고, 사용자가 수동으로 accept/reject할 수 있다.
+accept한 proposal만 graph node 후보를 생성한다.
 ```
 
 ## 4. v0.3 — Memory Graph Usability + Identity Graph Preview
@@ -200,7 +204,7 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 2. proposal writer command
 3. proposal list/show commands
 4. source Quest/evidence link
-5. accept/reject/revise status
+5. accept/reject status
 6. doctor validation for proposals
 7. tests
 8. README and examples

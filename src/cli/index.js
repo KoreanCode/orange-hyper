@@ -4,6 +4,13 @@ import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
 import { buildIdentityPlaceholder } from "../core/identity.js";
+import {
+  acceptMemoryDelta,
+  findMemoryDeltaProposal,
+  listMemoryDeltaProposals,
+  proposeMemoryDelta,
+  rejectMemoryDelta
+} from "../core/memory.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
@@ -27,6 +34,13 @@ const COMMAND_IDS = {
   quest: {
     done: "quest.done",
     new: "quest.new"
+  },
+  remember: {
+    accept: "remember.accept",
+    list: "remember.list",
+    propose: "remember.propose",
+    reject: "remember.reject",
+    show: "remember.show"
   },
   route: "route.show"
 };
@@ -97,6 +111,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "identity") {
     await identityCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "remember") {
+    await rememberCommand(cwd, io, rest);
     return;
   }
 
@@ -213,6 +232,92 @@ async function identityCommand(cwd, io, argv) {
   }
 }
 
+async function rememberCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, rememberUsage());
+    return;
+  }
+  if (subcommand === "propose") {
+    const args = parseArgs(rest);
+    const questSelector = args.flags.quest;
+    const proposal = proposeMemoryDelta(cwd, questSelector);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.propose, {
+        proposal: formatMemoryProposalJson(cwd, proposal, { includeBody: false })
+      }));
+      return;
+    }
+    write(io, `Created memory proposal: ${proposal.data.id}`);
+    write(io, `File: ${path.relative(cwd, proposal.filePath)}`);
+    write(io, "Next:");
+    write(io, `  orange remember show ${proposal.data.id}`);
+    write(io, `  orange remember accept ${proposal.data.id}`);
+    write(io, `  orange remember reject ${proposal.data.id}`);
+    return;
+  }
+  if (subcommand === "list") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const proposals = listMemoryDeltaProposals(cwd, "all");
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.list, {
+        proposals: proposals.map((proposal) => formatMemoryProposalJson(cwd, proposal, { includeBody: false }))
+      }));
+      return;
+    }
+    write(io, formatMemoryProposalList(proposals));
+    return;
+  }
+  if (subcommand === "show") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const proposal = findMemoryDeltaProposal(cwd, selector);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.show, {
+        proposal: formatMemoryProposalJson(cwd, proposal, { includeBody: true })
+      }));
+      return;
+    }
+    write(io, proposal.source.trimEnd());
+    return;
+  }
+  if (subcommand === "accept") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const accepted = acceptMemoryDelta(cwd, selector);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.accept, {
+        proposal: formatMemoryProposalJson(cwd, accepted.proposal, { includeBody: false }),
+        node: formatMemoryNodeJson(cwd, accepted.node)
+      }));
+      return;
+    }
+    write(io, `Accepted memory proposal: ${accepted.proposal.data.id}`);
+    write(io, `Proposal: ${path.relative(cwd, accepted.proposal.filePath)}`);
+    write(io, `Node: ${path.relative(cwd, accepted.node.filePath)}`);
+    return;
+  }
+  if (subcommand === "reject") {
+    requireInitialized(cwd);
+    const args = parseArgs(rest);
+    const selector = args.positionals[0];
+    const rejected = rejectMemoryDelta(cwd, selector);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.remember.reject, {
+        proposal: formatMemoryProposalJson(cwd, rejected, { includeBody: false })
+      }));
+      return;
+    }
+    write(io, `Rejected memory proposal: ${rejected.data.id}`);
+    write(io, `Proposal: ${path.relative(cwd, rejected.filePath)}`);
+    return;
+  }
+  throw new Error(`Unknown remember command: ${subcommand}`);
+}
+
 async function routeCommand(cwd, io, argv) {
   requireInitialized(cwd);
   const args = parseArgs(argv);
@@ -294,6 +399,32 @@ function formatQuestList(quests) {
   const header = `${"STATUS".padEnd(widths.status)}  ${"ID".padEnd(widths.id)}  ${"LAYER".padEnd(widths.layer)}  ${"VERIFICATION".padEnd(widths.verification)}  TITLE`;
   const lines = rows.map((row) =>
     `${row.status.padEnd(widths.status)}  ${row.id.padEnd(widths.id)}  ${row.layer.padEnd(widths.layer)}  ${String(row.verification).padEnd(widths.verification)}  ${row.title}`
+  );
+  return [header, ...lines].join("\n");
+}
+
+function formatMemoryProposalList(proposals) {
+  if (!proposals.length) {
+    return "No memory proposals found.";
+  }
+  const rows = proposals.map((proposal) => ({
+    status: proposal.data.status,
+    id: proposal.data.id,
+    type: proposal.data.node_type,
+    confidence: proposal.data.confidence,
+    source: proposal.data.source_quest,
+    title: proposal.data.title || proposal.data.id
+  }));
+  const widths = {
+    status: Math.max(6, ...rows.map((row) => row.status.length)),
+    id: Math.max(2, ...rows.map((row) => row.id.length)),
+    type: Math.max(4, ...rows.map((row) => row.type.length)),
+    confidence: Math.max(10, ...rows.map((row) => row.confidence.length)),
+    source: Math.max(6, ...rows.map((row) => row.source.length))
+  };
+  const header = `${"STATUS".padEnd(widths.status)}  ${"ID".padEnd(widths.id)}  ${"TYPE".padEnd(widths.type)}  ${"CONFIDENCE".padEnd(widths.confidence)}  ${"SOURCE".padEnd(widths.source)}  TITLE`;
+  const lines = rows.map((row) =>
+    `${row.status.padEnd(widths.status)}  ${row.id.padEnd(widths.id)}  ${row.type.padEnd(widths.type)}  ${row.confidence.padEnd(widths.confidence)}  ${row.source.padEnd(widths.source)}  ${row.title}`
   );
   return [header, ...lines].join("\n");
 }
@@ -506,6 +637,38 @@ function formatIdentityJson(cwd, identity, args) {
   return data;
 }
 
+function formatMemoryProposalJson(cwd, proposal, options = {}) {
+  const data = {
+    id: proposal.data.id,
+    file: path.relative(cwd, proposal.filePath),
+    status: proposal.data.status,
+    source_quest: proposal.data.source_quest,
+    node_type: proposal.data.node_type,
+    confidence: proposal.data.confidence,
+    created_at: proposal.data.created_at,
+    updated_at: proposal.data.updated_at,
+    title: proposal.data.title || ""
+  };
+  if (options.includeBody) {
+    data.body = proposal.body;
+    data.content = proposal.source;
+  }
+  return data;
+}
+
+function formatMemoryNodeJson(cwd, node) {
+  return {
+    id: node.data.id,
+    file: path.relative(cwd, node.filePath),
+    kind: node.data.kind,
+    status: node.data.status,
+    confidence: node.data.confidence,
+    source_proposal: node.data.source_proposal,
+    source_quest: node.data.source_quest,
+    provenance: node.data.provenance || {}
+  };
+}
+
 function formatQuestJson(cwd, quest) {
   return {
     id: quest.data.id,
@@ -534,6 +697,11 @@ function usage() {
     "  quest done <id> (--evidence <text> | --evidence-file <path> | --unverified <reason>) [--json]",
     "  route <request> [--quest <id>] [--layer L2] [--json]",
     "  capsule [quest-id|--quest <id>] [--json]",
+    "  remember propose --quest <quest-id> [--json]",
+    "  remember list [--json]",
+    "  remember show <proposal-id> [--json]",
+    "  remember accept <proposal-id> [--json]",
+    "  remember reject <proposal-id> [--json]",
     "  identity build [--json]",
     "  doctor [--json]"
   ].join("\n");
@@ -557,5 +725,18 @@ function identityUsage() {
     "",
     "Commands:",
     "  build [--json]"
+  ].join("\n");
+}
+
+function rememberUsage() {
+  return [
+    "orange remember <command>",
+    "",
+    "Commands:",
+    "  propose --quest <quest-id> [--json]",
+    "  list [--json]",
+    "  show <proposal-id> [--json]",
+    "  accept <proposal-id> [--json]",
+    "  reject <proposal-id> [--json]"
   ].join("\n");
 }

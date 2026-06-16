@@ -19,7 +19,7 @@ Hook should not force ceremony by default.
 
 목적:
 
-- `.orange/index.json` 확인
+- `.orange-hyper/graph/index.json` 확인
 - 현재 repo의 minimal Context Capsule 후보 주입
 - growth profile 요약
 
@@ -98,7 +98,7 @@ S4: hard block, explicit user opt-in only
 
 ## 6. Hook 이벤트별 MVP
 
-v0.2 후보:
+v0.4 후보:
 
 ```text
 SessionStart:
@@ -106,7 +106,7 @@ SessionStart:
 
 Stop:
   orange doctor --turn-end
-  orange remember --propose
+  orange remember propose --quest <completed-quest-id>
 ```
 
 v0.3 후보:

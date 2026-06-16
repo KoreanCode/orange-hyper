@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { readConfig, requireInitialized } from "./config.js";
+import { listMemoryGraphNodes, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
 import { nowIso } from "./time.js";
@@ -15,6 +16,9 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const verified = completed.filter((quest) => quest.data.verification_status === "verified");
   const unverified = completed.filter((quest) => quest.data.verification_status === "unverified");
   const routeDistribution = readRouteDistribution(paths.routeTrace);
+  const memoryProposalCounts = proposalCountsByStatus(cwd);
+  const acceptedMemoryNodes = listMemoryGraphNodes(cwd).length;
+  const proposalNodeTypes = topProposalNodeTypes(cwd);
   const generatedAt = nowIso(options.clock);
   const projectName = config.project?.name || path.basename(cwd);
 
@@ -26,7 +30,12 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     completedCount: completed.length,
     verifiedCount: verified.length,
     unverifiedCount: unverified.length,
-    routeDistribution
+    routeDistribution,
+    pendingMemoryProposals: memoryProposalCounts.pending,
+    acceptedMemoryProposals: memoryProposalCounts.accepted,
+    rejectedMemoryProposals: memoryProposalCounts.rejected,
+    acceptedMemoryNodes,
+    topProposalNodeTypes: proposalNodeTypes
   });
   fs.writeFileSync(paths.identityHtml, html);
   return {
@@ -38,7 +47,12 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
       completedCount: completed.length,
       verifiedCount: verified.length,
       unverifiedCount: unverified.length,
-      routeDistribution
+      routeDistribution,
+      pendingMemoryProposals: memoryProposalCounts.pending,
+      acceptedMemoryProposals: memoryProposalCounts.accepted,
+      rejectedMemoryProposals: memoryProposalCounts.rejected,
+      acceptedMemoryNodes,
+      topProposalNodeTypes: proposalNodeTypes
     }
   };
 }
@@ -67,6 +81,10 @@ function renderIdentityHtml(model) {
     .map(([layer, count]) => `<tr><td>${escapeHtml(layer)}</td><td>${count}</td></tr>`)
     .join("\n");
   const routes = routeRows || "<tr><td>none</td><td>0</td></tr>";
+  const proposalRows = model.topProposalNodeTypes
+    .map((item) => `<tr><td>${escapeHtml(item.nodeType)}</td><td>${item.count}</td></tr>`)
+    .join("\n");
+  const proposals = proposalRows || "<tr><td>none</td><td>0</td></tr>";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -99,6 +117,10 @@ function renderIdentityHtml(model) {
       <div class="card"><div class="label">Completed Quests</div><div class="value">${model.completedCount}</div></div>
       <div class="card"><div class="label">Verified</div><div class="value">${model.verifiedCount}</div></div>
       <div class="card"><div class="label">Unverified</div><div class="value">${model.unverifiedCount}</div></div>
+      <div class="card"><div class="label">Pending Memory Proposals</div><div class="value">${model.pendingMemoryProposals}</div></div>
+      <div class="card"><div class="label">Accepted Memory Proposals</div><div class="value">${model.acceptedMemoryProposals}</div></div>
+      <div class="card"><div class="label">Rejected Memory Proposals</div><div class="value">${model.rejectedMemoryProposals}</div></div>
+      <div class="card"><div class="label">Accepted Memory Nodes</div><div class="value">${model.acceptedMemoryNodes}</div></div>
     </section>
     <section aria-label="Route distribution">
       <h2>Route Distribution</h2>
@@ -106,6 +128,15 @@ function renderIdentityHtml(model) {
         <thead><tr><th>Route Layer</th><th>Count</th></tr></thead>
         <tbody>
 ${routes}
+        </tbody>
+      </table>
+    </section>
+    <section aria-label="Memory proposal node types">
+      <h2>Memory Proposal Node Types</h2>
+      <table>
+        <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
+        <tbody>
+${proposals}
         </tbody>
       </table>
     </section>

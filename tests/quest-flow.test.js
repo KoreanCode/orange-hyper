@@ -9,6 +9,13 @@ import { generateCapsule } from "../src/core/capsule.js";
 import { initWorkspace } from "../src/core/config.js";
 import { stringifyFrontmatter } from "../src/core/frontmatter.js";
 import { runDoctor } from "../src/core/doctor.js";
+import {
+  acceptMemoryDelta,
+  listMemoryGraphNodes,
+  proposeMemoryDelta,
+  readMemoryDeltaProposalFile,
+  rejectMemoryDelta
+} from "../src/core/memory.js";
 import { workspacePaths } from "../src/core/paths.js";
 import { completeQuest, createQuest, listQuests, readQuestFile } from "../src/core/quest.js";
 
@@ -18,13 +25,16 @@ function tempWorkspace() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "orange-hyper-test-"));
 }
 
-test("init creates the v0.1 storage structure", () => {
+test("init creates the v0.2 storage structure", () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd, { projectName: "demo" });
   assert.ok(fs.existsSync(paths.config));
   assert.ok(fs.existsSync(paths.orangeGitignore));
   assert.ok(fs.existsSync(paths.activeQuests));
   assert.ok(fs.existsSync(paths.completedQuests));
+  assert.ok(fs.existsSync(paths.pendingMemoryDeltaProposals));
+  assert.ok(fs.existsSync(paths.acceptedMemoryDeltaProposals));
+  assert.ok(fs.existsSync(paths.rejectedMemoryDeltaProposals));
   assert.ok(fs.existsSync(paths.currentCapsule));
   assert.ok(fs.existsSync(paths.routeTrace));
   assert.equal(fs.readFileSync(paths.orangeGitignore, "utf8"), "capsules/\ntraces/\nproposals/\nidentity/\nlocal/\n");
@@ -355,6 +365,264 @@ test("L0/L1 quest new creates quest but prints not_recommended warning", async (
   assert.match(joined, /A Quest was created because you explicitly requested quest new/);
 });
 
+test("remember propose list show accept and reject support JSON envelopes", async () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd);
+  const first = createQuest(cwd, "remember a durable implementation decision", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, first.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+
+  const proposed = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", first.id, "--json"], cwd),
+    "remember.propose"
+  );
+  const proposalId = proposed.data.proposal.id;
+  assert.equal(proposed.data.proposal.status, "pending");
+  assert.equal(proposed.data.proposal.file, `.orange-hyper/proposals/memory-delta/pending/${proposalId}.md`);
+
+  const listed = assertJsonCommand(runOrange(["remember", "list", "--json"], cwd), "remember.list");
+  assert.equal(listed.data.proposals.length, 1);
+  assert.equal(listed.data.proposals[0].id, proposalId);
+
+  const shown = assertJsonCommand(runOrange(["remember", "show", proposalId, "--json"], cwd), "remember.show");
+  assert.equal(shown.data.proposal.id, proposalId);
+  assert.match(shown.data.proposal.body, /## Candidate Memory/);
+  assert.match(shown.data.proposal.body, /## Suggested Node/);
+
+  const accepted = assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
+  assert.equal(accepted.data.proposal.status, "accepted");
+  assert.equal(accepted.data.node.source_proposal, proposalId);
+  assert.equal(accepted.data.node.source_quest, first.id);
+  assert.equal(accepted.data.node.provenance.proposal_id, proposalId);
+  assert.equal(accepted.data.node.provenance.source_quest, first.id);
+  assert.ok(fs.existsSync(path.join(paths.acceptedMemoryDeltaProposals, `${proposalId}.md`)));
+  assert.equal(runOrange(["remember", "accept", proposalId, "--json"], cwd).status, 1);
+  assert.equal(runOrange(["remember", "reject", proposalId, "--json"], cwd).status, 1);
+
+  const second = createQuest(cwd, "remember a regression risk", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  completeQuest(cwd, second.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z"),
+    unverifiedReason: "Manual verification is not available in seed test"
+  });
+  const secondProposal = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", second.id, "--json"], cwd),
+    "remember.propose"
+  ).data.proposal.id;
+  const rejected = assertJsonCommand(runOrange(["remember", "reject", secondProposal, "--json"], cwd), "remember.reject");
+  assert.equal(rejected.data.proposal.status, "rejected");
+  assert.ok(fs.existsSync(path.join(paths.rejectedMemoryDeltaProposals, `${secondProposal}.md`)));
+  assert.equal(listMemoryGraphNodes(cwd).some((node) => node.data.source_proposal === secondProposal), false);
+  assert.equal(runOrange(["remember", "accept", secondProposal, "--json"], cwd).status, 1);
+  assert.equal(runOrange(["remember", "reject", secondProposal, "--json"], cwd).status, 1);
+});
+
+test("remember propose requires completed L2+ quest with verification state", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const active = createQuest(cwd, "remember only after completion", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  await assert.rejects(
+    () => main(["remember", "propose", "--quest", active.id], { cwd, io: silentIo() }),
+    /completed quests/
+  );
+
+  const small = createQuest(cwd, "fix one label typo", {
+    layer: "L1",
+    clock: new Date("2026-06-16T00:01:00.000Z")
+  });
+  completeQuest(cwd, small.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z"),
+    evidence: ["manual check passed"]
+  });
+  await assert.rejects(
+    () => main(["remember", "propose", "--quest", small.id], { cwd, io: silentIo() }),
+    /disabled by default for L0\/L1/
+  );
+});
+
+test("doctor catches memory proposal source quest and status problems", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "remember source quest provenance", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, created.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["node --test passed"]
+  });
+  const proposal = proposeMemoryDelta(cwd, created.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  fs.writeFileSync(
+    proposal.filePath,
+    stringifyFrontmatter(
+      {
+        ...proposal.data,
+        source_quest: "quest_missing"
+      },
+      proposal.body
+    )
+  );
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /source_quest not found: quest_missing/);
+});
+
+test("accept creates graph node provenance and reject does not create graph nodes", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const acceptedQuest = createQuest(cwd, "remember accepted graph provenance", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, acceptedQuest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const proposal = proposeMemoryDelta(cwd, acceptedQuest.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  const accepted = acceptMemoryDelta(cwd, proposal.data.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z")
+  });
+  assert.equal(accepted.node.data.source_proposal, proposal.data.id);
+  assert.equal(accepted.node.data.source_quest, acceptedQuest.id);
+  assert.equal(accepted.node.data.provenance.proposal_id, proposal.data.id);
+  assert.equal(accepted.node.data.provenance.source_quest, acceptedQuest.id);
+
+  const rejectedQuest = createQuest(cwd, "remember rejected proposal", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:04:00.000Z")
+  });
+  completeQuest(cwd, rejectedQuest.id, {
+    clock: new Date("2026-06-16T00:05:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const rejectedProposal = proposeMemoryDelta(cwd, rejectedQuest.id, {
+    clock: new Date("2026-06-16T00:06:00.000Z")
+  });
+  rejectMemoryDelta(cwd, rejectedProposal.data.id, {
+    clock: new Date("2026-06-16T00:07:00.000Z")
+  });
+  assert.equal(listMemoryGraphNodes(cwd).some((node) => node.data.source_proposal === rejectedProposal.data.id), false);
+  assert.equal(runDoctor(cwd).ok, true);
+});
+
+test("doctor catches invalid graph index JSON after memory accept", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd);
+  const created = createQuest(cwd, "remember graph index validity", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, created.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const proposal = proposeMemoryDelta(cwd, created.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  acceptMemoryDelta(cwd, proposal.data.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z")
+  });
+  fs.writeFileSync(paths.graphIndex, "{broken");
+  const result = runDoctor(cwd);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join("\n"), /graph\/index\.json is not valid JSON/);
+});
+
+test("remember selectors reject path traversal", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const created = createQuest(cwd, "remember selector safety", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, created.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["node --test passed"]
+  });
+  const proposal = proposeMemoryDelta(cwd, created.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  assert.ok(readMemoryDeltaProposalFile(proposal.filePath));
+  for (const selector of ["../../package.json", "../README.md", "pending/../../bad"]) {
+    await assert.rejects(() => main(["remember", "show", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
+    await assert.rejects(() => main(["remember", "accept", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
+    await assert.rejects(() => main(["remember", "reject", selector], { cwd, io: silentIo() }), /must be an id, not a path/);
+  }
+});
+
+test("identity summary includes memory proposal and accepted node counts", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd, { projectName: "memory-identity-demo" });
+  const pendingQuest = createQuest(cwd, "remember pending decision", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, pendingQuest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  proposeMemoryDelta(cwd, pendingQuest.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+
+  const acceptedQuest = createQuest(cwd, "remember accepted decision", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:03:00.000Z")
+  });
+  completeQuest(cwd, acceptedQuest.id, {
+    clock: new Date("2026-06-16T00:04:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const acceptedProposal = proposeMemoryDelta(cwd, acceptedQuest.id, {
+    clock: new Date("2026-06-16T00:05:00.000Z")
+  });
+  acceptMemoryDelta(cwd, acceptedProposal.data.id, {
+    clock: new Date("2026-06-16T00:06:00.000Z")
+  });
+
+  const rejectedQuest = createQuest(cwd, "remember rejected risk", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:07:00.000Z")
+  });
+  completeQuest(cwd, rejectedQuest.id, {
+    clock: new Date("2026-06-16T00:08:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const rejectedProposal = proposeMemoryDelta(cwd, rejectedQuest.id, {
+    clock: new Date("2026-06-16T00:09:00.000Z")
+  });
+  rejectMemoryDelta(cwd, rejectedProposal.data.id, {
+    clock: new Date("2026-06-16T00:10:00.000Z")
+  });
+
+  const { output, io } = captureIo();
+  await main(["identity", "build", "--json"], { cwd, io });
+  const payload = parseJsonOnly(output.join(""));
+  assertJsonEnvelope(payload, true, "identity.build");
+  assert.equal(payload.data.summary.pendingMemoryProposals, 1);
+  assert.equal(payload.data.summary.acceptedMemoryProposals, 1);
+  assert.equal(payload.data.summary.rejectedMemoryProposals, 1);
+  assert.equal(payload.data.summary.acceptedMemoryNodes, 1);
+  assert.deepEqual(payload.data.summary.topProposalNodeTypes, [
+    { nodeType: "decision", count: 2 },
+    { nodeType: "risk", count: 1 }
+  ]);
+});
+
 test("quest done --json prints completed quest information as valid JSON", async () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
@@ -475,6 +743,25 @@ test("all JSON success envelopes include contract version and dot command ids", 
     runOrange(["quest", "done", questId, "--evidence", "npm test passed", "--json"], cwd),
     "quest.done"
   );
+  const proposed = assertJsonCommand(runOrange(["remember", "propose", "--quest", questId, "--json"], cwd), "remember.propose");
+  const proposalId = proposed.data.proposal.id;
+  assertJsonCommand(runOrange(["remember", "list", "--json"], cwd), "remember.list");
+  assertJsonCommand(runOrange(["remember", "show", proposalId, "--json"], cwd), "remember.show");
+  assertJsonCommand(runOrange(["remember", "accept", proposalId, "--json"], cwd), "remember.accept");
+
+  const rejectedQuest = assertJsonCommand(
+    runOrange(["quest", "new", "--json", "remember rejected adapter contract risk"], cwd),
+    "quest.new"
+  ).data.quest.id;
+  assertJsonCommand(
+    runOrange(["quest", "done", rejectedQuest, "--evidence", "npm test passed", "--json"], cwd),
+    "quest.done"
+  );
+  const rejectedProposal = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", rejectedQuest, "--json"], cwd),
+    "remember.propose"
+  ).data.proposal.id;
+  assertJsonCommand(runOrange(["remember", "reject", rejectedProposal, "--json"], cwd), "remember.reject");
   assertJsonCommand(runOrange(["doctor", "--json"], cwd), "doctor.run");
   assertJsonCommand(runOrange(["identity", "build", "--json"], cwd), "identity.build");
 });
