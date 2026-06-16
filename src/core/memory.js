@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { requireInitialized } from "./config.js";
 import { splitFrontmatter, stringifyFrontmatter } from "./frontmatter.js";
@@ -30,6 +31,17 @@ const REQUIRED_PROPOSAL_SECTIONS = [
   "Evidence",
   "Suggested Node"
 ];
+
+const GENERIC_CANDIDATE_MEMORY = new Set([
+  "fix bug",
+  "implement feature",
+  "update docs",
+  "remember this",
+  "memory",
+  "todo",
+  "not specified",
+  "unknown"
+]);
 
 export function ensureMemoryProposalDirs(cwd = process.cwd()) {
   const paths = workspacePaths(cwd);
@@ -80,19 +92,12 @@ export function proposeMemoryDelta(cwd, questSelector, options = {}) {
   if (!MEMORY_NODE_TYPES.has(nodeType)) {
     throw new Error(`Unsupported memory proposal node type: ${nodeType}`);
   }
-  const id = options.id || proposalIdForQuest(quest, nodeType);
-  assertSafeId(id, "Proposal id");
-  const existing = listMemoryDeltaProposals(cwd, "all").find((proposal) =>
-    proposal.data.id === id || (proposal.data.source_quest === quest.data.id && proposal.data.node_type === nodeType)
-  );
-  if (existing) {
-    throw new Error(`Memory proposal already exists for quest ${quest.data.id}: ${existing.data.id}`);
-  }
-
   const createdAt = nowIso(options.clock);
+  const baseId = options.id || proposalIdForQuest(quest, nodeType);
+  assertSafeId(baseId, "Proposal id");
   const data = {
     schema_version: MEMORY_DELTA_SCHEMA_VERSION,
-    id,
+    id: baseId,
     status: "pending",
     source_quest: quest.data.id,
     node_type: nodeType,
@@ -102,16 +107,41 @@ export function proposeMemoryDelta(cwd, questSelector, options = {}) {
     title: quest.data.title
   };
   const body = renderProposalBody(quest, data);
+  const duplicate = findDuplicatePendingProposal(cwd, data.source_quest, data.node_type, body);
+  if (duplicate) {
+    return withProposalMetadata(duplicate, {
+      duplicated: true,
+      warnings: validateMemoryDeltaProposalDetailed(duplicate, { cwd }).warnings
+    });
+  }
+
+  const id = nextAvailableProposalId(cwd, baseId);
+  data.id = id;
   const filePath = path.join(paths.pendingMemoryDeltaProposals, `${id}.md`);
+  const draft = {
+    filePath,
+    data,
+    body,
+    statusDirectory: "pending"
+  };
+  const validation = validateMemoryDeltaProposalDetailed(draft, { cwd });
+  if (validation.errors.length) {
+    throw new Error(`Cannot create memory proposal ${id}: ${validation.errors.join("; ")}`);
+  }
   fs.writeFileSync(filePath, stringifyFrontmatter(data, body));
-  return readMemoryDeltaProposalFile(filePath);
+  return withProposalMetadata(readMemoryDeltaProposalFile(filePath), {
+    duplicated: false,
+    warnings: validation.warnings
+  });
 }
 
-export function listMemoryDeltaProposals(cwd, status = "all") {
+export function listMemoryDeltaProposals(cwd, filters = "all") {
   requireInitialized(cwd);
   const paths = workspacePaths(cwd);
-  return memoryProposalFiles(paths, status)
+  const normalizedFilters = normalizeProposalFilters(filters);
+  return memoryProposalFiles(paths, normalizedFilters.status)
     .map(readMemoryDeltaProposalFile)
+    .filter((proposal) => matchesProposalFilters(proposal, normalizedFilters))
     .sort((a, b) => String(b.data.updated_at).localeCompare(String(a.data.updated_at)));
 }
 
@@ -142,21 +172,24 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   const proposal = findMemoryDeltaProposal(cwd, selector);
   assertPendingProposal(proposal);
 
-  const validationErrors = validateMemoryDeltaProposal(proposal, {
+  const validation = validateMemoryDeltaProposalDetailed(proposal, {
     cwd,
     expectedStatus: "pending"
   });
-  if (validationErrors.length) {
-    throw new Error(`Cannot accept memory proposal ${proposal.data.id}: ${validationErrors.join("; ")}`);
+  if (validation.errors.length) {
+    throw new Error(`Cannot accept memory proposal ${proposal.data.id}: ${validation.errors.join("; ")}`);
   }
 
   const paths = ensureMemoryGraphDirs(cwd);
   const acceptedAt = nowIso(options.clock);
-  const node = buildGraphNodeFromProposal(cwd, proposal, acceptedAt);
-  const nodeFilePath = path.join(graphNodeDirForType(paths, proposal.data.node_type), `${node.data.id}.md`);
+  const nodeId = graphNodeIdForProposal(proposal);
+  const nodeFilePath = path.join(graphNodeDirForType(paths, proposal.data.node_type), `${nodeId}.md`);
   if (fs.existsSync(nodeFilePath)) {
-    throw new Error(`Graph node already exists for proposal ${proposal.data.id}: ${node.data.id}`);
+    throw new Error(`Graph node already exists for proposal ${proposal.data.id}: ${nodeId}`);
   }
+
+  const accepted = moveProposal(cwd, proposal, "accepted", acceptedAt);
+  const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt);
   fs.writeFileSync(nodeFilePath, stringifyFrontmatter(node.data, node.body));
   updateGraphIndex(paths.graphIndex, {
     id: node.data.id,
@@ -164,10 +197,13 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
     status: node.data.status,
     file: path.relative(paths.root, nodeFilePath),
     source_proposal: proposal.data.id,
-    source_quest: proposal.data.source_quest
+    source_quest: proposal.data.source_quest,
+    accepted_at: node.data.accepted_at,
+    node_type: node.data.node_type,
+    origin: node.data.origin,
+    source_proposal_hash: node.data.source_proposal_hash
   }, acceptedAt);
 
-  const accepted = moveProposal(cwd, proposal, "accepted", acceptedAt);
   return {
     proposal: accepted,
     node: readMemoryGraphNodeFile(nodeFilePath)
@@ -178,12 +214,12 @@ export function rejectMemoryDelta(cwd, selector, options = {}) {
   requireInitialized(cwd);
   const proposal = findMemoryDeltaProposal(cwd, selector);
   assertPendingProposal(proposal);
-  const validationErrors = validateMemoryDeltaProposal(proposal, {
+  const validation = validateMemoryDeltaProposalDetailed(proposal, {
     cwd,
     expectedStatus: "pending"
   });
-  if (validationErrors.length) {
-    throw new Error(`Cannot reject memory proposal ${proposal.data.id}: ${validationErrors.join("; ")}`);
+  if (validation.errors.length) {
+    throw new Error(`Cannot reject memory proposal ${proposal.data.id}: ${validation.errors.join("; ")}`);
   }
   const rejectedAt = nowIso(options.clock);
   return moveProposal(cwd, proposal, "rejected", rejectedAt);
@@ -252,8 +288,13 @@ export function topProposalNodeTypes(cwd) {
 }
 
 export function validateMemoryDeltaProposal(proposal, options = {}) {
+  return validateMemoryDeltaProposalDetailed(proposal, options).errors;
+}
+
+export function validateMemoryDeltaProposalDetailed(proposal, options = {}) {
   const data = proposal.data || {};
   const errors = [];
+  const warnings = [];
   const label = data.id || path.basename(proposal.filePath || "unknown", ".md");
   for (const field of REQUIRED_PROPOSAL_FIELDS) {
     if (data[field] === undefined || data[field] === null || data[field] === "") {
@@ -301,6 +342,9 @@ export function validateMemoryDeltaProposal(proposal, options = {}) {
       errors.push(`memory proposal ${label} missing section ${section}`);
     }
   }
+  const quality = validateProposalQuality(proposal, label);
+  errors.push(...quality.errors);
+  warnings.push(...quality.warnings);
   if (options.cwd && data.source_quest && isSafeId(data.source_quest)) {
     const questExists = listQuests(options.cwd, "all").some((quest) => quest.data.id === data.source_quest);
     if (!questExists) {
@@ -314,7 +358,7 @@ export function validateMemoryDeltaProposal(proposal, options = {}) {
       errors.push(`memory proposal ${label} path must stay inside ${path.relative(paths.root, expectedDir)}`);
     }
   }
-  return errors;
+  return { errors, warnings };
 }
 
 export function findGraphNodesForProposal(cwd, proposalId) {
@@ -322,6 +366,10 @@ export function findGraphNodesForProposal(cwd, proposalId) {
     node.data.source_proposal === proposalId ||
     node.data.provenance?.proposal_id === proposalId
   );
+}
+
+export function hashMemoryDeltaProposalSource(proposal) {
+  return crypto.createHash("sha256").update(proposal.source || stringifyFrontmatter(proposal.data || {}, proposal.body || "")).digest("hex");
 }
 
 export function readGraphIndex(cwd) {
@@ -434,6 +482,133 @@ function renderProposalBody(quest, data) {
   ].join("\n");
 }
 
+function withProposalMetadata(proposal, metadata = {}) {
+  return {
+    ...proposal,
+    duplicated: Boolean(metadata.duplicated),
+    warnings: metadata.warnings || []
+  };
+}
+
+function findDuplicatePendingProposal(cwd, sourceQuest, nodeType, body) {
+  const candidateMemory = normalizeCandidateMemory(extractSection(body, "Candidate Memory"));
+  return listMemoryDeltaProposals(cwd, "pending").find((proposal) =>
+    proposal.data.source_quest === sourceQuest &&
+    proposal.data.node_type === nodeType &&
+    normalizeCandidateMemory(extractSection(proposal.body, "Candidate Memory")) === candidateMemory
+  );
+}
+
+function nextAvailableProposalId(cwd, baseId) {
+  if (!proposalIdExists(cwd, baseId)) {
+    return baseId;
+  }
+  for (let suffix = 2; suffix < 1000; suffix += 1) {
+    const candidate = `${baseId}_${suffix}`;
+    if (!proposalIdExists(cwd, candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`Could not allocate a unique memory proposal id for ${baseId}`);
+}
+
+function proposalIdExists(cwd, id) {
+  return listMemoryDeltaProposals(cwd, "all").some((proposal) =>
+    proposal.data.id === id || path.basename(proposal.filePath, ".md") === id
+  );
+}
+
+function normalizeProposalFilters(filters) {
+  if (typeof filters === "string" || filters === undefined || filters === null) {
+    return { status: filters || "all", nodeType: null, sourceQuest: null };
+  }
+  const status = filters.status || "all";
+  if (status !== "all" && !MEMORY_PROPOSAL_STATUSES.has(status)) {
+    throw new Error(`Unsupported memory proposal status: ${status}`);
+  }
+  if (filters.nodeType && !MEMORY_NODE_TYPES.has(filters.nodeType)) {
+    throw new Error(`Unsupported memory proposal node type: ${filters.nodeType}`);
+  }
+  if (filters.sourceQuest) {
+    assertSafeId(filters.sourceQuest, "Memory proposal source_quest filter");
+  }
+  return {
+    status,
+    nodeType: filters.nodeType || null,
+    sourceQuest: filters.sourceQuest || null
+  };
+}
+
+function matchesProposalFilters(proposal, filters) {
+  if (filters.nodeType && proposal.data.node_type !== filters.nodeType) {
+    return false;
+  }
+  if (filters.sourceQuest && proposal.data.source_quest !== filters.sourceQuest) {
+    return false;
+  }
+  return true;
+}
+
+function validateProposalQuality(proposal, label) {
+  const data = proposal.data || {};
+  const errors = [];
+  const warnings = [];
+  const candidateMemory = extractSection(proposal.body || "", "Candidate Memory");
+  const why = extractSection(proposal.body || "", "Why this should be remembered");
+  const evidence = extractSection(proposal.body || "", "Evidence");
+  const suggestedNode = extractSection(proposal.body || "", "Suggested Node");
+
+  if (!candidateMemory.trim()) {
+    errors.push(`memory proposal ${label} Candidate Memory is empty`);
+  }
+  if (!why.trim()) {
+    errors.push(`memory proposal ${label} Why this should be remembered is empty`);
+  }
+  if (!evidenceReferencesSource(evidence, data.source_quest)) {
+    errors.push(`memory proposal ${label} Evidence must reference source quest or verification information`);
+  }
+
+  const suggestedNodeType = extractSuggestedNodeType(suggestedNode);
+  if (suggestedNodeType && data.node_type && suggestedNodeType !== data.node_type) {
+    errors.push(`memory proposal ${label} Suggested Node type ${suggestedNodeType} conflicts with node_type ${data.node_type}`);
+  }
+
+  if (isWeakCandidateMemory(candidateMemory)) {
+    warnings.push(`memory proposal ${label} Candidate Memory is very short or generic; consider making it more specific before accepting`);
+  }
+  return { errors, warnings };
+}
+
+function evidenceReferencesSource(evidence, sourceQuest) {
+  const text = evidence.toLowerCase();
+  if (!text.trim()) {
+    return false;
+  }
+  return (sourceQuest && evidence.includes(sourceQuest)) ||
+    text.includes("source quest") ||
+    text.includes("verification") ||
+    text.includes("evidence") ||
+    text.includes("unverified");
+}
+
+function extractSuggestedNodeType(suggestedNode) {
+  const match = suggestedNode.match(/^\s*-\s*(?:Type|Node Type|node_type|kind):\s*([A-Za-z0-9_.-]+)\s*$/im);
+  return match ? match[1] : null;
+}
+
+function isWeakCandidateMemory(candidateMemory) {
+  const normalized = normalizeCandidateMemory(candidateMemory);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  return !normalized ||
+    normalized.length < 24 ||
+    words.length < 4 ||
+    GENERIC_CANDIDATE_MEMORY.has(normalized);
+}
+
+function normalizeCandidateMemory(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function moveProposal(cwd, proposal, status, updatedAt) {
   const paths = workspacePaths(cwd);
   const targetDir = proposalDirForStatus(paths, status);
@@ -457,20 +632,30 @@ function assertPendingProposal(proposal) {
 }
 
 function buildGraphNodeFromProposal(cwd, proposal, createdAt) {
-  const nodeId = `${proposal.data.node_type}.${proposal.data.id}`;
+  const nodeId = graphNodeIdForProposal(proposal);
+  const sourceProposalHash = hashMemoryDeltaProposalSource(proposal);
   const data = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
     id: nodeId,
     kind: proposal.data.node_type,
+    node_type: proposal.data.node_type,
     status: "candidate",
     confidence: proposal.data.confidence,
     created_at: createdAt,
     updated_at: createdAt,
+    accepted_at: createdAt,
+    origin: "memory-delta-proposal",
     source_proposal: proposal.data.id,
     source_quest: proposal.data.source_quest,
+    source_proposal_hash: sourceProposalHash,
     provenance: {
       proposal_id: proposal.data.id,
-      source_quest: proposal.data.source_quest
+      source_proposal: proposal.data.id,
+      source_quest: proposal.data.source_quest,
+      accepted_at: createdAt,
+      node_type: proposal.data.node_type,
+      origin: "memory-delta-proposal",
+      source_proposal_hash: sourceProposalHash
     }
   };
   const body = [
@@ -490,6 +675,10 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt) {
     `- File: ${path.relative(cwd, proposal.filePath)}`
   ].join("\n");
   return { data, body };
+}
+
+function graphNodeIdForProposal(proposal) {
+  return `${proposal.data.node_type}.${proposal.data.id}`;
 }
 
 function updateGraphIndex(indexPath, nodeEntry, updatedAt) {

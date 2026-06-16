@@ -1,5 +1,76 @@
 # Release Notes
 
+## v0.2.0-alpha.1
+
+Memory Proposal Quality Hardening release.
+
+This release hardens the v0.2 Memory Delta Proposal workflow without enabling
+Memory Graph rendering, MCP, hooks, subagents, role evolution, auto planning, or
+automatic execution loops.
+
+- Package version is `0.2.0-alpha.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `remember propose` is idempotent for matching pending proposals with the same
+  `source_quest`, `node_type`, and `Candidate Memory`.
+- Duplicate `remember propose --json` calls return the existing proposal and set
+  `data.duplicated: true`.
+- `remember list` now supports `--status pending|accepted|rejected`,
+  `--type decision|constraint|component|risk|verification`, and
+  `--quest <quest-id>` in human and JSON modes.
+- Proposal quality validation now checks required content sections, source
+  quest or verification evidence references, suggested node type consistency,
+  and `low|medium|high` confidence.
+- Very short or generic `Candidate Memory` text is reported as a warning rather
+  than a hard error.
+- Accepted graph node candidates now include `source_proposal`, `source_quest`,
+  `accepted_at`, `node_type`, `origin: memory-delta-proposal`, and
+  `source_proposal_hash` provenance.
+- `doctor` now reports proposal quality warnings/errors and catches accepted
+  proposal to graph node provenance mismatches.
+- `identity build` still does not render a graph. It now reports:
+  `Memory proposals are active.`, `Graph rendering is not active yet.`, and
+  `Accepted memory nodes are candidate project memory.`
+
+Accepted/rejected policy:
+
+- v0.2 only de-duplicates pending proposals.
+- accepted/rejected proposals remain historical user decisions.
+- Re-proposing after accept/reject may create a new pending proposal id instead
+  of rewriting history.
+
+Explicitly not included:
+
+- Memory Graph rendering
+- Obsidian-style dashboard graph
+- MCP/hooks/subagents/role evolution
+- auto planner or auto execution loop
+- raw prompt archive
+- automatic memory write
+
+### Verification Checklist
+
+```bash
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+```
+
+Fresh temp smoke:
+
+```bash
+node bin/orange.js init
+node bin/orange.js quest new "remember a durable decision" --layer L2 --json
+node bin/orange.js quest done <quest-id> --evidence "manual smoke passed" --json
+node bin/orange.js remember propose --quest <quest-id> --json
+node bin/orange.js remember propose --quest <quest-id> --json
+node bin/orange.js remember list --status pending --json
+node bin/orange.js remember list --type decision --json
+node bin/orange.js remember accept <proposal-id> --json
+node bin/orange.js doctor --json
+node bin/orange.js identity build --json
+```
+
 ## v0.2.0-alpha.0
 
 Memory Delta Proposal alpha release.

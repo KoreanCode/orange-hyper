@@ -6,6 +6,12 @@ import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
 import { nowIso } from "./time.js";
 
+const IDENTITY_STATUS_MESSAGES = [
+  "Memory proposals are active.",
+  "Graph rendering is not active yet.",
+  "Accepted memory nodes are candidate project memory."
+];
+
 export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   requireInitialized(cwd);
   const paths = workspacePaths(cwd);
@@ -35,7 +41,8 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     acceptedMemoryProposals: memoryProposalCounts.accepted,
     rejectedMemoryProposals: memoryProposalCounts.rejected,
     acceptedMemoryNodes,
-    topProposalNodeTypes: proposalNodeTypes
+    topProposalNodeTypes: proposalNodeTypes,
+    statusMessages: IDENTITY_STATUS_MESSAGES
   });
   fs.writeFileSync(paths.identityHtml, html);
   return {
@@ -52,7 +59,8 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
       acceptedMemoryProposals: memoryProposalCounts.accepted,
       rejectedMemoryProposals: memoryProposalCounts.rejected,
       acceptedMemoryNodes,
-      topProposalNodeTypes: proposalNodeTypes
+      topProposalNodeTypes: proposalNodeTypes,
+      statusMessages: IDENTITY_STATUS_MESSAGES
     }
   };
 }
@@ -85,6 +93,9 @@ function renderIdentityHtml(model) {
     .map((item) => `<tr><td>${escapeHtml(item.nodeType)}</td><td>${item.count}</td></tr>`)
     .join("\n");
   const proposals = proposalRows || "<tr><td>none</td><td>0</td></tr>";
+  const statusMessages = model.statusMessages
+    .map((message) => `<li>${escapeHtml(message)}</li>`)
+    .join("\n");
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -140,7 +151,11 @@ ${proposals}
         </tbody>
       </table>
     </section>
-    <div class="notice">This project is still in Seed Kernel mode. Memory graph is not active yet.</div>
+    <div class="notice">
+      <ul>
+${statusMessages}
+      </ul>
+    </div>
   </main>
 </body>
 </html>

@@ -242,6 +242,8 @@ orange remember propose --quest quest_20260616_000000Z_implement-adapter-json-co
   "contract_version": "0.1",
   "command": "remember.propose",
   "data": {
+    "duplicated": false,
+    "warnings": [],
     "proposal": {
       "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
@@ -251,16 +253,56 @@ orange remember propose --quest quest_20260616_000000Z_implement-adapter-json-co
       "confidence": "medium",
       "created_at": "2026-06-16T00:04:00.000Z",
       "updated_at": "2026-06-16T00:04:00.000Z",
-      "title": "Implement adapter JSON contract"
+      "title": "Implement adapter JSON contract",
+      "duplicated": false
     }
   }
 }
 ```
 
-`remember list --json`, `remember show --json`, `remember accept --json`, and
-`remember reject --json` use the same envelope. `accept` is the only command
-that creates a graph node candidate, and its JSON payload includes node
-provenance:
+If a matching pending proposal already exists for the same `source_quest`,
+`node_type`, and `Candidate Memory`, `remember propose --json` returns the
+existing proposal instead of creating another file. In that case
+`data.duplicated` and `data.proposal.duplicated` are `true`.
+
+### `remember list --json` with filters
+
+```bash
+orange remember list --status pending --type decision --quest quest_20260616_000000Z_implement-adapter-json-contract --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "remember.list",
+  "data": {
+    "filters": {
+      "status": "pending",
+      "type": "decision",
+      "quest": "quest_20260616_000000Z_implement-adapter-json-contract"
+    },
+    "proposals": [
+      {
+        "id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+        "file": ".orange-hyper/proposals/memory-delta/pending/mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
+        "status": "pending",
+        "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+        "node_type": "decision",
+        "confidence": "medium",
+        "created_at": "2026-06-16T00:04:00.000Z",
+        "updated_at": "2026-06-16T00:04:00.000Z",
+        "title": "Implement adapter JSON contract",
+        "duplicated": false
+      }
+    ]
+  }
+}
+```
+
+`remember show --json`, `remember accept --json`, and `remember reject --json`
+use the same envelope. `accept` is the only command that creates a graph node
+candidate, and its JSON payload includes node provenance:
 
 ```json
 {
@@ -283,13 +325,22 @@ provenance:
       "id": "decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision.md",
       "kind": "decision",
+      "node_type": "decision",
       "status": "candidate",
       "confidence": "medium",
+      "accepted_at": "2026-06-16T00:05:00.000Z",
+      "origin": "memory-delta-proposal",
       "source_proposal": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
       "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+      "source_proposal_hash": "sha256...",
       "provenance": {
         "proposal_id": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
-        "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract"
+        "source_proposal": "mem_delta_quest_20260616_000000Z_implement-adapter-json-contract_decision",
+        "source_quest": "quest_20260616_000000Z_implement-adapter-json-contract",
+        "accepted_at": "2026-06-16T00:05:00.000Z",
+        "node_type": "decision",
+        "origin": "memory-delta-proposal",
+        "source_proposal_hash": "sha256..."
       }
     }
   }

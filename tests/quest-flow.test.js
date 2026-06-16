@@ -381,6 +381,8 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
     runOrange(["remember", "propose", "--quest", first.id, "--json"], cwd),
     "remember.propose"
   );
+  assert.equal(proposed.data.duplicated, false);
+  assert.deepEqual(proposed.data.warnings, []);
   const proposalId = proposed.data.proposal.id;
   assert.equal(proposed.data.proposal.status, "pending");
   assert.equal(proposed.data.proposal.file, `.orange-hyper/proposals/memory-delta/pending/${proposalId}.md`);
@@ -398,8 +400,17 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
   assert.equal(accepted.data.proposal.status, "accepted");
   assert.equal(accepted.data.node.source_proposal, proposalId);
   assert.equal(accepted.data.node.source_quest, first.id);
+  assert.equal(accepted.data.node.node_type, "decision");
+  assert.equal(accepted.data.node.origin, "memory-delta-proposal");
+  assert.match(accepted.data.node.accepted_at, /^20\d\d-/);
+  assert.match(accepted.data.node.source_proposal_hash, /^[a-f0-9]{64}$/);
   assert.equal(accepted.data.node.provenance.proposal_id, proposalId);
+  assert.equal(accepted.data.node.provenance.source_proposal, proposalId);
   assert.equal(accepted.data.node.provenance.source_quest, first.id);
+  assert.equal(accepted.data.node.provenance.node_type, "decision");
+  assert.equal(accepted.data.node.provenance.origin, "memory-delta-proposal");
+  assert.equal(accepted.data.node.provenance.accepted_at, accepted.data.node.accepted_at);
+  assert.equal(accepted.data.node.provenance.source_proposal_hash, accepted.data.node.source_proposal_hash);
   assert.ok(fs.existsSync(path.join(paths.acceptedMemoryDeltaProposals, `${proposalId}.md`)));
   assert.equal(runOrange(["remember", "accept", proposalId, "--json"], cwd).status, 1);
   assert.equal(runOrange(["remember", "reject", proposalId, "--json"], cwd).status, 1);
@@ -422,6 +433,96 @@ test("remember propose list show accept and reject support JSON envelopes", asyn
   assert.equal(listMemoryGraphNodes(cwd).some((node) => node.data.source_proposal === secondProposal), false);
   assert.equal(runOrange(["remember", "accept", secondProposal, "--json"], cwd).status, 1);
   assert.equal(runOrange(["remember", "reject", secondProposal, "--json"], cwd).status, 1);
+});
+
+test("remember propose is idempotent for matching pending candidate memory", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd);
+  const quest = createQuest(cwd, "remember duplicate proposal policy", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, quest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+
+  const first = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", quest.id, "--json"], cwd),
+    "remember.propose"
+  );
+  const second = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", quest.id, "--json"], cwd),
+    "remember.propose"
+  );
+
+  assert.equal(first.data.duplicated, false);
+  assert.equal(second.data.duplicated, true);
+  assert.equal(second.data.proposal.duplicated, true);
+  assert.equal(second.data.proposal.id, first.data.proposal.id);
+  assert.equal(second.data.proposal.file, first.data.proposal.file);
+  assert.deepEqual(
+    fs.readdirSync(paths.pendingMemoryDeltaProposals).filter((name) => name.endsWith(".md")),
+    [`${first.data.proposal.id}.md`]
+  );
+});
+
+test("remember list filters by status type and source quest in JSON mode", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+
+  const decisionQuest = createQuest(cwd, "remember adapter contract decision", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, decisionQuest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const decisionProposal = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", decisionQuest.id, "--json"], cwd),
+    "remember.propose"
+  ).data.proposal;
+  assertJsonCommand(runOrange(["remember", "accept", decisionProposal.id, "--json"], cwd), "remember.accept");
+
+  const riskQuest = createQuest(cwd, "remember regression risk failure", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  completeQuest(cwd, riskQuest.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const riskProposal = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", riskQuest.id, "--json"], cwd),
+    "remember.propose"
+  ).data.proposal;
+
+  const constraintQuest = createQuest(cwd, "remember JSON contract policy must stay stable", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:04:00.000Z")
+  });
+  completeQuest(cwd, constraintQuest.id, {
+    clock: new Date("2026-06-16T00:05:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const constraintProposal = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", constraintQuest.id, "--json"], cwd),
+    "remember.propose"
+  ).data.proposal;
+
+  const pending = assertJsonCommand(runOrange(["remember", "list", "--status", "pending", "--json"], cwd), "remember.list");
+  assert.equal(pending.data.filters.status, "pending");
+  assert.deepEqual(pending.data.proposals.map((proposal) => proposal.status), ["pending", "pending"]);
+  assert.deepEqual(new Set(pending.data.proposals.map((proposal) => proposal.id)), new Set([riskProposal.id, constraintProposal.id]));
+
+  const decision = assertJsonCommand(runOrange(["remember", "list", "--type", "decision", "--json"], cwd), "remember.list");
+  assert.equal(decision.data.filters.type, "decision");
+  assert.deepEqual(decision.data.proposals.map((proposal) => proposal.id), [decisionProposal.id]);
+
+  const questFiltered = assertJsonCommand(runOrange(["remember", "list", "--quest", riskQuest.id, "--json"], cwd), "remember.list");
+  assert.equal(questFiltered.data.filters.quest, riskQuest.id);
+  assert.deepEqual(questFiltered.data.proposals.map((proposal) => proposal.id), [riskProposal.id]);
 });
 
 test("remember propose requires completed L2+ quest with verification state", async () => {
@@ -479,6 +580,63 @@ test("doctor catches memory proposal source quest and status problems", () => {
   assert.match(result.errors.join("\n"), /source_quest not found: quest_missing/);
 });
 
+test("memory proposal quality validation reports warnings and errors", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const shortQuest = createQuest(cwd, "fix", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, shortQuest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const proposed = assertJsonCommand(
+    runOrange(["remember", "propose", "--quest", shortQuest.id, "--json"], cwd),
+    "remember.propose"
+  );
+  assert.match(proposed.data.warnings.join("\n"), /Candidate Memory is very short or generic/);
+  assert.equal(runDoctor(cwd).ok, true);
+  assert.match(runDoctor(cwd).warnings.join("\n"), /Candidate Memory is very short or generic/);
+
+  const proposal = readMemoryDeltaProposalFile(path.join(cwd, proposed.data.proposal.file));
+  const brokenBody = [
+    "# Broken Memory Delta Proposal",
+    "",
+    "## Candidate Memory",
+    "",
+    "",
+    "## Why this should be remembered",
+    "",
+    "",
+    "## Evidence",
+    "",
+    "- unrelated note",
+    "",
+    "## Suggested Node",
+    "",
+    "- Type: risk"
+  ].join("\n");
+  fs.writeFileSync(
+    proposal.filePath,
+    stringifyFrontmatter(
+      {
+        ...proposal.data,
+        confidence: "urgent"
+      },
+      brokenBody
+    )
+  );
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, false);
+  assert.match(doctor.errors.join("\n"), /invalid confidence urgent/);
+  assert.match(doctor.errors.join("\n"), /Candidate Memory is empty/);
+  assert.match(doctor.errors.join("\n"), /Why this should be remembered is empty/);
+  assert.match(doctor.errors.join("\n"), /Evidence must reference source quest or verification information/);
+  assert.match(doctor.errors.join("\n"), /Suggested Node type risk conflicts with node_type decision/);
+});
+
 test("accept creates graph node provenance and reject does not create graph nodes", () => {
   const cwd = tempWorkspace();
   initWorkspace(cwd);
@@ -498,8 +656,17 @@ test("accept creates graph node provenance and reject does not create graph node
   });
   assert.equal(accepted.node.data.source_proposal, proposal.data.id);
   assert.equal(accepted.node.data.source_quest, acceptedQuest.id);
+  assert.equal(accepted.node.data.accepted_at, "2026-06-16T00:03:00.000Z");
+  assert.equal(accepted.node.data.node_type, "decision");
+  assert.equal(accepted.node.data.origin, "memory-delta-proposal");
+  assert.match(accepted.node.data.source_proposal_hash, /^[a-f0-9]{64}$/);
   assert.equal(accepted.node.data.provenance.proposal_id, proposal.data.id);
+  assert.equal(accepted.node.data.provenance.source_proposal, proposal.data.id);
   assert.equal(accepted.node.data.provenance.source_quest, acceptedQuest.id);
+  assert.equal(accepted.node.data.provenance.accepted_at, "2026-06-16T00:03:00.000Z");
+  assert.equal(accepted.node.data.provenance.node_type, "decision");
+  assert.equal(accepted.node.data.provenance.origin, "memory-delta-proposal");
+  assert.equal(accepted.node.data.provenance.source_proposal_hash, accepted.node.data.source_proposal_hash);
 
   const rejectedQuest = createQuest(cwd, "remember rejected proposal", {
     layer: "L2",
@@ -517,6 +684,46 @@ test("accept creates graph node provenance and reject does not create graph node
   });
   assert.equal(listMemoryGraphNodes(cwd).some((node) => node.data.source_proposal === rejectedProposal.data.id), false);
   assert.equal(runDoctor(cwd).ok, true);
+});
+
+test("doctor catches accepted memory graph provenance mismatch", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const quest = createQuest(cwd, "remember provenance mismatch detection", {
+    layer: "L2",
+    clock: new Date("2026-06-16T00:00:00.000Z")
+  });
+  completeQuest(cwd, quest.id, {
+    clock: new Date("2026-06-16T00:01:00.000Z"),
+    evidence: ["npm test passed"]
+  });
+  const proposal = proposeMemoryDelta(cwd, quest.id, {
+    clock: new Date("2026-06-16T00:02:00.000Z")
+  });
+  const accepted = acceptMemoryDelta(cwd, proposal.data.id, {
+    clock: new Date("2026-06-16T00:03:00.000Z")
+  });
+  fs.writeFileSync(
+    accepted.node.filePath,
+    stringifyFrontmatter(
+      {
+        ...accepted.node.data,
+        source_quest: "quest_other",
+        origin: "manual",
+        provenance: {
+          ...accepted.node.data.provenance,
+          source_quest: "quest_other",
+          origin: "manual"
+        }
+      },
+      accepted.node.body
+    )
+  );
+
+  const doctor = runDoctor(cwd);
+  assert.equal(doctor.ok, false);
+  assert.match(doctor.errors.join("\n"), /provenance does not match accepted proposal/);
+  assert.match(doctor.errors.join("\n"), /origin provenance does not match memory-delta-proposal/);
 });
 
 test("doctor catches invalid graph index JSON after memory accept", () => {
@@ -687,7 +894,9 @@ test("identity build writes generated placeholder html", async () => {
   const html = fs.readFileSync(paths.identityHtml, "utf8");
   assert.match(html, /identity-demo/);
   assert.match(html, /Level: Seed/);
-  assert.match(html, /Memory graph is not active yet/);
+  assert.match(html, /Memory proposals are active\./);
+  assert.match(html, /Graph rendering is not active yet\./);
+  assert.match(html, /Accepted memory nodes are candidate project memory\./);
 });
 
 test("identity build --json prints generated html path and summary", async () => {
@@ -709,6 +918,11 @@ test("identity build --json prints generated html path and summary", async () =>
   assert.equal(payload.data.summary.projectName, "identity-json-demo");
   assert.equal(payload.data.summary.completedCount, 1);
   assert.equal(payload.data.summary.verifiedCount, 1);
+  assert.deepEqual(payload.data.summary.statusMessages, [
+    "Memory proposals are active.",
+    "Graph rendering is not active yet.",
+    "Accepted memory nodes are candidate project memory."
+  ]);
   assert.doesNotMatch(raw, /^Wrote /m);
 });
 

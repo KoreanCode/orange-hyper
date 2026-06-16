@@ -244,12 +244,17 @@ async function rememberCommand(cwd, io, argv) {
     const proposal = proposeMemoryDelta(cwd, questSelector);
     if (args.flags.json) {
       writeJson(io, jsonOk(COMMAND_IDS.remember.propose, {
+        duplicated: proposal.duplicated,
+        warnings: proposal.warnings || [],
         proposal: formatMemoryProposalJson(cwd, proposal, { includeBody: false })
       }));
       return;
     }
-    write(io, `Created memory proposal: ${proposal.data.id}`);
+    write(io, proposal.duplicated ? `Existing pending memory proposal: ${proposal.data.id}` : `Created memory proposal: ${proposal.data.id}`);
     write(io, `File: ${path.relative(cwd, proposal.filePath)}`);
+    for (const warning of proposal.warnings || []) {
+      write(io, `Warning: ${warning}`);
+    }
     write(io, "Next:");
     write(io, `  orange remember show ${proposal.data.id}`);
     write(io, `  orange remember accept ${proposal.data.id}`);
@@ -259,9 +264,15 @@ async function rememberCommand(cwd, io, argv) {
   if (subcommand === "list") {
     requireInitialized(cwd);
     const args = parseArgs(rest);
-    const proposals = listMemoryDeltaProposals(cwd, "all");
+    const filters = {
+      status: args.flags.status || "all",
+      nodeType: args.flags.type || null,
+      sourceQuest: args.flags.quest || null
+    };
+    const proposals = listMemoryDeltaProposals(cwd, filters);
     if (args.flags.json) {
       writeJson(io, jsonOk(COMMAND_IDS.remember.list, {
+        filters: formatMemoryProposalListFilters(filters),
         proposals: proposals.map((proposal) => formatMemoryProposalJson(cwd, proposal, { includeBody: false }))
       }));
       return;
@@ -647,8 +658,12 @@ function formatMemoryProposalJson(cwd, proposal, options = {}) {
     confidence: proposal.data.confidence,
     created_at: proposal.data.created_at,
     updated_at: proposal.data.updated_at,
-    title: proposal.data.title || ""
+    title: proposal.data.title || "",
+    duplicated: Boolean(proposal.duplicated)
   };
+  if (proposal.warnings?.length) {
+    data.warnings = proposal.warnings;
+  }
   if (options.includeBody) {
     data.body = proposal.body;
     data.content = proposal.source;
@@ -656,15 +671,27 @@ function formatMemoryProposalJson(cwd, proposal, options = {}) {
   return data;
 }
 
+function formatMemoryProposalListFilters(filters) {
+  return {
+    status: filters.status || "all",
+    type: filters.nodeType || null,
+    quest: filters.sourceQuest || null
+  };
+}
+
 function formatMemoryNodeJson(cwd, node) {
   return {
     id: node.data.id,
     file: path.relative(cwd, node.filePath),
     kind: node.data.kind,
+    node_type: node.data.node_type,
     status: node.data.status,
     confidence: node.data.confidence,
+    accepted_at: node.data.accepted_at,
+    origin: node.data.origin,
     source_proposal: node.data.source_proposal,
     source_quest: node.data.source_quest,
+    source_proposal_hash: node.data.source_proposal_hash,
     provenance: node.data.provenance || {}
   };
 }
@@ -698,7 +725,7 @@ function usage() {
     "  route <request> [--quest <id>] [--layer L2] [--json]",
     "  capsule [quest-id|--quest <id>] [--json]",
     "  remember propose --quest <quest-id> [--json]",
-    "  remember list [--json]",
+    "  remember list [--status pending|accepted|rejected] [--type decision|constraint|component|risk|verification] [--quest <quest-id>] [--json]",
     "  remember show <proposal-id> [--json]",
     "  remember accept <proposal-id> [--json]",
     "  remember reject <proposal-id> [--json]",
@@ -734,7 +761,7 @@ function rememberUsage() {
     "",
     "Commands:",
     "  propose --quest <quest-id> [--json]",
-    "  list [--json]",
+    "  list [--status pending|accepted|rejected] [--type decision|constraint|component|risk|verification] [--quest <quest-id>] [--json]",
     "  show <proposal-id> [--json]",
     "  accept <proposal-id> [--json]",
     "  reject <proposal-id> [--json]"

@@ -3,10 +3,11 @@ import path from "node:path";
 import { CONFIG_VERSION, ORANGE_GITIGNORE } from "./config.js";
 import {
   findGraphNodesForProposal,
+  hashMemoryDeltaProposalSource,
   memoryDeltaProposalFiles,
   readMemoryDeltaProposalFile,
   validateGraphJson,
-  validateMemoryDeltaProposal
+  validateMemoryDeltaProposalDetailed
 } from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { questFiles, readQuestFile, validateQuestDocument } from "./quest.js";
@@ -95,19 +96,40 @@ export function runDoctor(cwd = process.cwd()) {
         errors.push(`${path.relative(cwd, filePath)} failed to parse: ${error.message}`);
         continue;
       }
-      errors.push(...validateMemoryDeltaProposal(proposal, { cwd }));
+      const proposalValidation = validateMemoryDeltaProposalDetailed(proposal, { cwd });
+      errors.push(...proposalValidation.errors);
+      warnings.push(...proposalValidation.warnings);
       if (proposal.data.status === "accepted") {
         try {
           const nodes = findGraphNodesForProposal(cwd, proposal.data.id);
           if (!nodes.length) {
             errors.push(`accepted memory proposal ${proposal.data.id} has no graph node provenance`);
           }
+          const proposalHash = hashMemoryDeltaProposalSource(proposal);
           for (const node of nodes) {
             if (node.data.source_quest !== proposal.data.source_quest || node.data.provenance?.source_quest !== proposal.data.source_quest) {
               errors.push(`graph node ${node.data.id || "(unknown)"} provenance does not match accepted proposal ${proposal.data.id}`);
             }
-            if (node.data.source_proposal !== proposal.data.id || node.data.provenance?.proposal_id !== proposal.data.id) {
+            if (node.data.source_proposal !== proposal.data.id || ![node.data.provenance?.proposal_id, node.data.provenance?.source_proposal].includes(proposal.data.id)) {
               errors.push(`graph node ${node.data.id || "(unknown)"} missing proposal provenance for ${proposal.data.id}`);
+            }
+            if (node.data.node_type !== proposal.data.node_type || node.data.provenance?.node_type !== proposal.data.node_type) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} node_type provenance does not match accepted proposal ${proposal.data.id}`);
+            }
+            if (node.data.origin !== "memory-delta-proposal" || node.data.provenance?.origin !== "memory-delta-proposal") {
+              errors.push(`graph node ${node.data.id || "(unknown)"} origin provenance does not match memory-delta-proposal`);
+            }
+            if (!node.data.accepted_at || node.data.provenance?.accepted_at !== node.data.accepted_at) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} accepted_at provenance is missing or inconsistent`);
+            }
+            if (!node.data.source_proposal_hash || !node.data.provenance?.source_proposal_hash) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} source_proposal_hash provenance is missing`);
+            }
+            if (node.data.source_proposal_hash && node.data.source_proposal_hash !== proposalHash) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} source_proposal_hash does not match accepted proposal ${proposal.data.id}`);
+            }
+            if (node.data.provenance?.source_proposal_hash && node.data.provenance.source_proposal_hash !== proposalHash) {
+              errors.push(`graph node ${node.data.id || "(unknown)"} provenance source_proposal_hash does not match accepted proposal ${proposal.data.id}`);
             }
           }
         } catch (error) {
