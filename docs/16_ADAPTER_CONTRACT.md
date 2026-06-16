@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v0.2 alpha is still a Seed Kernel. The `orange` CLI is the kernel
+Orange Hyper v0.2.0 stable is still a Seed Kernel. The `orange` CLI is the kernel
 control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
@@ -41,7 +41,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.2 alpha keeps
+`contract_version` is the adapter-facing JSON contract version. v0.2.0 stable keeps
 `"0.1"` as the stable Seed Kernel adapter contract and appears in both success
 and failure envelopes.
 

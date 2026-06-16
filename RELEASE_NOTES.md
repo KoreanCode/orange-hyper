@@ -1,5 +1,101 @@
 # Release Notes
 
+## v0.2.0
+
+Memory Delta Proposal stable release.
+
+This stable release does not add new core features after `v0.2.0-alpha.2`.
+It promotes the v0.2 proposal review lifecycle to the stable channel: completed
+Quests can produce pending Memory Delta Proposals, users can inspect, validate,
+revise, accept, or reject them, and `doctor`/`identity build` can summarize the
+resulting proposal state. This is not a Memory Graph rendering release.
+
+- Package version is `0.2.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Stable usage is `npx orange-hyper ...` after publish.
+- Alpha usage remains `npx orange-hyper@alpha ...` for the alpha channel.
+- Expected post-publish dist-tags: `latest: 0.2.0`, `alpha: 0.2.0-alpha.2`.
+- Stabilized from `v0.2.0-alpha.0`: `remember propose`, `remember list`,
+  `remember show`, `remember accept`, and `remember reject`.
+- Stabilized from `v0.2.0-alpha.1`: proposal quality validation, pending
+  duplicate prevention, list filters, accepted node provenance, doctor
+  provenance checks, and identity proposal/node counts.
+- Stabilized from `v0.2.0-alpha.2`: `remember validate`, `remember revise`,
+  accepted/rejected revise protection, pending duplicate revise protection,
+  proposal timestamp warning, and identity review-stage messaging.
+- Accepted proposals create candidate graph node files with proposal/source
+  Quest provenance. They do not activate graph rendering or automatic retrieval.
+- There is no automatic memory write. Only a user-approved `remember accept`
+  can create an accepted graph node candidate.
+
+Explicitly not included:
+
+- Memory Graph rendering
+- Obsidian-style dashboard graph
+- MCP/hooks/subagents/role evolution
+- auto planner or auto execution loop
+- raw prompt archive
+- automatic memory write
+
+### Stable Publish Method
+
+`0.2.0` is stable, so publish it to npm without an explicit prerelease tag. The
+npm `publish` command uses the `tag` config to decide which dist-tag to apply,
+and its default is `latest`; alpha releases should continue to use
+`npm publish --tag alpha`.
+
+Do not run the publishing commands until the release is explicitly approved.
+
+```bash
+npm test
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+
+git add -A
+git commit -m "chore: release orange-hyper v0.2.0 memory proposal stable"
+
+git tag -a v0.2.0 -m "orange-hyper v0.2.0"
+git push origin main
+git push origin v0.2.0
+
+gh release create v0.2.0 \
+  --title "orange-hyper v0.2.0" \
+  --notes-file RELEASE_NOTES.md
+
+npm publish
+```
+
+After publish:
+
+```bash
+npm dist-tag ls orange-hyper
+npx orange-hyper --help
+```
+
+Expected dist-tags:
+
+```text
+latest: 0.2.0
+alpha: 0.2.0-alpha.2
+```
+
+### Alpha.2 Smoke Evidence
+
+The `v0.2.0-alpha.2` npm package was used to harden the stable proposal review
+contract before `0.2.0`:
+
+- `node bin/orange.js --help` exposed the full v0.2 remember command surface.
+- `npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache` checked the
+  package contents before stable promotion.
+- Fresh temp smoke covered `init`, `quest new --json`, `quest done --json`,
+  `remember propose --json`, `remember validate --json`,
+  `remember revise --json`, `remember accept --json`, `doctor --json`, and
+  `identity build --json`.
+- The smoke JSON outputs kept `contract_version: "0.1"` and command ids
+  `quest.new`, `quest.done`, `remember.propose`, `remember.validate`,
+  `remember.revise`, `remember.accept`, `doctor.run`, and `identity.build`.
+
 ## v0.2.0-alpha.2
 
 Memory Proposal Review UX release.

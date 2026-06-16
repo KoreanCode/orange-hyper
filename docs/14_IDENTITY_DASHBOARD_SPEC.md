@@ -4,7 +4,7 @@
 
 `orange-hyper`의 identity 기능은 프로젝트가 어떻게 성장하고 있는지 보여주는 **단일 HTML 대시보드**다.
 
-v0.2 alpha의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, memory proposal/node count, Seed mode 메시지를 보여주는 것이다.
+v0.2.0 stable의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, memory proposal/node count, Seed mode 메시지를 보여주는 것이다.
 
 v0.3 이후의 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화한다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
@@ -124,7 +124,7 @@ v0.3+ 후보 출력:
     unlocks.jsonl
 ```
 
-v0.2에서는 최소 입력만 허용한다. 실제 alpha 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count와 route distribution만 계산한다.
+v0.2에서는 최소 입력만 허용한다. 실제 stable 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count, route distribution, Seed Kernel 상태 메시지만 계산한다. Graph view와 node/edge visualization은 v0.3+ 범위다.
 
 ```text
 config.json

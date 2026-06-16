@@ -15,7 +15,8 @@
 
 ## 2.1 v0.2 Memory Delta Proposal 범위
 
-v0.2는 Memory Graph 전체 구현이 아니라 "기억 후보 제안/승인" 단계다.
+v0.2.0 stable은 Memory Graph 전체 구현이 아니라 "기억 후보 제안/승인" 단계다.
+Graph rendering과 Obsidian-style dashboard graph는 v0.3+ 범위다.
 
 포함:
 
@@ -112,7 +113,7 @@ Quest는 기본적으로 proposal 대상이 아니다.
 - `Evidence`는 source Quest 또는 verification/unverified 정보를 참조해야 한다.
 - `Suggested Node`에 명시된 type은 frontmatter `node_type`과 충돌하면 안 된다.
 - `confidence`는 `low`, `medium`, `high`만 허용한다.
-- 너무 짧거나 일반적인 `Candidate Memory`는 v0.2 alpha에서 warning으로만
+- 너무 짧거나 일반적인 `Candidate Memory`는 v0.2 stable에서 warning으로만
   처리한다.
 - `updated_at`이 `created_at`보다 이전이면 review/doctor warning으로
   표시한다.
