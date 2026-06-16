@@ -15,10 +15,16 @@ latest published package and the current development branch.
 
 Please do not open a public issue for an active vulnerability.
 
-Use GitHub Security Advisories for this repository when possible, or contact
-the maintainer through the official repository:
+Use GitHub Security Advisories for this repository when possible:
 
-https://github.com/KoreanCode/orange-hyper
+https://github.com/KoreanCode/orange-hyper/security/advisories/new
+
+If GitHub Security Advisories are unavailable, contact the maintainer by email:
+
+or.namcheol@gmail.com
+
+Do not include secrets, private project memory, or sensitive `.orange-hyper/`
+contents in public issues.
 
 Include:
 
@@ -50,4 +56,3 @@ Relevant issues include:
 
 The project aims to acknowledge valid reports within 7 days and coordinate a fix
 before public disclosure when practical.
-
