@@ -23,7 +23,7 @@ If this translation falls behind, use the Korean README as the source of truth. 
 
 </details>
 
-[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+[![npm latest](https://img.shields.io/npm/v/orange-hyper/latest?label=npm%20latest)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
 
 ## Problem · Reflection · Direction
 
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.3.0-alpha.1, Orange Hyper provides Seed Kernel and read-only graph preview features.
+As of v0.3.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, and read-only Identity Graph Preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -118,7 +118,7 @@ npx -y --package orange-hyper@latest orange init
 npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
 ```
 
-Alpha channel:
+Future v0.4 alpha channel:
 
 ```bash
 npx -y --package orange-hyper@alpha orange init
@@ -164,7 +164,7 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview
+- v0.4 Minimal Hook Preview (next)
 - v0.5 MCP Advisor
 - v0.6 Growth System
 - v0.7 Adapter Layer

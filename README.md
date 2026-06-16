@@ -23,7 +23,7 @@
 
 </details>
 
-[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+[![npm latest](https://img.shields.io/npm/v/orange-hyper/latest?label=npm%20latest)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
 
 ## 문제 · 고찰 · 방향
 
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.3.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel 및 read-only graph preview 기능을 제공합니다.
+v0.3.0 stable 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -109,7 +109,7 @@ Orange Hyper는 자동으로 기억을 저장하지 않습니다. 사용자가 a
 
 ## Type Safety Foundation
 
-v0.3-alpha.x의 Type Safety Foundation은 전체 TypeScript rewrite가 아니라
+v0.3 stable의 Type Safety Foundation은 전체 TypeScript rewrite가 아니라
 Adapter JSON Contract와 Quest/Proposal/Graph/Doctor/Identity schema를 먼저
 고정하기 위한 contract-checking layer입니다.
 
@@ -129,7 +129,7 @@ npx -y --package orange-hyper@latest orange init
 npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
 ```
 
-Alpha channel:
+향후 v0.4 alpha channel:
 
 ```bash
 npx -y --package orange-hyper@alpha orange init
@@ -175,7 +175,7 @@ orange doctor
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview
+- v0.4 Minimal Hook Preview (next)
 - v0.5 MCP Advisor
 - v0.6 Growth System
 - v0.7 Adapter Layer

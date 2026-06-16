@@ -14,7 +14,7 @@ import { workspacePaths } from "./paths.js";
 import { asArray } from "./text.js";
 import { nowIso } from "./time.js";
 
-export const GRAPH_INDEX_VERSION = "0.3.0-alpha.1";
+export const GRAPH_INDEX_VERSION = "0.3.0";
 
 /**
  * @returns {import("./types.d.ts").GraphListResult}

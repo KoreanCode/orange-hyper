@@ -1,6 +1,7 @@
 # Adapter Contract
 
-Orange Hyper v0.3.0-alpha.1 is still a Seed Kernel. The `orange` CLI is the
+Orange Hyper v0.3.0 stable is still a Seed Kernel with Memory Graph Usability
+and a read-only Identity Graph Preview. The `orange` CLI is the
 kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
@@ -58,9 +59,9 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.2.0 stable keeps
-`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
-and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. v0.3.0 stable
+keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
+success and failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
@@ -658,7 +659,7 @@ orange graph rebuild-index --json
     "count": 1,
     "index": {
       "schema_version": 1,
-      "index_version": "0.3.0-alpha.1",
+      "index_version": "0.3.0",
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper",
       "updated_at": "2026-06-16T00:05:00.000Z",
@@ -990,7 +991,7 @@ and process exit code when they need more detail.
 - Preserve kernel ownership of Quest completion, Route trace, Capsule writes,
   Memory Delta Proposal transitions, Doctor validation, and Identity generation.
 - Do not duplicate Seed Kernel state logic in natural-language workflows.
-- Do not add Memory Graph, MCP, hooks, subagents, role evolution, auto planner,
+- Do not add graph editing, MCP, hooks, subagents, role evolution, auto planner,
   or auto execution loop behavior in adapters for the Seed Kernel contract.
 - Do not write memory automatically. Only accepted proposals create graph node
   candidates.

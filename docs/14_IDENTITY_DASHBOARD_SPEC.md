@@ -6,11 +6,12 @@
 
 v0.2.0 stable의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, memory proposal/node count, Seed mode 메시지를 보여주는 것이다.
 
-v0.3.0-alpha.1은 placeholder를 read-only graph preview로 확장하고 accepted
+v0.3.0 stable은 placeholder를 read-only graph preview로 확장하고 accepted
 memory node detail, source columns, project-boundary summary를 보강한다. Heavy
 graph engine, editor, graph state mutation은 포함하지 않는다.
 
-v0.4 이후 후보 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
+v0.4 이후 후보 identity 기능은 hook preview 이후 반복 증거에 따라 더 풍부한 graph
+view를 검토할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
 ```text
 1. 프로젝트가 어떤 기억을 쌓고 있는지 보여준다.
@@ -76,14 +77,14 @@ v0.2 명령:
 orange identity build
 ```
 
-v0.3 alpha 명령:
+v0.3 stable 명령:
 
 ```bash
 orange identity build
 orange identity build --json
 ```
 
-v0.4+ 후보 명령:
+후속 후보 명령:
 
 ```bash
 orange identity build --open
@@ -104,7 +105,7 @@ orange dashboard build
 .orange-hyper/identity/orange-hyper.html
 ```
 
-v0.4+ 후보 출력:
+후속 후보 출력:
 
 ```text
 .orange-hyper/identity/state.json        # optional debug artifact
@@ -137,7 +138,7 @@ v0.4+ 후보 출력:
 
 v0.2에서는 최소 입력만 허용한다. 실제 stable 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count, route distribution, Seed Kernel 상태 메시지만 계산한다.
 
-v0.3.0-alpha.1은 같은 단일 HTML 산출물에 current-project accepted memory node
+v0.3.0 stable은 같은 단일 HTML 산출물에 current-project accepted memory node
 preview를 추가한다. Graph view와 node/edge visualization은 작은 SVG/static table
 수준으로 제한한다.
 
@@ -150,7 +151,7 @@ graph/index.json
 graph/nodes/*
 ```
 
-v0.3 alpha가 표시하는 최소 항목:
+v0.3 stable이 표시하는 최소 항목:
 
 ```text
 Project
@@ -386,7 +387,7 @@ subagent_context_tokens
 trace_tokens_by_route
 ```
 
-## 7. HTML State Contract (v0.4+ target)
+## 7. HTML State Contract (future target)
 
 HTML 안에 다음 형태로 embed한다.
 
@@ -453,7 +454,7 @@ Vanilla HTML/CSS only placeholder.
 - bias/risk health 계산
 ```
 
-### 8.2 v0.3 alpha
+### 8.2 v0.3 stable
 
 Vanilla HTML/CSS/SVG only read-only preview.
 
@@ -480,7 +481,7 @@ Vanilla HTML/CSS/SVG only read-only preview.
 - automatic memory write
 ```
 
-### 8.3 v0.4+
+### 8.3 Future renderer candidates
 
 선택지:
 
@@ -494,8 +495,8 @@ Sigma.js: 수천 node 이상 large graph가 필요할 때 적합.
 
 ```text
 v0.2: vanilla placeholder
-v0.3 alpha: vanilla static read-only preview
-v0.4+: graph가 커지면 bundled renderer 또는 Cytoscape.js/Sigma.js 검토
+v0.3 stable: vanilla static read-only preview
+Future: hook preview 이후 graph가 커지면 bundled renderer 또는 Cytoscape.js/Sigma.js 검토
 ```
 
 CDN은 사용하지 말고 bundle해서 single HTML에 포함한다.
@@ -560,7 +561,7 @@ orange identity build --include-local
 13. 생성 결과가 deterministic하다.
 ```
 
-### 10.2 v0.3 alpha graph preview 기준
+### 10.2 v0.3 stable graph preview 기준
 
 ```text
 1. `orange identity build`가 단일 HTML을 생성한다.
@@ -577,7 +578,7 @@ orange identity build --include-local
 12. 현재 config의 `project_id`와 일치하는 accepted node만 표시된다.
 ```
 
-### 10.3 v0.3.0-alpha.1 identity preview hardening 기준
+### 10.3 v0.3.0 stable identity preview hardening 기준
 
 ```text
 1. graph summary에 현재 accepted memory node 수가 표시된다.

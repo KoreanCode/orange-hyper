@@ -40,7 +40,7 @@ const LEGACY_ORANGE_GITIGNORE_BLOCKERS = new Set([
 
 const EMPTY_GRAPH_INDEX = {
   schema_version: 1,
-  index_version: "0.3.0-alpha.1",
+  index_version: "0.3.0",
   project_id: null,
   project_name: "",
   updated_at: null,

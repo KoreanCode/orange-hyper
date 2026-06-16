@@ -23,7 +23,7 @@
 
 </details>
 
-[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+[![npm latest](https://img.shields.io/npm/v/orange-hyper/latest?label=npm%20latest)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
 
 ## 问题 · 思考 · 方向
 
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.3.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel 和 read-only graph preview 功能。
+以 v0.3.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability 和 read-only Identity Graph Preview 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -118,7 +118,7 @@ npx -y --package orange-hyper@latest orange init
 npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
 ```
 
-Alpha channel:
+Future v0.4 alpha channel:
 
 ```bash
 npx -y --package orange-hyper@alpha orange init
@@ -164,7 +164,7 @@ orange doctor
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview
+- v0.4 Minimal Hook Preview (next)
 - v0.5 MCP Advisor
 - v0.6 Growth System
 - v0.7 Adapter Layer

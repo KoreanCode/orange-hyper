@@ -63,7 +63,7 @@ export function ensureMemoryGraphDirs(cwd = process.cwd()) {
   if (!fs.existsSync(paths.graphIndex)) {
     writeGraphIndexFile(paths.graphIndex, {
       schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-      index_version: "0.3.0-alpha.1",
+      index_version: "0.3.0",
       project_id: null,
       project_name: "",
       updated_at: null,
@@ -934,7 +934,7 @@ function graphNodeIdForProposal(proposal) {
 function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   let index = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-    index_version: "0.3.0-alpha.1",
+    index_version: "0.3.0",
     project_id: nodeEntry.project_id || null,
     project_name: nodeEntry.project_name || "",
     updated_at: null,
@@ -952,7 +952,7 @@ function updateGraphIndex(indexPath, nodeEntry, updatedAt) {
   writeGraphIndexFile(indexPath, {
     ...index,
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
-    index_version: "0.3.0-alpha.1",
+    index_version: "0.3.0",
     project_id: nodeEntry.project_id || index.project_id || null,
     project_name: nodeEntry.project_name || index.project_name || "",
     updated_at: updatedAt,

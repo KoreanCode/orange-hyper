@@ -5,9 +5,9 @@
 `orange-hyper`의 1차 배포 구조는 **npm 기반 CLI**로 잡는다.
 
 ```bash
-npx orange-hyper@latest init
-npx orange-hyper@latest quest new "..."
-npx orange-hyper@latest identity build
+npx -y --package orange-hyper@latest orange init
+npx -y --package orange-hyper@latest orange quest new "..."
+npx -y --package orange-hyper@latest orange identity build
 ```
 
 이 구조가 가장 적합한 이유는 다음이다.
@@ -61,7 +61,7 @@ orange
 사용 방식:
 
 ```bash
-npx orange-hyper@latest init
+npx -y --package orange-hyper@latest orange init
 npm i -g orange-hyper
 pnpm add -D orange-hyper
 ```
@@ -72,7 +72,7 @@ pnpm add -D orange-hyper
 - 자동 dotfile 수정 금지.
 - `orange init`도 기본적으로 생성 파일을 명확히 보여준다.
 - 위험 작업은 `--yes` 또는 명시 승인 필요.
-- alpha package에는 `.orange-hyper/`, `.DS_Store`, tests, coverage, local traces, generated identity HTML을 포함하지 않는다.
+- npm package에는 `.orange-hyper/`, `.DS_Store`, tests, coverage, local traces, generated identity HTML을 포함하지 않는다.
 
 ### 2.2 Secondary: GitHub Releases
 
@@ -178,9 +178,9 @@ MAJOR.MINOR.PATCH
 
 ```text
 0.1.x: Seed Kernel bugfix
-0.2.x: Memory Graph usability
-0.3.x: Identity Dashboard
-0.4.x: Minimal Hooks
+0.2.x: Memory Delta Proposal + Project Boundary Guard
+0.3.x: Memory Graph Usability + Identity Graph Preview
+0.4.x: Minimal Hook Preview
 0.5.x: MCP Advisor
 0.6.x: Role/Growth System
 ```
@@ -254,8 +254,8 @@ npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
 유지하므로, 로컬 Mac 터미널에서 `npm publish --tag alpha`를 직접 실행하면
 npm provenance에 필요한 OIDC provider가 없어 실패할 수 있다.
 
-긴급하게 로컬 publish가 꼭 필요할 때는 다음처럼 provenance를 끌 수 있다.
-다만 이 방식은 공식 release path가 아니며, 기본 배포 경로로 문서화하거나
+긴급하게 로컬 publish가 꼭 필요할 때는 provenance를 끌 수 있다. 다만 이 방식은
+stable과 alpha 모두에서 공식 release path가 아니며, 기본 배포 경로로 문서화하거나
 반복 사용하지 않는다.
 
 ```bash
@@ -288,7 +288,9 @@ push tag v*:
 ```
 
 `v*-alpha.*` tag는 npm `alpha` dist-tag로 publish한다. 일반
-`vX.Y.Z` tag는 npm 기본 dist-tag인 `latest`로 publish한다.
+`vX.Y.Z` tag는 npm 기본 dist-tag인 `latest`로 publish한다. 따라서 `v0.3.0`
+stable tag는 GitHub Actions Trusted Publishing 경로에서 `npm publish`를 실행하고
+`latest` dist-tag를 받는다.
 
 Trusted Publishing/OIDC publish에서는 `NODE_AUTH_TOKEN`을 기본 경로로
 요구하지 않는다. npm registry에서 GitHub Actions workflow를 trusted
@@ -345,9 +347,9 @@ packages/
 ## Quick start
 
 ```bash
-npx orange-hyper@latest init
-npx orange-hyper@latest quest new "Fix signup policy"
-npx orange-hyper@latest identity build --open
+npx -y --package orange-hyper@latest orange init
+npx -y --package orange-hyper@latest orange quest new "Fix signup policy"
+npx -y --package orange-hyper@latest orange identity build
 ```
 
 ## Local install

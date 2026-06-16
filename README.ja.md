@@ -23,7 +23,7 @@
 
 </details>
 
-[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+[![npm latest](https://img.shields.io/npm/v/orange-hyper/latest?label=npm%20latest)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
 
 ## 問題 · 考察 · 方向性
 
@@ -82,7 +82,7 @@ Orange Hyper は coding agent のための repo-local project-memory kernel で�
 
 ## 現在の機能
 
-v0.3.0-alpha.1 時点で、Orange Hyper は Seed Kernel と read-only graph preview 機能を提供します。
+v0.3.0 stable 時点で、Orange Hyper は Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview 機能を提供します。
 
 - `orange init` が repo-local な `.orange-hyper/` 構造を作ります。
 - Quest markdown と YAML frontmatter が作業意図を記録します。
@@ -118,7 +118,7 @@ npx -y --package orange-hyper@latest orange init
 npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
 ```
 
-Alpha channel:
+Future v0.4 alpha channel:
 
 ```bash
 npx -y --package orange-hyper@alpha orange init
@@ -164,7 +164,7 @@ orange doctor
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview
+- v0.4 Minimal Hook Preview (next)
 - v0.5 MCP Advisor
 - v0.6 Growth System
 - v0.7 Adapter Layer

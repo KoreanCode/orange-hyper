@@ -164,7 +164,7 @@ function renderIdentityHtml(model) {
     .map((message) => `<li>${escapeHtml(message)}</li>`)
     .join("\n");
   const stateJson = escapeScriptJson(JSON.stringify({
-    schemaVersion: "0.3.0-alpha.1",
+    schemaVersion: "0.3.0",
     project: {
       project_id: model.project_id || "",
       project_name: model.project_name || model.projectName || "",

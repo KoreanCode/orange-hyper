@@ -1,4 +1,4 @@
-export const ORANGE_HYPER_VERSION = "0.3.0-alpha.1";
+export const ORANGE_HYPER_VERSION = "0.3.0";
 export const ORANGE_HYPER_PROJECT_NAME = "Orange Hyper";
 export const ORANGE_HYPER_PACKAGE_NAME = "orange-hyper";
 export const ORANGE_HYPER_SOURCE_REPOSITORY = "https://github.com/KoreanCode/orange-hyper";
@@ -23,4 +23,3 @@ export function originSummaryLines() {
     `Official package: ${ORANGE_HYPER_OFFICIAL_PACKAGE}`
   ];
 }
-

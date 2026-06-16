@@ -1,5 +1,44 @@
 # Release Notes
 
+## v0.3.0
+
+Memory Graph Usability stable release.
+
+- Package version is `0.3.0`.
+- README version remains `0.3-doc.3`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.3.0 promotes the validated v0.3.0-alpha.0 through v0.3.0-alpha.3
+  surface to stable without adding new CLI behavior.
+- This is a Memory Graph Usability stable release, not a Hook, MCP, Subagent,
+  role evolution, auto planner, auto execution loop, graph editing, or
+  semantic/vector search release.
+
+### Stable surface
+
+- `orange graph list`, `orange graph show`, `orange graph search`, and
+  `orange graph rebuild-index` provide read-only exploration of current-project
+  accepted memory nodes.
+- Graph filters cover node type, source Quest, and source Proposal where
+  supported; search remains deterministic plain-text search, not fuzzy,
+  semantic, or vector search.
+- `orange identity build` includes a read-only Identity Graph Preview with
+  accepted memory node count, node type distribution, source columns,
+  project-boundary state, and node details.
+- Project Boundary Guard keeps graph results scoped to the current
+  `project_id` and keeps cross-project memory out of current-project graph
+  views.
+- Shared Memory State Policy keeps public `.orange-hyper/` state bounded to
+  shareable config, completed Quests, accepted Memory Delta Proposals, accepted
+  graph nodes/read models, and graph provenance.
+- README identity rewrite and synchronized Korean, English, Simplified Chinese,
+  and Japanese READMEs are the stable public project narrative.
+- Type Safety Foundation remains a development-only contract-checking layer for
+  Adapter JSON envelopes and Quest/Proposal/Graph/Doctor/Identity shapes while
+  the package is still distributed as JavaScript.
+- Trusted Publishing is the official npm release path. Tags matching
+  `v*-alpha.*` publish with npm dist-tag `alpha`; stable tags matching `vX.Y.Z`,
+  including `v0.3.0`, publish with the default `latest` dist-tag.
+
 ## v0.3.0-alpha.3
 
 Publish Pipeline Trusted Publishing release.

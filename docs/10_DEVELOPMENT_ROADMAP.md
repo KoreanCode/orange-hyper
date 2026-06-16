@@ -74,35 +74,40 @@ accept한 proposal만 graph node 후보를 생성한다.
 
 ## 4. v0.3 — Memory Graph Usability + Identity Graph Preview
 
-목표: accepted memory를 실제 작업 context와 Identity Dashboard에서 탐색하기 시작한다.
+목표: accepted memory를 현재 프로젝트 안에서 read-only로 탐색하고 Identity Dashboard에서 미리보기 시작한다.
 
 포함:
 
-- Memory Node markdown schema
-- edges.jsonl
-- index builder
-- node search
-- stale/superseded/conflict metadata
-- memory budget 적용
-- context capsule archive
-- Identity Dashboard node/edge graph preview
-- route trace 개선
+- Memory Node markdown schema와 provenance
+- `graph/index.json` read model과 deterministic index builder
+- `orange graph list/show/search/rebuild-index`
+- current-project accepted node filter
+- deterministic plain-text node search
+- Project Boundary Guard
+- shared memory state policy
+- doctor graph/project-boundary diagnostics
+- Identity Dashboard read-only graph preview
 
 제외:
 
+- graph editing
+- semantic/vector search
 - graph DB
 - vector DB 필수화
+- hooks/MCP/subagents/role system
+- automatic memory write
 - automatic role unlock
 - automatic MCP install
+- automatic planner / automatic execution loop
 
 완료 기준:
 
 ```text
-반복 작업에서 이전 decision/constraint/verification node를 찾아 Context Capsule에 넣고,
-identity build에서 node/edge graph preview를 볼 수 있다.
+현재 project_id와 일치하는 accepted memory node를 list/show/search로 탐색하고,
+identity build에서 read-only graph preview와 source provenance를 볼 수 있다.
 ```
 
-## 5. v0.4 — Minimal Hook Preview
+## 5. v0.4 — Minimal Hook Preview (next)
 
 목표: hook을 optional safety layer로 도입한다.
 
@@ -200,24 +205,24 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. Memory Delta Proposal schema
-2. proposal writer command
-3. proposal list/show commands
-4. source Quest/evidence link
-5. accept/reject status
-6. doctor validation for proposals
-7. tests
-8. README and examples
+1. v0.4 Minimal Hook Preview scope freeze
+2. opt-in hook config and strictness policy
+3. Stop/SessionStart hook templates
+4. verification-claim warning path
+5. memory delta auto-proposal preview
+6. hook-off default and rollback documentation
+7. tests and smoke checks
+8. README and release notes examples
 
 ## 11. 다음 개발 목표
 
 ```text
-Step 1: proposal schema and deterministic file naming
-Step 2: proposal writer from completed Quest evidence
-Step 3: proposal list/show UX
-Step 4: manual review status workflow
-Step 5: doctor checks and tests
-Step 6: README examples for v0.2
+Step 1: define the minimal hook preview boundary
+Step 2: keep hooks opt-in and off by default
+Step 3: warn on missing verification claims without auto-executing work
+Step 4: propose memory deltas without automatic accept
+Step 5: preserve the v0.3 read-only graph surface
+Step 6: document rollback and no-hook operation
 ```
 
 ## 12. 품질 기준
