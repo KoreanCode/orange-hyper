@@ -4,7 +4,7 @@
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
   "bin": {
-    "orange": "./bin/orange.js"
+    "orange": "bin/orange.js"
   },
   "scripts": {
     "test": "node --test",
