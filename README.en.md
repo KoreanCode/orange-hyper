@@ -1,67 +1,88 @@
-# Orange Hyper
+<p align="center">
+  <img src="./readme-hero.png" alt="Orange Hyper" width="960" />
+</p>
 
-[한국어](README.md) | [English](README.en.md) | [简体中文](README.zh-CN.md) | [日本語](README.ja.md)
+<h2 align="center">
+  Instead of controlling projects,<br />
+  care for them and let them grow with us.
+</h2>
 
-Base README: [README.md](README.md)
-README version: `0.3-doc.0`
-Package version: see [package.json](package.json)
-Adapter JSON contract: `0.1`
-Base language: `ko`
-Synced translations: `en` / `zh-CN` / `ja`
+[![Korean README](https://img.shields.io/badge/README-KO-ff7e13)](README.md) [![English README](https://img.shields.io/badge/README-EN-2f80ed)](README.en.md) [![Simplified Chinese README](https://img.shields.io/badge/README-ZH--CN-dc2626)](README.zh-CN.md) [![Japanese README](https://img.shields.io/badge/README-JA-7c3aed)](README.ja.md)
 
-If this translation is behind, trust the Korean base README.
+<details>
+<summary>Version metadata details</summary>
 
-[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper)
-[![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
+- Base README: [README.md](README.md)
+- README version: `0.3-doc.2`
+- Package version: see [package.json](package.json)
+- Adapter JSON contract: `0.1`
+- Base language: `ko`
+- Synced translations: `en` / `zh-CN` / `ja`
 
-README version, package version, and Adapter JSON contract version are separate version axes.
+If this translation falls behind, use the Korean README as the source of truth. README version, package version, and Adapter JSON contract version are separate version axes.
 
-## Problem
+</details>
 
-A strong SDD harness helps with large work. But when it forces a branch, spec, review, verification, and PR loop for small tasks, it creates fatigue.
+[![npm alpha](https://img.shields.io/npm/v/orange-hyper/alpha?label=npm%20alpha)](https://www.npmjs.com/package/orange-hyper) [![CI](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml/badge.svg)](https://github.com/KoreanCode/orange-hyper/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=20](https://img.shields.io/badge/node-%3E%3D20-339933.svg)](package.json)
 
-A harnessless flow is light. It also struggles with memory, verification, repeated learning, and context boundaries.
+## Problem · Reflection · Direction
 
-Sequential SPEC files are weak for collaboration and nonlinear thinking. Decisions, constraints, checks, and risks connect to each other.
+| Problem | Reflection | Direction |
+| --- | --- | --- |
+| A strong harness can impose too much process on small tasks. | A harnessless flow is light, but memory, verification, and boundaries are weak. | Orange Hyper grows only the needed memory through proposal -> review -> accept. |
+
+## Problem Definition
+
+A strong SDD harness is useful for large work. But when it forces a branch, spec, review, verification, and PR loop for small tasks, fatigue builds quickly.
+
+A harnessless flow is light. It also struggles to preserve memory, verification, repeated learning, and context boundaries over time.
+
+Sequential SPEC files are weak for collaboration and nonlinear thinking. Decisions, constraints, checks, and risks connect to each other instead of stacking in a straight line.
 
 Users want to talk lightly. The project still must not lose memory or verification.
 
-## Harness Reflection
+## Reflection on Harnesses
 
-A harness can add procedure. Procedure can add safety. But if every task gets the same procedure, the user ends up working for the harness.
+A harness creates procedure, and procedure can create safety. But if every task gets the same procedure, the user ends up working to operate the harness.
 
-Orange Hyper does not start with a strong harness enabled. It also does not leave everything to model instructions.
+Orange Hyper does not turn on a strong harness immediately. It also does not leave everything to model instructions as a harnessless flow would.
 
-The target is the middle. Small requests stay small. Larger requests leave intent, constraints, memory, and verification evidence behind.
+What is needed is the space between those two. Small requests should stay small. Larger work should leave behind intent, constraints, memory, and verification evidence.
 
-## Direction
+## Chosen Direction
 
 - Intent should be compiled.
-- Work should be split by level and layer.
+- Work should be divided by level and layer.
 - Verification should become stronger by work level.
 - Memory should grow like a node graph, not a sequential SPEC chain.
 - role, MCP, hook, and subagent are not enabled from the start.
 - role, MCP, hook, and subagent grow only from repeated evidence.
-- Start light. Grow gradually.
+- Start light and grow gradually.
 - Do not write memory automatically.
 - Create a Memory Delta Proposal only from a completed Quest.
 - Only user-accepted proposals become graph node candidates.
-- Only memory with the current `project_id` is current project memory.
+- Only memory with the current `project_id` is treated as current project memory.
 - The CLI is a kernel interface for skills, agents, and adapters. It is not the final end-user UX.
 
-## What Is Orange Hyper?
+## Core Flow
+
+<p align="center">
+  <img src="./assets/readme/core-flow.png" alt="Orange Hyper core flow" width="860" />
+</p>
+
+A user request becomes a Quest, then moves through the Route Contract and Capsule toward a verified completion. Only completed Quests can start a Memory Delta Proposal.
+
+## What Orange Hyper Is
 
 Orange Hyper is a repo-local project-memory kernel for coding agents.
 
 A user request becomes a Quest and a Route Contract. The result and verification evidence are recorded on the completed Quest. When useful, a completed Quest can produce a Memory Delta Proposal, and only a user-approved proposal becomes a project memory candidate.
 
-The goal is not a giant automation system. The user keeps asking naturally. The project remembers only what it should and strengthens verification only when the work level calls for it.
+The goal is not a giant automation system. The user keeps asking lightly. The project remembers only what it should and strengthens verification only to the level the work needs.
 
 ## Current Features
 
-As of v0.3.0-alpha.0, Orange Hyper provides these Seed Kernel and read-only graph preview features.
+As of v0.3.0-alpha.0, Orange Hyper provides Seed Kernel and read-only graph preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -76,6 +97,14 @@ As of v0.3.0-alpha.0, Orange Hyper provides these Seed Kernel and read-only grap
 - `doctor` checks Quest, proposal, accepted node, and Project Boundary state.
 - `identity build` creates an Identity Dashboard file summarizing Seed Kernel state and the read-only Identity Graph Preview.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
+
+## Memory Lifecycle
+
+<p align="center">
+  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper memory lifecycle" width="860" />
+</p>
+
+Orange Hyper does not store memory automatically. Only a user-accepted proposal becomes an accepted memory node candidate, and pending or rejected proposals are not graph nodes.
 
 ## Install and Usage
 

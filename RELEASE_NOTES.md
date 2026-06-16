@@ -6,7 +6,8 @@ Memory Graph Usability, Identity Graph Preview, and README Identity Rewrite
 alpha.
 
 - Package version is `0.3.0-alpha.0`.
-- README version is `0.3-doc.0`.
+- README version is `0.3-doc.2` for this documentation-only narrative restore
+  patch.
 - Adapter JSON `contract_version` remains `"0.1"`.
 
 ### Memory Graph Usability
@@ -36,6 +37,18 @@ alpha.
 - Identity output explicitly displays `Graph preview is read-only.` and
   `Graph editing is not supported.`
 
+### Documentation
+
+- README Narrative Restore / Visual-Narrative Reconciliation is a documentation
+  patch, not a core feature release.
+- Restored the canonical README narrative after the 3-card summary: problem
+  definition, harness reflection, chosen direction, and Orange Hyper identity.
+- Kept the existing visual structure assets in place: hero image,
+  `assets/readme/core-flow.png`, and `assets/readme/memory-lifecycle.png`.
+- Kept package version and Adapter JSON `contract_version` unchanged.
+- No CLI, core runtime, Memory Graph behavior, Identity runtime, MCP, hooks,
+  subagents, or role evolution changes are included.
+
 ### README Identity Rewrite
 
 - Internal documentation work name: `v0.3-doc-prep`.
@@ -48,6 +61,24 @@ alpha.
   non-goals, and docs links.
 - Kept current recommended `npx --package orange-hyper@latest orange ...`
   usage, alpha channel usage, source checkout usage, and `npm link` usage.
+
+### README Visual Structure
+
+- This is a README visual structure update, not a core feature release.
+- README version for the visual structure pass was `0.3-doc.1`; the narrative
+  restore patch reconciles that visual rhythm with the longer README narrative
+  at `0.3-doc.2`.
+- No CLI, Memory Graph, Identity runtime, Adapter JSON Contract, or package
+  runtime behavior changes are included.
+- Moved the user-provided `core-flow` and `memory-lifecycle` README images under
+  `assets/readme/`.
+- Synchronized `README.md`, `README.en.md`, `README.zh-CN.md`, and
+  `README.ja.md` around the same visual rhythm: hero, project identity, language
+  links, badges and version metadata, 3-card problem/reflection/direction,
+  Core Flow image, Memory Lifecycle image, feature summary, Quickstart, Identity
+  Dashboard / Graph Preview, roadmap, non-goals, and docs links.
+- Added `assets` to the package file list so the README images are included in
+  npm package contents.
 
 ### Explicitly not included
 
@@ -70,7 +101,8 @@ npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
 ```
 
 README package inclusion check: confirm the `npm pack --dry-run` file list
-includes `README.md`, `README.en.md`, `README.zh-CN.md`, and `README.ja.md`.
+includes `README.md`, `README.en.md`, `README.zh-CN.md`, `README.ja.md`, and
+the `assets/readme/` images.
 
 ### Fresh temp smoke
 
