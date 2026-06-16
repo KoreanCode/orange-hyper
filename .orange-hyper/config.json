@@ -1,0 +1,31 @@
+{
+  "version": "0.1.0",
+  "project": {
+    "name": "orange-hyper",
+    "default_language": "ko"
+  },
+  "storage": {
+    "root": ".orange-hyper",
+    "quest_format": "markdown+yaml-frontmatter"
+  },
+  "quest": {
+    "recommend_from_layer": "L2",
+    "require_from_layer": "L3"
+  },
+  "route": {
+    "expose_from": "L2",
+    "default_max_layer": "L3"
+  },
+  "verification": {
+    "completion_requires": "evidence_or_unverified_reason"
+  },
+  "features": {
+    "hooks": false,
+    "mcp": false,
+    "subagents": false,
+    "role_evolution": false,
+    "auto_planner": false,
+    "auto_execution_loop": false,
+    "branch_pr_spec_workflow_required": false
+  }
+}

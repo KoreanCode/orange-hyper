@@ -4,7 +4,9 @@
 
 `orange-hyper`의 identity 기능은 프로젝트가 어떻게 성장하고 있는지 보여주는 **단일 HTML 대시보드**다.
 
-이 HTML은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화한다. 단, 목적은 예쁜 그래프가 아니다. 목적은 다음이다.
+v0.1 alpha의 identity 기능은 graph dashboard가 아니라 **Seed Kernel placeholder**다. 현재 기준은 `.orange-hyper/identity/orange-hyper.html` 단일 HTML에 Quest count, verification count, route distribution, Seed mode 메시지를 보여주는 것이다.
+
+v0.3 이후의 identity 기능은 Obsidian graph view처럼 프로젝트 기억을 node/edge로 시각화한다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
 ```text
 1. 프로젝트가 어떤 기억을 쌓고 있는지 보여준다.
@@ -17,7 +19,11 @@
 
 한 문장 정의:
 
-> Identity Dashboard는 `.orange-hyper/` memory graph와 trace를 읽어 프로젝트의 성장 상태, 편향, 위험, 검증 건강도를 단일 self-contained HTML로 보여주는 로컬 우선 시각화 산출물이다.
+> v0.1 Identity Dashboard는 `.orange-hyper/` Quest와 route trace를 읽어 Seed Kernel 상태를 단일 self-contained HTML로 보여주는 placeholder 산출물이다.
+
+장기 정의:
+
+> v0.3+ Identity Dashboard는 `.orange-hyper/` memory graph와 trace를 읽어 프로젝트의 성장 상태, 편향, 위험, 검증 건강도를 단일 self-contained HTML로 보여주는 로컬 우선 시각화 산출물이다.
 
 ## 2. 제품 원칙
 
@@ -33,7 +39,7 @@
 
 - 네트워크 없이 열려야 한다.
 - CDN 의존 금지.
-- JSON data, CSS, JS를 HTML 안에 embed한다.
+- 필요한 JSON data, CSS, JS를 HTML 안에 embed한다.
 - deterministic하게 생성되어야 한다.
 - private local memory는 기본 포함하지 않는다.
 
@@ -56,14 +62,19 @@ UserService 주변 memory만 과밀하다.
 
 사용자가 대시보드를 직접 편집할 필요가 없어야 한다.
 
-사용자는 평소처럼 작업하고, 하네스는 traces와 memory graph에서 dashboard를 생성한다.
+사용자는 평소처럼 작업하고, 하네스는 v0.1에서는 Quest/route trace에서 placeholder를 생성하고 v0.3+에서는 traces와 memory graph에서 dashboard를 생성한다.
 
 ## 3. CLI 명령
 
-권장 명령:
+v0.1 명령:
 
 ```bash
 orange identity build
+```
+
+v0.3+ 후보 명령:
+
+```bash
 orange identity build --open
 orange identity build --scope project
 orange identity build --scope local --depth 2
@@ -80,6 +91,11 @@ orange dashboard build
 
 ```text
 .orange-hyper/identity/orange-hyper.html
+```
+
+v0.3+ 후보 출력:
+
+```text
 .orange-hyper/identity/state.json        # optional debug artifact
 .orange-hyper/identity/summary.md        # optional text summary
 ```
@@ -111,9 +127,9 @@ orange dashboard build
 v0.1에서는 최소 입력만 허용한다. 실제 alpha 구현은 graph rendering을 하지 않는 placeholder이며, 아래 데이터에서 count와 route distribution만 계산한다.
 
 ```text
+config.json
 quests/*
 traces/route.jsonl
-capsules/current.md
 ```
 
 v0.1 placeholder가 표시하는 최소 항목:
@@ -129,7 +145,7 @@ Route distribution
 This project is still in Seed Kernel mode. Memory graph is not active yet.
 ```
 
-## 5. Dashboard 화면 구조
+## 5. Dashboard 화면 구조 (v0.3+ target)
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
@@ -340,14 +356,14 @@ subagent_context_tokens
 trace_tokens_by_route
 ```
 
-## 7. HTML State Contract
+## 7. HTML State Contract (v0.3+ target)
 
 HTML 안에 다음 형태로 embed한다.
 
 ```html
 <script id="orange-hyper-state" type="application/json">
 {
-  "schemaVersion": "0.1.0",
+  "schemaVersion": "0.3.0",
   "project": {
     "name": "example-project",
     "generatedAt": "2026-06-16T00:00:00+09:00",
@@ -386,18 +402,28 @@ HTML 안에 다음 형태로 embed한다.
 
 ### 8.1 v0.1
 
-Vanilla HTML/CSS/JS + SVG 또는 Canvas.
+Vanilla HTML/CSS only placeholder.
 
 목표:
 
 ```text
 - dependency 최소화
 - single HTML 보장
-- 작은 graph 렌더링
+- count와 route distribution만 표시
+- Seed Kernel mode 메시지 표시
 - CI에서 snapshot test 가능
 ```
 
-### 8.2 v0.2+
+제외:
+
+```text
+- SVG/Canvas node graph
+- force simulation
+- stale/conflict/orphan health 계산
+- bias/risk health 계산
+```
+
+### 8.2 v0.3+
 
 선택지:
 
@@ -410,8 +436,8 @@ Sigma.js: 수천 node 이상 large graph가 필요할 때 적합.
 권장:
 
 ```text
-v0.1: vanilla renderer
-v0.2: bundled D3 force renderer
+v0.1: vanilla placeholder
+v0.3: bundled graph renderer preview
 v0.4+: graph가 커지면 Cytoscape.js 또는 Sigma.js 검토
 ```
 
@@ -459,24 +485,50 @@ orange identity build --include-local
 
 ## 10. Acceptance Criteria
 
-v0.1 identity 기능 완료 기준:
+### 10.1 v0.1 placeholder 기준
 
 ```text
 1. orange identity build가 단일 HTML을 생성한다.
 2. HTML은 네트워크 없이 열린다.
-3. node/edge state가 HTML에 embed된다.
-4. project summary, graph, metrics panel이 보인다.
-5. private local memory는 기본 제외된다.
-6. stale/conflict/orphan count가 표시된다.
-7. completed quest의 verification status가 표시된다.
-8. 생성 결과가 deterministic하다.
+3. Active Quest count가 표시된다.
+4. Completed Quest count가 표시된다.
+5. Verified/Unverified count가 표시된다.
+6. Route distribution이 표시된다.
+7. Seed Kernel mode 메시지가 표시된다.
+8. Memory graph is not active yet 문구가 표시된다.
 9. empty project에서도 깨지지 않는다.
-10. orange doctor가 identity build 가능 여부를 검사한다.
+10. 생성 결과가 deterministic하다.
+```
+
+### 10.2 v0.3+ graph 기준
+
+```text
+1. node/edge state가 HTML에 embed된다.
+2. project summary, graph, metrics panel이 보인다.
+3. private local memory는 기본 제외된다.
+4. stale/conflict/orphan count가 표시된다.
+5. completed quest의 verification status가 graph/metrics에 연결된다.
+6. bias/risk health가 표시된다.
+7. selected node detail이 표시된다.
+8. route/memory timeline이 표시된다.
+9. filter/search가 작은 graph에서 동작한다.
+10. orange doctor가 graph identity build 가능 여부를 검사한다.
 ```
 
 ## 11. 구현 단계
 
-### Phase 1: Static Identity
+### Phase 0: v0.1 Seed Placeholder
+
+```text
+- single HTML template
+- Quest count
+- verified/unverified count
+- route distribution
+- Seed Kernel mode notice
+- no node/edge graph
+```
+
+### Phase 1: Static Graph Identity
 
 ```text
 - state builder
