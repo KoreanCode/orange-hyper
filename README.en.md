@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.6-doc.0`
+- README version: `0.6-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.6.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, and Growth Signal Preview features.
+As of v0.6.0-alpha.1, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, and Growth Signal Preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -104,7 +104,7 @@ As of v0.6.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usabil
 - `mcp list`, `mcp show`, and `mcp suggest` provide score-, confidence-, matched_signals-, and no-suggestion-aware, read-only MCP proposal cards.
 - MCP Advisor proposal cards are not install or execution results and keep `requires_user_approval: true`, `not_executed: true`, and `config_mutation: false`.
 - MCP Advisor does not install or run MCPs, mutate config, write project memory, or make external network calls.
-- `growth status`, `growth suggest`, and `growth explain` read Quest, Route, accepted Memory Graph, Hook warning, and MCP advisor signals to preview growth state and candidates.
+- `growth status`, `growth suggest`, and `growth explain` read Quest, Route, accepted Memory Graph, Hook warning, and MCP advisor signals to preview conservative growth state and candidates with score/source evidence.
 - Growth Signal Preview `growthLevel` is a decorative candidate only; it does not automatically unlock roles, tools, hooks, MCPs, subagents, or workflows.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
 

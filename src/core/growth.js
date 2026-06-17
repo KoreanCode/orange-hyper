@@ -12,28 +12,61 @@ import { asArray } from "./text.js";
 const GROWTH_LEVEL_DESCRIPTIONS = {
   seed: "Early project-memory signal; no role, tool, hook, or workflow unlock is implied.",
   sprout: "Repeated project evidence is visible; this is still a preview label only.",
-  branch: "Several accepted memories or completed Quests point to stable habits; no automatic unlock follows.",
-  canopy: "Broad repeated evidence is visible across memory and verification; still advisory only."
+  branch: "Several accepted memories and verified Quests point to stable habits; no automatic unlock follows.",
+  canopy: "Broad repeated evidence is visible across memory, node types, and verification; still advisory only."
+};
+
+const CANDIDATE_THRESHOLDS = {
+  "verification-discipline": {
+    minEvidence: 3,
+    minSources: 2,
+    minSignals: 2
+  },
+  "memory-hygiene": {
+    minEvidence: 3,
+    minSources: 2,
+    minSignals: 2
+  },
+  defaultTopic: {
+    minEvidence: 3,
+    minSources: 2,
+    minSignals: 2
+  },
+  "hook-hygiene": {
+    minEvidence: 2,
+    minSources: 2,
+    minSignals: 2
+  }
 };
 
 const TOPIC_RULES = [
   {
     id: "backend-api-focus",
     title: "Backend/API focus",
-    patterns: [
-      /\b(api|backend|endpoint|controller|service|database|db|schema|auth|server|request|response)\b/i,
-      /백엔드|서버|API|엔드포인트|서비스|컨트롤러|데이터베이스|인증/i
+    signals: [
+      { id: "backend", pattern: /\bbackend\b|백엔드/i, strong: true },
+      { id: "endpoint", pattern: /\b(endpoints?|controllers?)\b|엔드포인트|컨트롤러/i, strong: true },
+      { id: "service", pattern: /\bservices?\b|서비스/i, strong: true },
+      { id: "data-access", pattern: /\b(database|db|schema)\b|데이터베이스|스키마/i, strong: true },
+      { id: "auth-server", pattern: /\b(auth|server)\b|인증|서버/i, strong: true },
+      { id: "request-response", pattern: /\b(request|response)\b|요청|응답/i, strong: true },
+      { id: "api", pattern: /\bapi\b|API/i, strong: false }
     ],
-    reason: "Repeated backend, API, service, or data-access terms appear in Quest or memory evidence.",
+    requireStrongSignal: true,
+    reason: "Repeated backend, API, service, or data-access evidence appears across project sources.",
     nextStep: "Review whether future backend/API work needs a focused checklist, but keep role creation manual.",
     evidencePrefix: "backend/API signal"
   },
   {
     id: "documentation-focus",
     title: "Documentation focus",
-    patterns: [
-      /\b(readme|docs?|documentation|roadmap|release notes?|adapter contract|guide|manual)\b/i,
-      /문서|README|로드맵|릴리즈|가이드|어댑터/i
+    signals: [
+      { id: "readme", pattern: /\breadme\b|README/i, strong: true },
+      { id: "docs", pattern: /\bdocs?|documentation\b|문서/i, strong: true },
+      { id: "roadmap", pattern: /\broadmap\b|로드맵/i, strong: true },
+      { id: "release-notes", pattern: /\brelease notes?\b|릴리즈/i, strong: true },
+      { id: "adapter-contract", pattern: /\badapter contract\b|어댑터/i, strong: true },
+      { id: "guide-manual", pattern: /\b(guide|manual)\b|가이드/i, strong: true }
     ],
     reason: "Repeated documentation, roadmap, release, or adapter-contract evidence appears in project work.",
     nextStep: "Keep documentation updates tied to explicit verification such as README sync and adapter examples.",
@@ -42,9 +75,11 @@ const TOPIC_RULES = [
   {
     id: "mcp-documentation-advisor-readiness",
     title: "MCP documentation advisor readiness",
-    patterns: [
-      /\b(api|breaking|deprecated?|docs?|documentation|framework|fresh|latest|library|libraries|migration|version)\b/i,
-      /최신|문서|버전|라이브러리|프레임워크|마이그레이션|사용법|API/i
+    signals: [
+      { id: "api-freshness", pattern: /\b(api|breaking|deprecated?)\b|API/i, strong: true },
+      { id: "docs-freshness", pattern: /\b(docs?|documentation|fresh|latest)\b|최신|문서/i, strong: true },
+      { id: "library-version", pattern: /\b(library|libraries|version|framework)\b|버전|라이브러리|프레임워크/i, strong: true },
+      { id: "migration", pattern: /\bmigration\b|마이그레이션/i, strong: true }
     ],
     reason: "Documentation freshness or API-version evidence appears often enough to consider MCP Advisor usage.",
     nextStep: "Run `orange mcp suggest --query <need> --json` only when the user asks for current documentation support.",
@@ -53,9 +88,11 @@ const TOPIC_RULES = [
   {
     id: "hook-hygiene",
     title: "Hook hygiene",
-    patterns: [
-      /\b(hook|session-start|session start|stop event|warning|stale|freshness|doctor warning)\b/i,
-      /훅|경고|세션|정지|신선도|스테일/i
+    signals: [
+      { id: "hook", pattern: /\bhook\b|훅/i, strong: true },
+      { id: "session", pattern: /\b(session-start|session start|stop event)\b|세션|정지/i, strong: true },
+      { id: "warning", pattern: /\b(warning|doctor warning)\b|경고/i, strong: true },
+      { id: "freshness", pattern: /\b(stale|freshness)\b|신선도|스테일/i, strong: true }
     ],
     reason: "Hook, warning, freshness, or doctor-observation evidence appears repeatedly.",
     nextStep: "Use explicit `orange hook ... --json` checks for diagnosis; do not install or change hook policy automatically.",
@@ -87,17 +124,32 @@ export function buildGrowthStatus(cwd = process.cwd()) {
   const routeLayerDistribution = readRouteLayerDistribution(paths.routeTrace);
   const questLayerDistribution = distribution(quests.map((quest) => quest.data.layer || "unknown"));
   const nodeTypeDistribution = distribution(graph.nodes.map((node) => node.node_type || "unknown"));
+  const nodeTypeDiversity = Object.keys(nodeTypeDistribution).length;
   const dominantAcceptedNodeType = dominantNodeType(nodeTypeDistribution);
   const questVerification = verificationSummary(completed.length, verified.length, unverified.length);
   const hookWarningSummary = summarizeHookWarnings(hook, doctor);
-  const evidenceCorpus = buildEvidenceCorpus(quests, graph.nodes);
+  const evidenceCorpus = buildEvidenceCorpus(quests, graph.nodes, questMap(quests));
   const mcpAdvisorSignals = summarizeMcpAdvisorSignals(evidenceCorpus);
-  const growthLevel = inferGrowthLevel({
+  const doctorOk = Boolean(doctor?.ok);
+  const projectBoundaryActive = Boolean(project.project_id);
+  const repeatedEvidenceCount = estimateRepeatedEvidenceCount({
     acceptedMemoryNodes: graph.nodes.length,
+    nodeTypeDiversity,
+    verifiedQuestCount: verified.length,
+    routeLayerDistribution,
+    hookWarningCount: hookWarningSummary.warningCount,
+    mcpSignalCount: mcpAdvisorSignals.signalCount,
+    pendingMemoryProposals
+  });
+  const level = inferGrowthLevel({
+    acceptedMemoryNodes: graph.nodes.length,
+    nodeTypeDiversity,
     completedQuestCount: completed.length,
     verifiedRatio: questVerification.verifiedRatio,
-    signalCount: mcpAdvisorSignals.signalCount,
-    pendingMemoryProposals
+    repeatedEvidenceCount,
+    pendingMemoryProposals,
+    doctorOk,
+    projectBoundaryActive
   });
 
   return {
@@ -115,15 +167,20 @@ export function buildGrowthStatus(cwd = process.cwd()) {
     project_name: projectName,
     acceptedMemoryNodes: graph.nodes.length,
     nodeTypeDistribution,
+    nodeTypeDiversity,
     dominantAcceptedNodeType,
     routeLayerDistribution,
     questLayerDistribution,
     questVerification,
     pendingMemoryProposals,
+    doctorOk,
+    projectBoundaryActive,
+    repeatedEvidenceCount,
     hookWarningSummary,
     mcpAdvisorSignals,
-    growthLevel,
-    growthLevelDescription: GROWTH_LEVEL_DESCRIPTIONS[growthLevel],
+    growthLevel: level.growthLevel,
+    growthLevelReason: level.reason,
+    growthLevelDescription: GROWTH_LEVEL_DESCRIPTIONS[level.growthLevel],
     growthLevelUnlocks: false,
     warnings: [
       ...asArray(graph.warnings),
@@ -142,7 +199,7 @@ export function buildGrowthSuggestionResult(cwd = process.cwd()) {
   const evidence = collectGrowthEvidence(cwd, status);
   const candidates = buildCandidatesFromEvidence(evidence)
     .sort((left, right) =>
-      confidenceRank(right.confidence) - confidenceRank(left.confidence) ||
+      right.score - left.score ||
       left.id.localeCompare(right.id)
     );
   return {
@@ -187,6 +244,9 @@ export function buildGrowthExplainResult(cwd = process.cwd()) {
       title: candidate.title,
       rule_id: `growth.${candidate.id}`,
       reason: candidate.reason,
+      score: candidate.score,
+      evidence_count: candidate.evidence_count,
+      matched_signals: candidate.matched_signals,
       evidence: candidate.evidence,
       confidence: candidate.confidence,
       why_suggested: explainCandidate(candidate),
@@ -205,29 +265,48 @@ function collectGrowthEvidence(cwd, status) {
     warnings: []
   });
   const quests = safeRead("quests", () => listQuests(cwd, "all"), []);
-  const corpus = buildEvidenceCorpus(quests, graph.nodes);
+  const pendingProposals = safeRead("pending proposals", () => listMemoryDeltaProposals(cwd, "pending"), []);
+  const questsById = questMap(quests);
+  const corpus = buildEvidenceCorpus(quests, graph.nodes, questsById);
+  const topics = Object.fromEntries(TOPIC_RULES.map((rule) => [rule.id, topicEvidence(rule, corpus)]));
+  topics["hook-hygiene"] = uniqueEvidenceItems([
+    ...asArray(topics["hook-hygiene"]),
+    ...hookWarningEvidence(status)
+  ]);
   return {
     status,
     corpus,
-    verification: verificationEvidence(status, graph.nodes, quests),
-    memory: memoryEvidence(status),
-    topics: Object.fromEntries(TOPIC_RULES.map((rule) => [rule.id, topicEvidence(rule, corpus)]))
+    verification: verificationEvidence(graph.nodes, quests, questsById),
+    memory: memoryEvidence(graph.nodes, pendingProposals, questsById),
+    topics
   };
 }
 
 function buildCandidatesFromEvidence(evidence) {
   const candidates = [];
   const add = (id, title, reason, items, suggestedNextStep) => {
-    const uniqueEvidence = uniqueStrings(items).slice(0, 8);
-    if (uniqueEvidence.length < 2) {
+    const uniqueEvidence = uniqueEvidenceItems(items).slice(0, 8);
+    const matchedSignals = uniqueStrings(uniqueEvidence.flatMap((item) => asArray(item.matched_signals))).sort();
+    const threshold = thresholdForCandidate(id);
+    const sourceCount = uniqueSourceCount(uniqueEvidence);
+    if (
+      uniqueEvidence.length < threshold.minEvidence ||
+      sourceCount < threshold.minSources ||
+      matchedSignals.length < threshold.minSignals ||
+      !hasRequiredSignals(id, matchedSignals)
+    ) {
       return;
     }
+    const score = scoreCandidate(uniqueEvidence, matchedSignals, sourceCount);
     candidates.push({
       id,
       title,
       reason,
+      score,
+      evidence_count: uniqueEvidence.length,
+      matched_signals: matchedSignals,
       evidence: uniqueEvidence,
-      confidence: confidenceForEvidence(uniqueEvidence.length),
+      confidence: confidenceForScore(score, uniqueEvidence.length, matchedSignals.length),
       suggested_next_step: suggestedNextStep,
       auto_unlock: false,
       requires_user_approval: true
@@ -245,7 +324,7 @@ function buildCandidatesFromEvidence(evidence) {
   add(
     "memory-hygiene",
     "Memory hygiene",
-    "Accepted nodes, pending proposals, or graph/doctor warnings indicate memory review habits worth keeping visible.",
+    "Accepted nodes, pending proposals, and node-type diversity indicate memory review habits worth keeping visible.",
     evidence.memory,
     "Review pending proposals manually and keep accepted graph nodes tied to source Quest/proposal provenance."
   );
@@ -257,72 +336,116 @@ function buildCandidatesFromEvidence(evidence) {
   return candidates;
 }
 
-function verificationEvidence(status, nodes, quests) {
+function verificationEvidence(nodes, quests, questsById) {
   const evidence = [];
-  const summary = status.questVerification;
-  if (summary.completed > 0) {
-    evidence.push(`${summary.completed} completed Quest${summary.completed === 1 ? "" : "s"} observed`);
+  for (const quest of quests.filter((item) => item.data.status === "completed")) {
+    const title = quest.data.title || quest.data.id || "untitled";
+    evidence.push(evidenceItem(
+      `quest:${quest.data.id}:completed`,
+      `Completed Quest observed: ${title}`,
+      sourceFromQuest(quest),
+      ["quest.completed"]
+    ));
+    if (quest.data.verification_status === "verified") {
+      evidence.push(evidenceItem(
+        `quest:${quest.data.id}:verified`,
+        `Verified Quest evidence recorded: ${title}`,
+        sourceFromQuest(quest),
+        ["quest.verified"]
+      ));
+    }
+    if (quest.data.verification_status === "unverified") {
+      evidence.push(evidenceItem(
+        `quest:${quest.data.id}:unverified`,
+        `Unverified Quest outcome recorded: ${title}`,
+        sourceFromQuest(quest),
+        ["quest.unverified"]
+      ));
+    }
+    if (asArray(quest.data.expected_verification).some((item) => /test|check|verify|검증|테스트/i.test(String(item)))) {
+      evidence.push(evidenceItem(
+        `quest:${quest.data.id}:verification-plan`,
+        `Quest includes explicit verification planning: ${title}`,
+        sourceFromQuest(quest),
+        ["quest.verification-plan"]
+      ));
+    }
   }
-  if (summary.verified > 0) {
-    evidence.push(`${summary.verified}/${summary.completed} completed Quest${summary.completed === 1 ? "" : "s"} verified`);
-  }
-  if (summary.unverified > 0) {
-    evidence.push(`${summary.unverified}/${summary.completed} completed Quest${summary.completed === 1 ? "" : "s"} unverified`);
-  }
-  if (status.nodeTypeDistribution.verification > 0) {
-    evidence.push(`${status.nodeTypeDistribution.verification} accepted verification memory node${status.nodeTypeDistribution.verification === 1 ? "" : "s"}`);
-  }
-  const planned = quests.filter((quest) =>
-    asArray(quest.data.expected_verification).some((item) => /test|check|verify|검증|테스트/i.test(String(item)))
-  ).length;
-  if (planned > 0) {
-    evidence.push(`${planned} Quest${planned === 1 ? "" : "s"} include explicit verification planning`);
-  }
-  const verificationNodes = nodes.filter((node) => /test|verify|검증|테스트/i.test([
-    node.title,
-    node.summary,
-    node.candidate_memory,
-    node.evidence
-  ].filter(Boolean).join(" "))).length;
-  if (verificationNodes > 0) {
-    evidence.push(`${verificationNodes} accepted memory node${verificationNodes === 1 ? "" : "s"} mention tests or verification`);
+  for (const node of nodes) {
+    const haystack = [
+      node.title,
+      node.summary,
+      node.candidate_memory,
+      node.evidence
+    ].filter(Boolean).join(" ");
+    if (/test|verify|검증|테스트/i.test(haystack) || node.node_type === "verification") {
+      evidence.push(evidenceItem(
+        `node:${node.id}:verification`,
+        `Accepted memory node mentions verification: ${node.title || node.id}`,
+        sourceFromNode(node, questsById),
+        ["memory.verification-node"]
+      ));
+    }
   }
   return evidence;
 }
 
-function memoryEvidence(status) {
+function memoryEvidence(nodes, pendingProposals, questsById) {
   const evidence = [];
-  if (status.acceptedMemoryNodes > 0) {
-    evidence.push(`${status.acceptedMemoryNodes} accepted memory node${status.acceptedMemoryNodes === 1 ? "" : "s"}`);
+  for (const node of nodes) {
+    evidence.push(evidenceItem(
+      `node:${node.id}:accepted`,
+      `Accepted memory node observed: ${node.node_type} - ${node.title || node.id}`,
+      sourceFromNode(node, questsById),
+      ["memory.accepted-node", `memory.node-type.${node.node_type || "unknown"}`]
+    ));
   }
-  if (status.pendingMemoryProposals > 0) {
-    evidence.push(`${status.pendingMemoryProposals} pending memory proposal${status.pendingMemoryProposals === 1 ? "" : "s"} need manual review`);
-  }
-  if (status.dominantAcceptedNodeType) {
-    evidence.push(`dominant accepted node type is ${status.dominantAcceptedNodeType.nodeType} (${status.dominantAcceptedNodeType.count})`);
-  }
-  if (Object.keys(status.nodeTypeDistribution).length > 1) {
-    evidence.push(`${Object.keys(status.nodeTypeDistribution).length} accepted memory node types are present`);
-  }
-  if (status.warnings.length > 0) {
-    evidence.push(`${status.warnings.length} memory/doctor/hook warning${status.warnings.length === 1 ? "" : "s"} observed`);
+  for (const proposal of pendingProposals) {
+    evidence.push(evidenceItem(
+      `proposal:${proposal.data.id}:pending`,
+      `Pending memory proposal needs manual review: ${proposal.data.id}`,
+      sourceFromProposal(proposal, questsById),
+      ["memory.pending-proposal"]
+    ));
   }
   return evidence;
+}
+
+function hookWarningEvidence(status) {
+  return asArray(status.hookWarningSummary?.warnings).map((warning, index) => evidenceItem(
+    `hook-warning:${warning.code || index}`,
+    `Hook warning observed: ${warning.code || "HOOK_WARNING"}`,
+    sourceFromHookWarning(warning),
+    ["hook.warning", warning.code ? `hook.warning.${warning.code}` : "hook.warning.unknown"]
+  ));
 }
 
 function topicEvidence(rule, corpus) {
   const matches = [];
   for (const item of corpus) {
-    if (rule.patterns.some((pattern) => pattern.test(item.text))) {
-      matches.push(`${rule.evidencePrefix}: ${item.label}`);
+    const signals = matchedTopicSignals(rule, item.text);
+    if (!signals.length) {
+      continue;
     }
+    const matchedSignals = signals.map((signal) => `${rule.id}.${signal.id}`);
+    const source = rule.id === "mcp-documentation-advisor-readiness"
+      ? sourceWithMcpSignal(item.source, mcpSignalId(rule.id, matchedSignals, item.source))
+      : item.source;
+    matches.push(evidenceItem(
+      `topic:${rule.id}:${item.id}`,
+      `${rule.evidencePrefix}: ${item.label}`,
+      source,
+      matchedSignals
+    ));
   }
-  return uniqueStrings(matches);
+  return uniqueEvidenceItems(matches);
 }
 
-function buildEvidenceCorpus(quests, nodes) {
+function buildEvidenceCorpus(quests, nodes, questsById) {
   const questItems = quests.map((quest) => ({
+    id: `quest:${quest.data.id || "(unknown)"}`,
     label: `Quest ${quest.data.id || "(unknown)"} (${quest.data.title || "untitled"})`,
+    source: sourceFromQuest(quest),
     text: [
       quest.data.title,
       quest.data.output_contract,
@@ -334,7 +457,9 @@ function buildEvidenceCorpus(quests, nodes) {
     ].filter(Boolean).join("\n")
   }));
   const nodeItems = nodes.map((node) => ({
+    id: `node:${node.id || "(unknown)"}`,
     label: `Accepted node ${node.id || "(unknown)"} (${node.title || node.node_type || "untitled"})`,
+    source: sourceFromNode(node, questsById),
     text: [
       node.id,
       node.node_type,
@@ -361,7 +486,7 @@ function summarizeMcpAdvisorSignals(corpus) {
     configMutation: false,
     projectMemoryMutation: false,
     signalCount: evidence.length,
-    signals: evidence.slice(0, 6),
+    signals: evidence.map((item) => item.label).slice(0, 6),
     summary: evidence.length
       ? `${evidence.length} documentation/API freshness signal${evidence.length === 1 ? "" : "s"} observed.`
       : "No repeated MCP documentation advisor signal observed."
@@ -456,32 +581,117 @@ function ratio(numerator, denominator) {
   return Number((numerator / denominator).toFixed(4));
 }
 
-function inferGrowthLevel(input) {
-  const { acceptedMemoryNodes, completedQuestCount, verifiedRatio, signalCount, pendingMemoryProposals } = input;
-  if (acceptedMemoryNodes >= 8 && completedQuestCount >= 10 && verifiedRatio >= 0.7) {
-    return "canopy";
-  }
-  if (acceptedMemoryNodes >= 3 || completedQuestCount >= 5 || signalCount >= 5) {
-    return "branch";
-  }
-  if (acceptedMemoryNodes >= 1 || completedQuestCount >= 2 || pendingMemoryProposals >= 1) {
-    return "sprout";
-  }
-  return "seed";
+function estimateRepeatedEvidenceCount(input) {
+  const routeTraceCount = sumCounts(input.routeLayerDistribution);
+  return (
+    input.acceptedMemoryNodes +
+    input.verifiedQuestCount +
+    Math.max(0, input.nodeTypeDiversity - 1) +
+    Math.min(input.mcpSignalCount, 4) +
+    Math.min(routeTraceCount, 3) +
+    Math.min(input.hookWarningCount, 3) +
+    (input.pendingMemoryProposals > 0 ? 1 : 0)
+  );
 }
 
-function confidenceForEvidence(count) {
-  if (count >= 4) {
+/**
+ * @returns {{ growthLevel: import("./types.d.ts").GrowthLevel, reason: string }}
+ */
+function inferGrowthLevel(input) {
+  const {
+    acceptedMemoryNodes,
+    nodeTypeDiversity,
+    completedQuestCount,
+    verifiedRatio,
+    repeatedEvidenceCount,
+    pendingMemoryProposals,
+    doctorOk,
+    projectBoundaryActive
+  } = input;
+  if (!projectBoundaryActive) {
+    return {
+      growthLevel: "seed",
+      reason: "Project boundary is missing, so Growth Signal Preview stays at seed."
+    };
+  }
+  if (!doctorOk) {
+    return {
+      growthLevel: "seed",
+      reason: "Doctor is not ok, so Growth Signal Preview stays at seed until project state is clean."
+    };
+  }
+  const highPendingReviewLoad = pendingMemoryProposals > Math.max(3, acceptedMemoryNodes);
+  if (
+    acceptedMemoryNodes >= 8 &&
+    nodeTypeDiversity >= 3 &&
+    completedQuestCount >= 10 &&
+    verifiedRatio >= 0.8 &&
+    repeatedEvidenceCount >= 14 &&
+    pendingMemoryProposals <= 3
+  ) {
+    return {
+      growthLevel: "canopy",
+      reason: "Canopy requires many accepted nodes, at least three node types, high verified Quest ratio, repeated evidence, low pending review load, doctor ok, and active project boundary."
+    };
+  }
+  if (
+    acceptedMemoryNodes >= 3 &&
+    nodeTypeDiversity >= 2 &&
+    completedQuestCount >= 5 &&
+    verifiedRatio >= 0.7 &&
+    repeatedEvidenceCount >= 6 &&
+    !highPendingReviewLoad
+  ) {
+    return {
+      growthLevel: "branch",
+      reason: "Branch requires accepted nodes plus node-type diversity, verified Quest history, repeated evidence, manageable pending proposals, doctor ok, and active project boundary."
+    };
+  }
+  if (
+    repeatedEvidenceCount >= 2 &&
+    (acceptedMemoryNodes >= 1 || completedQuestCount >= 2 || pendingMemoryProposals >= 1)
+  ) {
+    return {
+      growthLevel: "sprout",
+      reason: "Sprout has repeated evidence, but branch/canopy require stronger node diversity, verification ratio, and review hygiene."
+    };
+  }
+  return {
+    growthLevel: "seed",
+    reason: "Seed has not yet accumulated enough repeated evidence for a higher preview level."
+  };
+}
+
+function thresholdForCandidate(id) {
+  return CANDIDATE_THRESHOLDS[id] || CANDIDATE_THRESHOLDS.defaultTopic;
+}
+
+function hasRequiredSignals(id, matchedSignals) {
+  if (id !== "backend-api-focus") {
+    return true;
+  }
+  return matchedSignals.some((signal) =>
+    signal === "backend-api-focus.backend" ||
+    signal === "backend-api-focus.endpoint" ||
+    signal === "backend-api-focus.service" ||
+    signal === "backend-api-focus.data-access" ||
+    signal === "backend-api-focus.auth-server" ||
+    signal === "backend-api-focus.request-response"
+  );
+}
+
+function scoreCandidate(evidence, matchedSignals, sourceCount) {
+  return evidence.length * 10 + matchedSignals.length * 6 + sourceCount * 4;
+}
+
+function confidenceForScore(score, evidenceCount, matchedSignalCount) {
+  if (score >= 70 && evidenceCount >= 5 && matchedSignalCount >= 3) {
     return "high";
   }
-  if (count >= 2) {
+  if (score >= 40 && evidenceCount >= 3 && matchedSignalCount >= 2) {
     return "medium";
   }
   return "low";
-}
-
-function confidenceRank(value) {
-  return { high: 3, medium: 2, low: 1 }[value] || 0;
 }
 
 function verificationReason(summary) {
@@ -496,7 +706,7 @@ function verificationReason(summary) {
 
 function explainCandidate(candidate) {
   return [
-    `Rule growth.${candidate.id} matched ${candidate.evidence.length} evidence item${candidate.evidence.length === 1 ? "" : "s"}.`,
+    `Rule growth.${candidate.id} scored ${candidate.score} from ${candidate.evidence_count} source-backed evidence item${candidate.evidence_count === 1 ? "" : "s"} and ${candidate.matched_signals.length} matched signal${candidate.matched_signals.length === 1 ? "" : "s"}.`,
     "The result is advisory only: auto_unlock is false and user approval is required."
   ].join(" ");
 }
@@ -505,20 +715,129 @@ function growthRuleSummaries() {
   return [
     {
       id: "growth.verification-discipline",
-      description: "Suggests verification discipline when completed Quest verification, verification nodes, or test evidence repeat.",
-      threshold: "at least 2 evidence items"
+      description: "Suggests verification discipline when completed Quest verification, verification nodes, or test evidence repeat across sources.",
+      threshold: "at least 3 evidence items, 2 source keys, and 2 matched signals"
     },
     {
       id: "growth.memory-hygiene",
-      description: "Suggests memory hygiene when accepted nodes, pending proposals, multiple node types, or memory/doctor warnings repeat.",
-      threshold: "at least 2 evidence items"
+      description: "Suggests memory hygiene when accepted nodes, pending proposals, or memory node types repeat across sources.",
+      threshold: "at least 3 evidence items, 2 source keys, and 2 matched signals"
     },
     ...TOPIC_RULES.map((rule) => ({
       id: `growth.${rule.id}`,
       description: rule.reason,
-      threshold: "at least 2 matching Quest or accepted-node evidence items"
+      threshold: rule.id === "backend-api-focus"
+        ? "at least 3 evidence items, 2 source keys, 2 matched signals, and one non-generic backend/API signal"
+        : `at least ${thresholdForCandidate(rule.id).minEvidence} evidence items, ${thresholdForCandidate(rule.id).minSources} source keys, and ${thresholdForCandidate(rule.id).minSignals} matched signals`
     }))
   ];
+}
+
+function matchedTopicSignals(rule, text) {
+  return rule.signals.filter((signal) => signal.pattern.test(text));
+}
+
+function evidenceItem(id, label, source, matchedSignals) {
+  return {
+    id,
+    label,
+    source: normalizeEvidenceSource(source),
+    matched_signals: uniqueStrings(matchedSignals)
+  };
+}
+
+function normalizeEvidenceSource(source = {}) {
+  return {
+    quest_id: source.quest_id || null,
+    node_id: source.node_id || null,
+    node_type: source.node_type || null,
+    route_layer: source.route_layer || null,
+    hook_warning_code: source.hook_warning_code || null,
+    mcp_signal_id: source.mcp_signal_id || null
+  };
+}
+
+function sourceFromQuest(quest) {
+  return normalizeEvidenceSource({
+    quest_id: quest.data.id || null,
+    route_layer: quest.data.layer || null
+  });
+}
+
+function sourceFromNode(node, questsById) {
+  const quest = questsById.get(node.source_quest);
+  return normalizeEvidenceSource({
+    quest_id: node.source_quest || null,
+    node_id: node.id || null,
+    node_type: node.node_type || null,
+    route_layer: quest?.data?.layer || null
+  });
+}
+
+function sourceFromProposal(proposal, questsById) {
+  const quest = questsById.get(proposal.data.source_quest);
+  return normalizeEvidenceSource({
+    quest_id: proposal.data.source_quest || null,
+    node_type: proposal.data.node_type || null,
+    route_layer: quest?.data?.layer || null
+  });
+}
+
+function sourceFromHookWarning(warning) {
+  return normalizeEvidenceSource({
+    hook_warning_code: warning.code || null
+  });
+}
+
+function sourceWithMcpSignal(source, mcpSignalId) {
+  return normalizeEvidenceSource({
+    ...source,
+    mcp_signal_id: mcpSignalId
+  });
+}
+
+function mcpSignalId(ruleId, matchedSignals, source) {
+  return [ruleId, ...matchedSignals, sourceKey(source)]
+    .join(":")
+    .replace(/[^A-Za-z0-9_.:-]+/g, "-")
+    .slice(0, 160);
+}
+
+function questMap(quests) {
+  return new Map(quests.map((quest) => [quest.data.id, quest]));
+}
+
+function uniqueEvidenceItems(values) {
+  const seen = new Set();
+  const items = [];
+  for (const item of values.filter(Boolean)) {
+    if (seen.has(item.id)) {
+      continue;
+    }
+    seen.add(item.id);
+    items.push(item);
+  }
+  return items.sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function uniqueSourceCount(evidence) {
+  return new Set(evidence.map((item) => sourceKey(item.source))).size;
+}
+
+function sourceKey(source) {
+  const normalized = normalizeEvidenceSource(source);
+  return [
+    normalized.quest_id || "",
+    normalized.node_id || "",
+    normalized.node_type || "",
+    normalized.route_layer || "",
+    normalized.hook_warning_code || "",
+    normalized.mcp_signal_id || ""
+  ].join("|");
+}
+
+function sumCounts(value) {
+  return Object.values(value || {}).reduce((total, count) => total + Number(count || 0), 0);
 }
 
 function sortObject(value) {

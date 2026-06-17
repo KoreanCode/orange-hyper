@@ -52,7 +52,12 @@ test("growth status supports human and JSON output", async () => {
   assert.equal(payload.data.questVerification.verifiedRatio, 0.8);
   assert.equal(payload.data.questVerification.unverifiedRatio, 0.2);
   assert.equal(payload.data.pendingMemoryProposals, 1);
+  assert.equal(payload.data.doctorOk, true);
+  assert.equal(payload.data.projectBoundaryActive, true);
+  assert.equal(payload.data.nodeTypeDiversity, 2);
+  assert.ok(payload.data.repeatedEvidenceCount >= 6);
   assert.equal(payload.data.growthLevel, "branch");
+  assert.match(payload.data.growthLevelReason, /Branch requires/);
   assert.equal(payload.data.growthLevelUnlocks, false);
   assert.equal(payload.data.boundaries.auto_role_creation, false);
   assert.equal(payload.data.boundaries.mcp_auto_install, false);
@@ -60,6 +65,19 @@ test("growth status supports human and JSON output", async () => {
   assert.equal(payload.data.boundaries.project_memory_auto_mutation, false);
   assert.equal(payload.data.hookWarningSummary.hookRun, false);
   assert.equal(payload.data.mcpAdvisorSignals.mcpCall, false);
+});
+
+test("growth level does not rise from accepted node count alone", () => {
+  const cwd = tempWorkspace();
+  createSameTypeAcceptedNodeFixture(cwd);
+
+  const payload = assertJsonCommand(runOrange(["growth", "status", "--json"], cwd), "growth.status");
+  assert.equal(payload.data.acceptedMemoryNodes, 8);
+  assert.equal(payload.data.nodeTypeDiversity, 1);
+  assert.equal(payload.data.doctorOk, true);
+  assert.equal(payload.data.projectBoundaryActive, true);
+  assert.equal(payload.data.growthLevel, "sprout");
+  assert.match(payload.data.growthLevelReason, /branch\/canopy require stronger node diversity/);
 });
 
 test("growth suggest supports human and JSON output with advisory candidates only", async () => {
@@ -88,12 +106,51 @@ test("growth suggest supports human and JSON output with advisory candidates onl
   const ids = payload.data.candidates.map((candidate) => candidate.id);
   assert.ok(ids.includes("verification-discipline"));
   assert.ok(ids.includes("memory-hygiene"));
+  assert.ok(ids.includes("backend-api-focus"));
   assert.ok(ids.includes("documentation-focus"));
   assert.ok(ids.includes("mcp-documentation-advisor-readiness"));
   for (const candidate of payload.data.candidates) {
     assertGrowthCandidate(candidate);
     assert.equal(candidate.auto_unlock, false);
     assert.equal(candidate.requires_user_approval, true);
+  }
+});
+
+test("generic API route-contract text does not create backend/API false positive", () => {
+  const cwd = tempWorkspace();
+  createGenericRouteContractFixture(cwd);
+
+  const payload = assertJsonCommand(runOrange(["growth", "suggest", "--json"], cwd), "growth.suggest");
+  const ids = payload.data.candidates.map((candidate) => candidate.id);
+  assert.ok(!ids.includes("backend-api-focus"));
+});
+
+test("candidate thresholds suppress one-off weak matches", () => {
+  const cwd = tempWorkspace();
+  createWeakCandidateFixture(cwd);
+
+  const payload = assertJsonCommand(runOrange(["growth", "suggest", "--json"], cwd), "growth.suggest");
+  assert.deepEqual(payload.data.candidates, []);
+  assert.match(payload.data.no_candidate_reason, /No repeated growth evidence/);
+});
+
+test("growth candidate ranking is deterministic by score and id", () => {
+  const cwd = tempWorkspace();
+  createGrowthFixture(cwd);
+
+  const first = assertJsonCommand(runOrange(["growth", "suggest", "--json"], cwd), "growth.suggest");
+  const second = assertJsonCommand(runOrange(["growth", "suggest", "--json"], cwd), "growth.suggest");
+  assert.deepEqual(
+    first.data.candidates.map((candidate) => candidate.id),
+    second.data.candidates.map((candidate) => candidate.id)
+  );
+  for (let index = 1; index < first.data.candidates.length; index += 1) {
+    const previous = first.data.candidates[index - 1];
+    const current = first.data.candidates[index];
+    assert.ok(
+      previous.score > current.score ||
+      (previous.score === current.score && previous.id.localeCompare(current.id) <= 0)
+    );
   }
 });
 
@@ -123,8 +180,15 @@ test("growth explain supports human and JSON output with deterministic evidence"
     assert.equal(explanation.auto_unlock, false);
     assert.equal(explanation.requires_user_approval, true);
     assert.match(explanation.rule_id, /^growth\./);
+    assert.equal(typeof explanation.score, "number");
+    assert.equal(typeof explanation.evidence_count, "number");
+    assert.ok(Array.isArray(explanation.matched_signals));
+    assert.ok(explanation.matched_signals.length >= 2);
     assert.ok(Array.isArray(explanation.evidence));
     assert.ok(explanation.evidence.length >= 2);
+    for (const item of explanation.evidence) {
+      assertGrowthEvidenceItem(item);
+    }
   }
 });
 
@@ -148,17 +212,26 @@ test("identity summary includes Growth Signal Preview summary", () => {
   assert.equal(payload.data.summary.growthPreview.readOnly, true);
   assert.equal(payload.data.summary.growthPreview.autoUnlock, false);
   assert.equal(payload.data.summary.growthPreview.growthLevel, "branch");
+  assert.match(payload.data.summary.growthPreview.growthLevelReason, /Branch requires/);
   assert.equal(payload.data.summary.growthPreview.acceptedMemoryNodes, 3);
+  assert.equal(payload.data.summary.growthPreview.nodeTypeDiversity, 2);
   assert.deepEqual(payload.data.summary.growthPreview.nodeTypeDistribution, { decision: 2, verification: 1 });
   assert.deepEqual(payload.data.summary.growthPreview.dominantAcceptedNodeType, { nodeType: "decision", count: 2 });
   assert.equal(payload.data.summary.growthPreview.questVerification.verifiedRatio, 0.8);
   assert.equal(payload.data.summary.growthPreview.pendingMemoryProposals, 1);
+  assert.ok(payload.data.summary.growthPreview.candidateCount >= 3);
+  assert.ok(payload.data.summary.growthPreview.topCandidates.length > 0);
+  assert.match(payload.data.summary.growthPreview.growthConfidenceSummary, /high|medium|low/);
+  assert.equal(payload.data.summary.growthPreview.noAutomaticUnlocks, "No automatic unlocks");
   assert.equal(payload.data.summary.growthPreview.suggestedCommand, "orange growth suggest --json");
   assert.equal(payload.data.summary.growthPreview.boundaries.graph_node_auto_creation, false);
 
   const html = fs.readFileSync(workspacePaths(cwd).identityHtml, "utf8");
   assert.match(html, /Growth Signal Preview/);
   assert.match(html, /Growth Level/);
+  assert.match(html, /Growth Level Reason/);
+  assert.match(html, /Top Candidates/);
+  assert.match(html, /No automatic unlocks/);
   assert.match(html, /preview only/);
 });
 
@@ -208,6 +281,35 @@ function createGrowthFixture(cwd) {
   return { paths, config };
 }
 
+function createSameTypeAcceptedNodeFixture(cwd) {
+  acceptedCounter = 0;
+  initWorkspace(cwd, { projectName: "accepted-count-only-demo" });
+  for (let index = 0; index < 8; index += 1) {
+    createAcceptedMemory(cwd, `stable project memory pattern ${index}`, "decision", "confirmed");
+  }
+}
+
+function createGenericRouteContractFixture(cwd) {
+  acceptedCounter = 0;
+  initWorkspace(cwd, { projectName: "generic-route-contract-demo" });
+  for (let index = 0; index < 3; index += 1) {
+    createAcceptedMemory(cwd, `Adapter JSON API route contract note ${index}`, "decision", "confirmed");
+  }
+}
+
+function createWeakCandidateFixture(cwd) {
+  acceptedCounter = 0;
+  initWorkspace(cwd, { projectName: "weak-growth-demo" });
+  const quest = createQuest(cwd, "one-off backend API route contract spike", {
+    layer: "L2",
+    clock: nextClock()
+  });
+  completeQuest(cwd, quest.id, {
+    clock: nextClock(),
+    evidence: ["manual check"]
+  });
+}
+
 function createAcceptedMemory(cwd, title, nodeType, evidence) {
   const quest = createQuest(cwd, title, {
     layer: "L2",
@@ -239,12 +341,40 @@ function assertGrowthCandidate(candidate) {
   assert.equal(typeof candidate.id, "string");
   assert.equal(typeof candidate.title, "string");
   assert.equal(typeof candidate.reason, "string");
+  assert.equal(typeof candidate.score, "number");
+  assert.ok(candidate.score > 0);
+  assert.equal(typeof candidate.evidence_count, "number");
+  assert.ok(Array.isArray(candidate.matched_signals));
+  assert.ok(candidate.matched_signals.length >= 2);
   assert.ok(Array.isArray(candidate.evidence));
   assert.ok(candidate.evidence.length >= 2);
+  assert.equal(candidate.evidence_count, candidate.evidence.length);
+  for (const item of candidate.evidence) {
+    assertGrowthEvidenceItem(item);
+  }
   assert.match(candidate.confidence, /^(low|medium|high)$/);
   assert.equal(typeof candidate.suggested_next_step, "string");
   assert.equal(candidate.auto_unlock, false);
   assert.equal(candidate.requires_user_approval, true);
+}
+
+function assertGrowthEvidenceItem(item) {
+  assert.equal(typeof item.id, "string");
+  assert.equal(typeof item.label, "string");
+  assert.ok(item.source);
+  assert.ok(Object.hasOwn(item.source, "quest_id"));
+  assert.ok(Object.hasOwn(item.source, "node_id"));
+  assert.ok(Object.hasOwn(item.source, "node_type"));
+  assert.ok(Object.hasOwn(item.source, "route_layer"));
+  assert.ok(Object.hasOwn(item.source, "hook_warning_code"));
+  assert.ok(Object.hasOwn(item.source, "mcp_signal_id"));
+  assert.ok(
+    item.source.quest_id ||
+    item.source.node_id ||
+    item.source.route_layer ||
+    item.source.hook_warning_code ||
+    item.source.mcp_signal_id
+  );
 }
 
 function snapshotOrangeFiles(cwd) {

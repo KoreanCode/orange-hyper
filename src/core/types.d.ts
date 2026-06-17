@@ -495,6 +495,22 @@ export interface McpAdvisorResult {
 export type GrowthLevel = "seed" | "sprout" | "branch" | "canopy";
 export type GrowthConfidence = "low" | "medium" | "high";
 
+export interface GrowthEvidenceSource {
+  quest_id: string | null;
+  node_id: string | null;
+  node_type: string | null;
+  route_layer: string | null;
+  hook_warning_code: string | null;
+  mcp_signal_id: string | null;
+}
+
+export interface GrowthEvidenceItem {
+  id: string;
+  label: string;
+  source: GrowthEvidenceSource;
+  matched_signals: string[];
+}
+
 export interface GrowthBoundaryFlags {
   auto_role_creation: false;
   mcp_auto_install: false;
@@ -522,6 +538,7 @@ export interface GrowthStatus {
   project_name: string;
   acceptedMemoryNodes: number;
   nodeTypeDistribution: Record<string, number>;
+  nodeTypeDiversity: number;
   dominantAcceptedNodeType: {
     nodeType: string;
     count: number;
@@ -536,6 +553,9 @@ export interface GrowthStatus {
     unverifiedRatio: number;
   };
   pendingMemoryProposals: number;
+  doctorOk: boolean;
+  projectBoundaryActive: boolean;
+  repeatedEvidenceCount: number;
   hookWarningSummary: {
     readOnly: true;
     hookRun: false;
@@ -560,6 +580,7 @@ export interface GrowthStatus {
     summary: string;
   };
   growthLevel: GrowthLevel;
+  growthLevelReason: string;
   growthLevelDescription: string;
   growthLevelUnlocks: false;
   warnings: string[];
@@ -570,7 +591,10 @@ export interface GrowthCandidate {
   id: string;
   title: string;
   reason: string;
-  evidence: string[];
+  score: number;
+  evidence_count: number;
+  matched_signals: string[];
+  evidence: GrowthEvidenceItem[];
   confidence: GrowthConfidence;
   suggested_next_step: string;
   auto_unlock: false;
@@ -617,7 +641,10 @@ export interface GrowthExplainResult {
     title: string;
     rule_id: string;
     reason: string;
-    evidence: string[];
+    score: number;
+    evidence_count: number;
+    matched_signals: string[];
+    evidence: GrowthEvidenceItem[];
     confidence: GrowthConfidence;
     why_suggested: string;
     auto_unlock: false;
@@ -674,14 +701,29 @@ export interface IdentitySummary extends OriginMetadata {
     readOnly: true;
     autoUnlock: false;
     growthLevel: GrowthLevel;
+    growthLevelReason: string;
     growthLevelDescription: string;
     acceptedMemoryNodes: number;
     nodeTypeDistribution: Record<string, number>;
+    nodeTypeDiversity: number;
     dominantAcceptedNodeType: GrowthStatus["dominantAcceptedNodeType"];
     questVerification: GrowthStatus["questVerification"];
     pendingMemoryProposals: number;
     hookWarningCount: number;
     mcpAdvisorSignalCount: number;
+    candidateCount: number;
+    topCandidates: Array<{
+      id: string;
+      title: string;
+      score: number;
+      evidence_count: number;
+      confidence: GrowthConfidence;
+      suggested_next_step: string;
+      auto_unlock: false;
+      requires_user_approval: true;
+    }>;
+    growthConfidenceSummary: string;
+    noAutomaticUnlocks: "No automatic unlocks";
     suggestedCommand: string;
     boundaries: GrowthBoundaryFlags;
   };

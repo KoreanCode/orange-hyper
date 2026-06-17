@@ -151,7 +151,8 @@ documentation/API freshness-shaped MCP advisor signals. They must not create
 roles, install or run MCPs, change hook policy, run subagents, start a planner
 loop, create graph nodes, mutate config, or write project memory. Growth
 candidates must keep `auto_unlock: false` and
-`requires_user_approval: true`.
+`requires_user_approval: true`. Candidate ranking is deterministic by
+descending `score`, then candidate id order for ties.
 
 ## Command Examples
 
@@ -177,6 +178,7 @@ orange growth status --json
       "decision": 2,
       "verification": 1
     },
+    "nodeTypeDiversity": 2,
     "dominantAcceptedNodeType": {
       "nodeType": "decision",
       "count": 2
@@ -195,7 +197,11 @@ orange growth status --json
       "unverifiedRatio": 0.2
     },
     "pendingMemoryProposals": 1,
+    "doctorOk": true,
+    "projectBoundaryActive": true,
+    "repeatedEvidenceCount": 14,
     "growthLevel": "branch",
+    "growthLevelReason": "Branch requires accepted nodes plus node-type diversity, verified Quest history, repeated evidence, manageable pending proposals, doctor ok, and active project boundary.",
     "growthLevelUnlocks": false
   }
 }
@@ -223,12 +229,47 @@ orange growth suggest --json
       {
         "id": "verification-discipline",
         "title": "Verification discipline",
+        "score": 86,
+        "evidence_count": 5,
+        "matched_signals": [
+          "memory.verification-node",
+          "quest.completed",
+          "quest.verified"
+        ],
         "reason": "Completed Quest history repeatedly records verification evidence.",
         "evidence": [
-          "5 completed Quests observed",
-          "4/5 completed Quests verified"
+          {
+            "id": "quest:quest_20260617_000000Z_docs:verified",
+            "label": "Verified Quest evidence recorded: document README checks",
+            "source": {
+              "quest_id": "quest_20260617_000000Z_docs",
+              "node_id": null,
+              "node_type": null,
+              "route_layer": "L2",
+              "hook_warning_code": null,
+              "mcp_signal_id": null
+            },
+            "matched_signals": [
+              "quest.verified"
+            ]
+          },
+          {
+            "id": "node:verification.mem_delta_quest_20260617_000000Z_docs_verification:verification",
+            "label": "Accepted memory node mentions verification: README checks stay verified.",
+            "source": {
+              "quest_id": "quest_20260617_000000Z_docs",
+              "node_id": "verification.mem_delta_quest_20260617_000000Z_docs_verification",
+              "node_type": "verification",
+              "route_layer": "L2",
+              "hook_warning_code": null,
+              "mcp_signal_id": null
+            },
+            "matched_signals": [
+              "memory.verification-node"
+            ]
+          }
         ],
-        "confidence": "medium",
+        "confidence": "high",
         "suggested_next_step": "Keep using explicit evidence or unverified reasons before accepting new memory proposals.",
         "auto_unlock": false,
         "requires_user_approval": true
@@ -260,10 +301,30 @@ orange growth explain --json
       {
         "candidate_id": "verification-discipline",
         "rule_id": "growth.verification-discipline",
-        "confidence": "medium",
+        "score": 86,
+        "evidence_count": 5,
+        "matched_signals": [
+          "memory.verification-node",
+          "quest.completed",
+          "quest.verified"
+        ],
+        "confidence": "high",
         "evidence": [
-          "5 completed Quests observed",
-          "4/5 completed Quests verified"
+          {
+            "id": "quest:quest_20260617_000000Z_docs:verified",
+            "label": "Verified Quest evidence recorded: document README checks",
+            "source": {
+              "quest_id": "quest_20260617_000000Z_docs",
+              "node_id": null,
+              "node_type": null,
+              "route_layer": "L2",
+              "hook_warning_code": null,
+              "mcp_signal_id": null
+            },
+            "matched_signals": [
+              "quest.verified"
+            ]
+          }
         ],
         "auto_unlock": false,
         "requires_user_approval": true

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readProjectIdentity, requireInitialized } from "./config.js";
 import { listGraphNodes } from "./graph.js";
-import { buildGrowthStatus } from "./growth.js";
+import { buildGrowthSuggestionResult } from "./growth.js";
 import { pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
 import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
@@ -35,7 +35,8 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const acceptedMemoryNodes = graph.nodes.length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const graphPreview = buildGraphPreview(graph.nodes);
-  const growthPreview = buildGrowthPreview(buildGrowthStatus(cwd));
+  const growthSuggestion = buildGrowthSuggestionResult(cwd);
+  const growthPreview = buildGrowthPreview(growthSuggestion.status, growthSuggestion);
   const generatedAt = nowIso(options.clock);
   const projectName = project.project_name || path.basename(cwd);
   const origin = originMetadata();
@@ -145,24 +146,54 @@ function buildGraphPreview(nodes) {
 
 /**
  * @param {import("./types.d.ts").GrowthStatus} status
+ * @param {import("./types.d.ts").GrowthSuggestionResult} suggestion
  * @returns {import("./types.d.ts").IdentitySummary["growthPreview"]}
  */
-function buildGrowthPreview(status) {
+function buildGrowthPreview(status, suggestion) {
   return {
     readOnly: true,
     autoUnlock: false,
     growthLevel: status.growthLevel,
+    growthLevelReason: status.growthLevelReason,
     growthLevelDescription: status.growthLevelDescription,
     acceptedMemoryNodes: status.acceptedMemoryNodes,
     nodeTypeDistribution: status.nodeTypeDistribution,
+    nodeTypeDiversity: status.nodeTypeDiversity,
     dominantAcceptedNodeType: status.dominantAcceptedNodeType,
     questVerification: status.questVerification,
     pendingMemoryProposals: status.pendingMemoryProposals,
     hookWarningCount: status.hookWarningSummary.warningCount,
     mcpAdvisorSignalCount: status.mcpAdvisorSignals.signalCount,
+    candidateCount: suggestion.candidates.length,
+    topCandidates: suggestion.candidates.slice(0, 3).map((candidate) => ({
+      id: candidate.id,
+      title: candidate.title,
+      score: candidate.score,
+      evidence_count: candidate.evidence_count,
+      confidence: candidate.confidence,
+      suggested_next_step: candidate.suggested_next_step,
+      auto_unlock: false,
+      requires_user_approval: true
+    })),
+    growthConfidenceSummary: growthConfidenceSummary(suggestion.candidates),
+    noAutomaticUnlocks: "No automatic unlocks",
     suggestedCommand: "orange growth suggest --json",
     boundaries: status.boundaries
   };
+}
+
+function growthConfidenceSummary(candidates) {
+  if (!candidates.length) {
+    return "No candidates met the evidence threshold.";
+  }
+  const counts = candidates.reduce((acc, candidate) => {
+    acc[candidate.confidence] = (acc[candidate.confidence] || 0) + 1;
+    return acc;
+  }, {});
+  return ["high", "medium", "low"]
+    .filter((key) => counts[key])
+    .map((key) => `${counts[key]} ${key}`)
+    .join(", ");
 }
 
 function renderIdentityHtml(model) {
@@ -190,6 +221,13 @@ function renderIdentityHtml(model) {
     .map(([nodeType, count]) => `<tr><td>${escapeHtml(nodeType)}</td><td>${count}</td></tr>`)
     .join("\n");
   const growthTypes = growthTypeRows || "<tr><td>none</td><td>0</td></tr>";
+  const growthCandidateRows = model.growthPreview.topCandidates
+    .map((candidate) => `<tr><td>${escapeHtml(candidate.id)}</td><td>${candidate.score}</td><td>${candidate.evidence_count}</td><td>${escapeHtml(candidate.confidence)}</td></tr>`)
+    .join("\n");
+  const growthCandidates = growthCandidateRows || "<tr><td>none</td><td>0</td><td>0</td><td>none</td></tr>";
+  const growthCandidateDetails = model.growthPreview.topCandidates.length
+    ? `<ul>${model.growthPreview.topCandidates.map((candidate) => `<li><strong>${escapeHtml(candidate.title)}</strong>: ${escapeHtml(candidate.suggested_next_step)}</li>`).join("\n")}</ul>`
+    : "<p class=\"subtle\">No growth candidates met the evidence threshold.</p>";
   const statusMessages = model.statusMessages
     .map((message) => `<li>${escapeHtml(message)}</li>`)
     .join("\n");
@@ -289,12 +327,17 @@ ${proposals}
             <thead><tr><th>Signal</th><th>Value</th></tr></thead>
             <tbody>
               <tr><td>Growth Level</td><td>${escapeHtml(model.growthPreview.growthLevel)} (preview only)</td></tr>
+              <tr><td>Growth Level Reason</td><td>${escapeHtml(model.growthPreview.growthLevelReason)}</td></tr>
               <tr><td>Accepted Memory Nodes</td><td>${model.growthPreview.acceptedMemoryNodes}</td></tr>
+              <tr><td>Node Type Diversity</td><td>${model.growthPreview.nodeTypeDiversity}</td></tr>
               <tr><td>Pending Memory Proposals</td><td>${model.growthPreview.pendingMemoryProposals}</td></tr>
               <tr><td>Verified Quest Ratio</td><td>${formatRatio(model.growthPreview.questVerification.verifiedRatio)}</td></tr>
               <tr><td>Unverified Quest Ratio</td><td>${formatRatio(model.growthPreview.questVerification.unverifiedRatio)}</td></tr>
               <tr><td>Hook Warnings</td><td>${model.growthPreview.hookWarningCount}</td></tr>
               <tr><td>MCP Advisor Signals</td><td>${model.growthPreview.mcpAdvisorSignalCount}</td></tr>
+              <tr><td>Candidate Count</td><td>${model.growthPreview.candidateCount}</td></tr>
+              <tr><td>Growth Confidence</td><td>${escapeHtml(model.growthPreview.growthConfidenceSummary)}</td></tr>
+              <tr><td>Automatic Unlocks</td><td>${escapeHtml(model.growthPreview.noAutomaticUnlocks)}</td></tr>
               <tr><td>Suggested Command</td><td><code>${escapeHtml(model.growthPreview.suggestedCommand)}</code></td></tr>
             </tbody>
           </table>
@@ -302,8 +345,17 @@ ${proposals}
         <aside class="detail">
           <h3>Preview Boundary</h3>
           <p>${escapeHtml(model.growthPreview.growthLevelDescription)}</p>
+          <p>${escapeHtml(model.growthPreview.noAutomaticUnlocks)}</p>
           <p>Auto unlock: ${model.growthPreview.autoUnlock ? "yes" : "no"}</p>
           <p>Read-only: ${model.growthPreview.readOnly ? "yes" : "no"}</p>
+          <h3>Top Candidates</h3>
+          <table>
+            <thead><tr><th>Candidate</th><th>Score</th><th>Evidence</th><th>Confidence</th></tr></thead>
+            <tbody>
+${growthCandidates}
+            </tbody>
+          </table>
+          ${growthCandidateDetails}
           <h3>Growth Node Types</h3>
           <table>
             <thead><tr><th>Node Type</th><th>Count</th></tr></thead>

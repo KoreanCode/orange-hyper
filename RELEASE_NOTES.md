@@ -1,5 +1,41 @@
 # Release Notes
 
+## v0.6.0-alpha.1
+
+Growth Signal Preview quality hardening.
+
+- Package version is `0.6.0-alpha.1`.
+- README version is `0.6-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `growthLevel` calibration is more conservative and no longer advances from
+  accepted node count alone.
+- Level calculation now considers node type diversity, verified Quest ratio,
+  repeated evidence count, pending proposal load, doctor ok state, and active
+  project boundary.
+- Growth candidates now include deterministic `score`, `evidence_count`,
+  `matched_signals`, `confidence`, `reason`, `suggested_next_step`,
+  `auto_unlock: false`, and `requires_user_approval: true`.
+- Candidate thresholds now require repeated source-backed evidence; a single
+  generic string match is not enough to create a candidate.
+- Backend/API false positives from generic API/Route Contract text are pinned
+  by regression tests.
+- `growth explain` now reports source-backed evidence for each candidate,
+  including Quest, node, route layer, Hook warning, and MCP-shaped signal
+  source fields where available.
+- `identity build` now shows growth level reason, candidate count, top
+  candidates, growth confidence summary, and `No automatic unlocks`.
+
+### Explicitly still not included
+
+- role automatic creation
+- MCP automatic installation or execution
+- hook policy automatic changes
+- subagent execution or recommendation automation
+- auto planner or auto execution loop
+- project memory automatic mutation
+- graph node automatic creation
+- workflow enforcement
+
 ## v0.6.0-alpha.0
 
 Growth Signal Preview alpha.

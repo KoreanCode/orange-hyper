@@ -979,13 +979,18 @@ function formatGrowthStatus(result) {
     `Auto unlock: ${yesNo(result.autoUnlock)}`,
     `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
     `Growth level: ${result.growthLevel} (preview only)`,
+    `Growth level reason: ${result.growthLevelReason}`,
     `Accepted memory nodes: ${result.acceptedMemoryNodes}`,
+    `Node type diversity: ${result.nodeTypeDiversity}`,
     `Dominant accepted node type: ${dominant}`,
     `Node type distribution: ${formatCountMap(result.nodeTypeDistribution)}`,
     `Route layer distribution: ${formatCountMap(result.routeLayerDistribution)}`,
     `Quest layer distribution: ${formatCountMap(result.questLayerDistribution)}`,
     `Quest verification: ${result.questVerification.verified}/${result.questVerification.completed} verified, ${result.questVerification.unverified}/${result.questVerification.completed} unverified`,
     `Pending memory proposals: ${result.pendingMemoryProposals}`,
+    `Doctor ok: ${yesNo(result.doctorOk)}`,
+    `Project boundary active: ${yesNo(result.projectBoundaryActive)}`,
+    `Repeated evidence count: ${result.repeatedEvidenceCount}`,
     `Hook warnings: ${result.hookWarningSummary.warningCount}`,
     `MCP advisor signals: ${result.mcpAdvisorSignals.signalCount} (no MCP call)`,
     "No roles, MCPs, hooks, graph nodes, workflows, config, or project memory were changed."
@@ -1045,11 +1050,14 @@ function formatGrowthExplainResult(result) {
     lines.push("");
     lines.push(`${explanation.candidate_id}: ${explanation.title}`);
     lines.push(`  Rule: ${explanation.rule_id}`);
+    lines.push(`  Score: ${explanation.score}`);
+    lines.push(`  Evidence count: ${explanation.evidence_count}`);
+    lines.push(`  Matched signals: ${formatList(explanation.matched_signals)}`);
     lines.push(`  Confidence: ${explanation.confidence}`);
     lines.push(`  Why: ${explanation.why_suggested}`);
     lines.push("  Evidence:");
     for (const item of explanation.evidence) {
-      lines.push(`    - ${item}`);
+      lines.push(`    - ${formatGrowthEvidenceItem(item)}`);
     }
   }
   lines.push("");
@@ -1063,14 +1071,38 @@ function formatGrowthExplainResult(result) {
 function formatGrowthCandidate(candidate) {
   return [
     `${candidate.id}: ${candidate.title}`,
+    `  Score: ${candidate.score}`,
+    `  Evidence count: ${candidate.evidence_count}`,
+    `  Matched signals: ${formatList(candidate.matched_signals)}`,
     `  Confidence: ${candidate.confidence}`,
     `  Reason: ${candidate.reason}`,
     "  Evidence:",
-    ...candidate.evidence.map((item) => `    - ${item}`),
+    ...candidate.evidence.map((item) => `    - ${formatGrowthEvidenceItem(item)}`),
     `  Suggested next step: ${candidate.suggested_next_step}`,
     `  Auto unlock: ${String(candidate.auto_unlock)}`,
     `  Requires user approval: ${String(candidate.requires_user_approval)}`
   ].join("\n");
+}
+
+function formatGrowthEvidenceItem(item) {
+  if (typeof item === "string") {
+    return item;
+  }
+  const source = item.source || {};
+  const parts = [
+    source.quest_id ? `quest=${source.quest_id}` : "",
+    source.node_id ? `node=${source.node_id}` : "",
+    source.node_type ? `node_type=${source.node_type}` : "",
+    source.route_layer ? `route_layer=${source.route_layer}` : "",
+    source.hook_warning_code ? `hook_warning=${source.hook_warning_code}` : "",
+    source.mcp_signal_id ? `mcp_signal=${source.mcp_signal_id}` : ""
+  ].filter(Boolean);
+  const suffix = parts.length ? ` [source: ${parts.join(", ")}]` : "";
+  return `${item.label}${suffix}`;
+}
+
+function formatList(values) {
+  return values?.length ? values.join(", ") : "none";
 }
 
 function formatCountMap(value) {
