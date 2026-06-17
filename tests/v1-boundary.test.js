@@ -13,8 +13,8 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.0-doc.1";
-const EXPECTED_PACKAGE_VERSION = "1.0.0-alpha.1";
+const EXPECTED_README_VERSION = "1.0-doc.2";
+const EXPECTED_PACKAGE_VERSION = "1.0.0";
 const COMMAND_SURFACE = [
   "init",
   "quest",
@@ -62,7 +62,7 @@ test("all supported JSON success commands keep contract_version 0.1", () => {
       "--candidate",
       "v1 JSON contract success envelopes stay at contract_version 0.1.",
       "--why",
-      "The v1 alpha changes package metadata but not the adapter JSON envelope.",
+      "The v1 stable release changes package metadata but not the adapter JSON envelope.",
       "--confidence",
       "high",
       "--json"
@@ -152,7 +152,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.0-doc.1", () => {
+test("README version metadata stays synchronized at 1.0-doc.2", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);

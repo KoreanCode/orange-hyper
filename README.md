@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.1`
+- README version: `1.0-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v1.0.0-alpha.1 stabilization polish 기준으로 Orange Hyper는 v0.1~v0.8에서 구현한 Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, local-only Eval and Reports 경계를 새 기능 추가 없이 재검증합니다.
+v1.0.0 stable은 Orange Hyper의 first stable boundary release입니다. 새 feature release가 아니라 v0.1~v0.8에서 검증한 Seed Kernel, Memory Delta Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, local-only Eval and Reports 경계를 stable 표면으로 고정합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -118,7 +118,7 @@ v1.0.0-alpha.1 stabilization polish 기준으로 Orange Hyper는 v0.1~v0.8에서
 
 ## Command Surface
 
-v1.0-alpha audit 기준 CLI command surface는 다음과 같습니다.
+v1.0.0 stable audit 기준 CLI command surface는 다음과 같습니다.
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -152,7 +152,7 @@ v0.3 stable의 Type Safety Foundation은 Orange Hyper 전체를 한 번에 TypeS
 
 - Orange Hyper는 이 단계에서도 JavaScript 패키지로 배포됩니다.
 - TypeScript는 먼저 안전 확인용으로 씁니다. 약속한 JSON과 상태 정보가 맞는지 살피는 역할입니다.
-- 전체 소스를 TypeScript로 옮기는 일은 v0.4 stable 이후에도 별도 작업으로 남겨 둡니다.
+- 전체 소스를 TypeScript로 옮기는 일은 v1 이후 TS Migration Review track으로 별도 검토합니다.
 - Adapter JSON Contract는 계속 `contract_version: "0.1"`을 유지합니다.
 
 ## 설치/사용법
@@ -224,7 +224,7 @@ orange doctor
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports (stable)
-- v1.0 Stabilization Candidate (current alpha)
+- v1.0 First Stable Boundary Release (current stable)
 
 ## Non-goals
 

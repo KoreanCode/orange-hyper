@@ -1,5 +1,49 @@
 # Release Notes
 
+## v1.0.0
+
+First stable boundary release for Orange Hyper.
+
+- Package version is `1.0.0`.
+- README version is `1.0-doc.2`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v1.0.0 is not a new feature release. It promotes the Boundary Audit and
+  Stabilization Polish work from `v1.0.0-alpha.0` and `v1.0.0-alpha.1` into the
+  first stable Orange Hyper surface.
+- Stable surface fixed for v1:
+  Seed Kernel, Memory Delta Proposal, Memory Graph Usability, Minimal Hook
+  Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and
+  Eval and Reports.
+- The stable command surface remains: `init`, `quest`, `route`, `capsule`,
+  `remember`, `graph`, `hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`,
+  and `identity`.
+- Stable readiness evidence carries forward the alpha smoke surface and is
+  re-run during release prep: `orange --help`, `doctor --json`,
+  `eval report --json`, `adapter dry-run project-status --json`,
+  `growth status --json`, `hook run stop --json`,
+  `mcp suggest --query ... --json`, and `graph list --json`.
+- Hook warnings such as `HOOK_CAPSULE_STALE` are read-only warning evidence,
+  not release failures, when the command exits successfully and preserves
+  no-mutation boundaries.
+- Package surface policy remains clean: include `bin`, `src`, `docs`, README
+  files, release notes, license, provenance/security/citation metadata, README
+  assets, and `scripts/check-readme-sync.js`; exclude tests, `.orange-hyper`,
+  `node_modules`, coverage, temporary output, and local generated artifacts.
+
+### Explicitly not included
+
+- telemetry or network upload
+- LLM judge
+- MCP automatic installation or execution
+- hook automatic mutation or installation
+- role automatic creation
+- subagent orchestration
+- adapter runtime implementation
+- auto planner or auto execution loop
+- project memory/config automatic mutation
+- Adapter JSON Contract shape change
+
 ## v1.0.0-alpha.1
 
 v1 Stabilization Polish alpha.

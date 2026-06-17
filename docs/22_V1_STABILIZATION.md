@@ -1,15 +1,16 @@
 # v1 Stabilization Readiness
 
-Orange Hyper v1.0.0-alpha.1 is stabilization polish after the v1.0.0-alpha.0
-Boundary Audit and npm alpha smoke. It does not add a new CLI feature, runtime
-adapter, MCP runner, hook installer, role system, planner, LLM judge, or
-telemetry path. This alpha keeps the v0.1 through v0.8 boundaries easy to verify
-before a future v1.0 stable release.
+Orange Hyper v1.0.0 is the first stable boundary release. It promotes the
+v1.0.0-alpha.0 Boundary Audit and v1.0.0-alpha.1 Stabilization Polish into a
+stable release surface without adding a new CLI feature, runtime adapter, MCP
+runner, hook installer, role system, planner, LLM judge, or telemetry path. The
+purpose of v1.0.0 is to make the v0.1 through v0.8 boundaries explicit,
+verified, and publish-ready.
 
 Version axes remain separate:
 
-- package version: `1.0.0-alpha.1`
-- README version: `1.0-doc.1`
+- package version: `1.0.0`
+- README version: `1.0-doc.2`
 - Adapter JSON contract version: `0.1`
 
 ## v0.1-v0.8 Summary
@@ -27,7 +28,7 @@ Version axes remain separate:
 
 ## Boundary Audit
 
-| Boundary | v1.0-alpha result | Evidence surface |
+| Boundary | v1.0 stable result | Evidence surface |
 | --- | --- | --- |
 | Seed Kernel is lightweight | Pass. `init`, Quest, Route, Capsule, Doctor, and Identity remain repo-local file surfaces. No graph DB, vector DB, branch workflow, or external API is required. | README current features, `docs/10_DEVELOPMENT_ROADMAP.md`, `node bin/orange.js --help` |
 | Memory Proposal is not automatic storage | Pass. Only completed Quest state can create a pending proposal, and only explicit `remember accept` creates an accepted graph node. L0/L1 proposal creation remains disabled by default. | `docs/02_MEMORY_GRAPH_SPEC.md`, memory tests, `remember.*` JSON commands |
@@ -40,9 +41,9 @@ Version axes remain separate:
 
 ## Adapter JSON Contract
 
-v1.0.0-alpha.1 keeps the adapter-facing JSON contract at `contract_version:
-"0.1"`. This is intentional: the package version changed, but the adapter
-envelope did not.
+v1.0.0 keeps the adapter-facing JSON contract at `contract_version: "0.1"`.
+This is intentional: the package version changed, but the adapter envelope did
+not.
 
 Successful JSON output remains:
 
@@ -72,7 +73,7 @@ Failure JSON output remains:
 
 ## Command Surface
 
-The v1.0-alpha audited top-level CLI command surface is:
+The v1.0.0 stable audited top-level CLI command surface is:
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -94,13 +95,38 @@ The v1.0-alpha audited top-level CLI command surface is:
 post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
 `hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`, and `identity`.
 
-## Alpha Smoke
+## What v1 Stable Guarantees
 
-The npm alpha smoke for `v1.0.0-alpha.0` was run from the published alpha
-package after the Boundary Audit. The smoke is recorded as stabilization
-evidence, not as a new feature claim.
+- The documented top-level command surface remains available.
+- JSON success and failure envelopes keep `contract_version: "0.1"`.
+- Hook, MCP Advisor, Growth Signal Preview, Adapter dry-run, and Eval report
+  surfaces stay warning-first, advisory, dry-run, or local-only as documented.
+- Shared project memory remains limited to config, completed Quest evidence,
+  accepted memory proposals, and graph provenance.
+- Local reports are opt-in generated artifacts under ignored local directories.
+- Package contents are audited with `npm pack --dry-run`.
 
-Passed command surface:
+## What v1 Stable Does Not Guarantee
+
+- No adapter runtime is provided.
+- No MCP server is installed, configured, or executed automatically.
+- No hook lifecycle is installed into an agent, and hook commands do not repair
+  state automatically.
+- No roles, subagents, workflows, planner loops, or automatic growth unlocks are
+  created.
+- No telemetry, network upload, external API call, or LLM judge is used.
+- No project memory or config is mutated without an explicit user command.
+- No success-rate improvement, token-savings estimate, or model-capability
+  improvement claim is made.
+
+## Stable Readiness Evidence
+
+The `v1.0.0-alpha.1` Stabilization Polish smoke is recorded as stable readiness
+evidence, not as a new feature claim. It carries forward the published
+`v1.0.0-alpha.0` package smoke and the actual-repo smoke surface used to verify
+that the stable release can keep the same command and contract boundaries.
+
+Readiness command surface:
 
 - `orange --help`
 - `orange doctor --json`
@@ -118,11 +144,14 @@ project memory/config.
 
 Known warning:
 
-- `hook run stop` may surface local generated-state warnings such as a missing
-  or stale capsule/identity summary. This is not a smoke failure. The hook
-  surface is read-only and warning-first; it reports the state and leaves the
-  manual follow-up to the user. Run `orange capsule` or `orange identity build`
-  only when a refreshed generated artifact is explicitly wanted.
+- `HOOK_CAPSULE_STALE` may appear from `hook run stop` when the generated
+  capsule is older than the latest completed work. This is not a smoke failure.
+  The hook surface is read-only and warning-first; it reports the state and
+  leaves the manual follow-up to the user. Run `orange capsule` only when a
+  refreshed generated artifact is explicitly wanted.
+- Missing or stale identity summaries are handled the same way. Run
+  `orange identity build` only when a refreshed generated artifact is
+  explicitly wanted.
 
 ## Shared vs Local State
 
@@ -186,24 +215,41 @@ The package must not include:
 - `graph rebuild-index` rewrites only the generated graph read model and should
   not be treated as graph source editing.
 
-## Required Before v1.0 Stable
+## Stable Release Gate
 
-- Keep the full validation gate green: `npm test`, `npm run typecheck`,
-  `npm run check:readme-sync`, `git diff --check`, CLI help, actual repo smoke,
-  and package dry-run.
-- Verify the `v1.0.0-alpha.1` package from a fresh temp workspace after it is
-  published on the npm alpha channel.
-- Reconfirm README/doc command surface and package surface from the published
-  tarball, not only the local checkout.
-- Treat hook warnings as manual follow-up evidence, not release failures, when
-  the command exits successfully and preserves read-only/no-mutation flags.
+- Keep the full validation gate green for the stable prep: `npm test`,
+  `npm run typecheck`, `npm run check:readme-sync`, `git diff --check`, CLI
+  help, actual repo smoke, and package dry-run.
+- Reconfirm README/doc command surface and package surface from
+  `npm pack --dry-run`, not only by reading source files.
+- Treat hook warnings such as `HOOK_CAPSULE_STALE` as manual follow-up
+  evidence, not release failures, when the command exits successfully and
+  preserves read-only/no-mutation flags.
 - Keep Adapter JSON `contract_version` at `"0.1"` unless a real adapter-facing
   breaking contract change is made.
 - Keep stable release notes focused on stabilization, not new runtime claims.
 
+The required stable-prep commands are:
+
+```bash
+npm test
+npm run typecheck
+npm run check:readme-sync
+git diff --check
+node bin/orange.js --help
+npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+node bin/orange.js doctor --json
+node bin/orange.js eval report --json
+node bin/orange.js adapter dry-run project-status --json
+node bin/orange.js growth status --json
+node bin/orange.js hook run stop --json
+node bin/orange.js mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
+node bin/orange.js graph list --json
+```
+
 ## Non-Goals
 
-v1.0.0-alpha.1 does not include:
+v1.0.0 stable does not include:
 
 - new CLI features
 - MCP automatic installation or execution
@@ -215,6 +261,21 @@ v1.0.0-alpha.1 does not include:
 - telemetry or network upload
 - adapter runtime implementation
 - automatic project memory/config mutation
+
+## Future Tracks After v1
+
+Post-v1 work should stay measured. It should not automatically become a v1.1
+feature expansion queue.
+
+- Stabilization: keep regression checks, package surface audits, warning
+  clarity, and docs sync healthy.
+- Dogfooding: collect real workflow evidence before widening runtime scope.
+- Measured improvement: define evidence-backed quality signals before making
+  improvement claims.
+- Adapter Runtime Research: evaluate whether a runtime is needed separately
+  from the already stable Adapter Invocation Contract.
+- TS Migration Review: assess source migration cost and safety without turning
+  v1.0.0 into a TypeScript rewrite.
 
 ## Trusted Publishing
 

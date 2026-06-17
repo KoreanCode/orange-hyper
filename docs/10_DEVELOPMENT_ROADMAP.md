@@ -316,21 +316,22 @@ token savings, success-rate improvement, model capability improvement는 수집 
 외부 telemetry, network upload, LLM judge, MCP 실행, hook 자동 실행, project memory/config 자동 수정은 없다.
 ```
 
-## 10. v1.0 — Stabilization Candidate (current)
+## 10. v1.0 — First Stable Boundary Release (stable)
 
-목표: v0.1~v0.8에서 구현한 기능을 새 runtime feature 추가 없이 v1.0 후보로
-안정화한다. boundary audit, Adapter JSON Contract audit, command surface audit,
-shared/local state audit, package surface audit, README/docs 정리, readiness
-report, regression test 보강이 범위다.
+목표: v0.1~v0.8에서 구현하고 검증한 기능 경계를 새 runtime feature 추가 없이
+Orange Hyper의 first stable boundary release로 고정한다. boundary audit,
+Adapter JSON Contract audit, command surface audit, shared/local state audit,
+package surface audit, README/docs 정리, readiness report, regression test 보강이
+범위다.
 
 포함:
 
 - v0.1~v0.8 boundary summary
 - Adapter JSON `contract_version: "0.1"` 유지 확인
-- README 4종 `1.0-doc.1` 동기화
+- README 4종 `1.0-doc.2` 동기화
 - `docs/22_V1_STABILIZATION.md`
-- `RELEASE_NOTES.md` v1.0.0-alpha.1 섹션
-- package version `1.0.0-alpha.1`
+- `RELEASE_NOTES.md` v1.0.0 stable 섹션
+- package version `1.0.0`
 - package surface dry-run 검증
 - shared/local `.orange-hyper` state policy 재검증
 
@@ -350,38 +351,41 @@ report, regression test 보강이 범위다.
 완료 기준:
 
 ```text
-v1.0-alpha는 새 기능이 아니라 안정화 후보로 설명된다.
-v0.1~v0.8의 경계가 문서와 테스트로 재확인된다.
+v1.0.0은 새 기능이 아니라 first stable boundary release로 설명된다.
+v0.1~v0.8의 경계가 문서와 테스트로 재확인되고 stable 표면으로 고정된다.
 Adapter JSON Contract는 contract_version "0.1"을 유지한다.
 package surface는 bin/src/docs/README/RELEASE_NOTES/LICENSE/metadata만 포함하고 tests/local artifacts를 제외한다.
-v1.0 stable로 넘어가기 전 남은 검증 기준이 명확하다.
+v1.0 stable publish 준비에 필요한 검증 기준이 명확하다.
 ```
 
-## 11. 다음 구현 순서
+## 11. v1 이후 Future Tracks
 
-1. v1.0 stabilization candidate validation and published alpha smoke
-2. Adapter recipe validation from real user workflows
-3. Adapter interface stabilization only after the stable invocation contract
-   keeps holding
-4. Codex adapter and generic CLI adapter proof only after explicit adapter
-   runtime scope is opened
-5. Claude Code adapter draft only after explicit adapter runtime scope is opened
-6. model capability profile
-7. future growth profile design only after preview evidence remains stable
-8. future role proposal boundary only after explicit user approval
+v1 이후는 무작정 v1.1 feature를 여는 단계가 아니다. 먼저 안정화와 실제 사용
+증거를 쌓고, runtime 확장은 별도 research track으로 검토한다.
 
-## 12. 다음 개발 목표
+1. Stabilization: regression gate, package surface, warning clarity, README/docs
+   sync를 계속 유지한다.
+2. Dogfooding: 실제 workflow에서 Adapter recipe, hook warning, MCP Advisor,
+   Growth Signal Preview, Eval report가 어떤 도움을 주는지 기록한다.
+3. Measured Improvement: token savings나 success-rate 같은 claim은 수집 설계와
+   비교 기준이 생기기 전까지 unavailable로 둔다.
+4. Adapter Runtime Research: Adapter Invocation Contract가 실제 workflow에서
+   충분히 버티는지 본 뒤, runtime 구현이 필요한지 별도 범위로 검토한다.
+5. TS Migration Review: Type Safety Foundation을 바탕으로 JS 유지, 점진적 TS,
+   전면 migration의 비용과 위험을 따로 평가한다.
+
+## 12. 다음 안정화 목표
 
 ```text
-Step 1: keep v0.6 Growth Signal Preview stable as preview-only
+Step 1: keep the v1.0 command surface stable and documented
 Step 2: keep user approval before MCP install/use and growth candidate action
 Step 3: preserve no automatic role, hook, subagent, planner, workflow, config, graph, or project-memory mutation
 Step 4: keep reports local/generated and opt-in
-Step 5: preserve the v0.3 read-only graph and identity surface
-Step 6: keep v0.7 stable as Adapter Invocation Contract only
-Step 7: keep v0.8 stable as local-only Eval and Reports only
-Step 8: defer real adapter runtime until a separate explicit runtime scope is opened
-Step 9: move toward v1.0 through stabilization, not automatic planner/runtime expansion
+Step 5: preserve the read-only graph and identity preview boundaries
+Step 6: keep Adapter Invocation Contract separate from Adapter Runtime Research
+Step 7: keep Eval and Reports local-only unless an explicit telemetry scope is opened
+Step 8: use dogfooding evidence before opening any post-v1 feature scope
+Step 9: review TypeScript migration as a separate safety track, not as v1.0 cleanup
 ```
 
 ## 13. 품질 기준

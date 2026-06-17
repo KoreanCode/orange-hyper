@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.1`
+- README version: `1.0-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of the v1.0.0-alpha.1 stabilization polish, Orange Hyper re-audits the v0.1 through v0.8 boundaries for the Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports without adding a new runtime feature.
+v1.0.0 stable is Orange Hyper's first stable boundary release. It is not a new feature release; it fixes the already validated v0.1 through v0.8 boundaries as the stable surface: Seed Kernel, Memory Delta Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -118,7 +118,7 @@ As of the v1.0.0-alpha.1 stabilization polish, Orange Hyper re-audits the v0.1 t
 
 ## Command Surface
 
-The v1.0-alpha audited CLI command surface is:
+The v1.0.0 stable audited CLI command surface is:
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -152,7 +152,7 @@ In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewri
 
 - Orange Hyper is still shipped as JavaScript.
 - TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
-- A full move of the source code to TypeScript remains separate future work after v0.4 stable.
+- A full source migration remains a separate post-v1 TS Migration Review track.
 - Adapter JSON Contract still stays at `contract_version: "0.1"`.
 
 ## Install and Usage
@@ -193,6 +193,7 @@ npx -y --package orange-hyper@latest orange route "Find the cause of the search 
 npx -y --package orange-hyper@latest orange capsule
 npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
 npx -y --package orange-hyper@latest orange doctor
+npx -y --package orange-hyper@latest orange hook preview --json
 npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
@@ -223,7 +224,7 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports (stable)
-- v1.0 Stabilization Candidate (current alpha)
+- v1.0 First Stable Boundary Release (current stable)
 
 ## Non-goals
 
