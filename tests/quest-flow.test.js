@@ -1855,12 +1855,16 @@ test("all JSON success envelopes include contract version and dot command ids", 
 
 test("README version sync check passes for all localized READMEs", () => {
   const repoRoot = path.resolve(new URL("..", import.meta.url).pathname);
+  const readme = fs.readFileSync(path.join(repoRoot, "README.md"), "utf8");
+  const versionMatch = readme.match(/README version:\s*`([^`]+)`/);
+  assert.ok(versionMatch, "README.md should declare a README version");
+  const expectedVersion = versionMatch[1];
   const result = spawnSync(process.execPath, ["scripts/check-readme-sync.js"], {
     cwd: repoRoot,
     encoding: "utf8"
   });
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /README version sync OK: 0\.4-doc\.2/);
+  assert.match(result.stdout, new RegExp(`README version sync OK: ${escapeRegExp(expectedVersion)}`));
 });
 
 function createMemoryProposal(cwd, title, options = {}) {
