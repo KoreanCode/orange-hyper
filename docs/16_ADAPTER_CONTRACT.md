@@ -1,11 +1,10 @@
 # Adapter Contract
 
-Orange Hyper v0.8.0 is still a Seed Kernel with Memory Graph Usability,
-a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
-read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
-Invocation Contract stable surface. It also includes the local-only Eval and
-Reports stable surface. The `orange` CLI is the kernel control plane, not the final
-end-user UX.
+Orange Hyper v1.0.0-alpha.0 is a stabilization candidate for the v0.1 through
+v0.8 surfaces: Seed Kernel, Memory Proposal, Memory Graph Usability, read-only
+Identity Graph Preview, Minimal Hook Preview, read-only MCP Advisor, read-only
+Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and
+Reports. The `orange` CLI is the kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -62,9 +61,10 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.8.0 keeps
-`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
-and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version.
+v1.0.0-alpha.0 keeps `"0.1"` intentionally: the package version changed, but
+the adapter envelope did not. The contract version appears in both success and
+failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
@@ -709,7 +709,7 @@ orange eval explain --json
         "status": "insufficient-data",
         "value": null,
         "source": "unavailable",
-        "explanation": "Orange Hyper v0.8 does not collect token counts, so token savings are unavailable and not estimated.",
+        "explanation": "Orange Hyper does not collect token counts in the local-only eval surface, so token savings are unavailable and not estimated.",
         "limitation": "No token usage collection exists in this local-only eval surface, so savings must remain unavailable.",
         "unavailable": true,
         "unavailable_reason": "token counts are not collected"
@@ -720,7 +720,7 @@ orange eval explain --json
         "status": "insufficient-data",
         "value": null,
         "source": "unavailable",
-        "explanation": "Orange Hyper v0.8 does not compare raw-agent and Orange-assisted outcomes, so success-rate improvement is unavailable.",
+        "explanation": "Orange Hyper does not compare raw-agent and Orange-assisted outcomes in the local-only eval surface, so success-rate improvement is unavailable.",
         "limitation": "No comparison group or task-pack outcome dataset exists, so improvement claims must remain unavailable.",
         "unavailable": true,
         "unavailable_reason": "comparative task-pack outcomes are not collected"

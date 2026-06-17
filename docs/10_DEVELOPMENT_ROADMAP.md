@@ -316,9 +316,50 @@ token savings, success-rate improvement, model capability improvement는 수집 
 외부 telemetry, network upload, LLM judge, MCP 실행, hook 자동 실행, project memory/config 자동 수정은 없다.
 ```
 
-## 10. 다음 구현 순서
+## 10. v1.0 — Stabilization Candidate (current)
 
-1. v1.0 candidate / stabilization
+목표: v0.1~v0.8에서 구현한 기능을 새 runtime feature 추가 없이 v1.0 후보로
+안정화한다. boundary audit, Adapter JSON Contract audit, command surface audit,
+shared/local state audit, package surface audit, README/docs 정리, readiness
+report, regression test 보강이 범위다.
+
+포함:
+
+- v0.1~v0.8 boundary summary
+- Adapter JSON `contract_version: "0.1"` 유지 확인
+- README 4종 `1.0-doc.0` 동기화
+- `docs/22_V1_STABILIZATION.md`
+- `RELEASE_NOTES.md` v1.0.0-alpha.0 섹션
+- package version `1.0.0-alpha.0`
+- package surface dry-run 검증
+- shared/local `.orange-hyper` state policy 재검증
+
+제외:
+
+- 새 CLI feature
+- MCP 자동 설치/실행
+- hook 자동 mutation 또는 설치
+- role 자동 생성
+- subagent orchestration
+- auto planner / auto execution loop
+- LLM judge
+- telemetry/network upload
+- adapter runtime 구현
+- project memory/config 자동 mutation
+
+완료 기준:
+
+```text
+v1.0-alpha는 새 기능이 아니라 안정화 후보로 설명된다.
+v0.1~v0.8의 경계가 문서와 테스트로 재확인된다.
+Adapter JSON Contract는 contract_version "0.1"을 유지한다.
+package surface는 bin/src/docs/README/RELEASE_NOTES/LICENSE/metadata만 포함하고 tests/local artifacts를 제외한다.
+v1.0 stable로 넘어가기 전 남은 검증 기준이 명확하다.
+```
+
+## 11. 다음 구현 순서
+
+1. v1.0 stabilization candidate validation and published alpha smoke
 2. Adapter recipe validation from real user workflows
 3. Adapter interface stabilization only after the stable invocation contract
    keeps holding
@@ -329,7 +370,7 @@ token savings, success-rate improvement, model capability improvement는 수집 
 7. future growth profile design only after preview evidence remains stable
 8. future role proposal boundary only after explicit user approval
 
-## 11. 다음 개발 목표
+## 12. 다음 개발 목표
 
 ```text
 Step 1: keep v0.6 Growth Signal Preview stable as preview-only
@@ -343,7 +384,7 @@ Step 8: defer real adapter runtime until a separate explicit runtime scope is op
 Step 9: move toward v1.0 through stabilization, not automatic planner/runtime expansion
 ```
 
-## 12. 품질 기준
+## 13. 품질 기준
 
 - 모든 schema는 test가 있어야 한다.
 - 모든 generated file은 deterministic해야 한다.
@@ -352,7 +393,7 @@ Step 9: move toward v1.0 through stabilization, not automatic planner/runtime ex
 - memory write는 proposal-first여야 한다.
 - L0/L1 작업에 overhead를 만들지 않는 설계여야 한다.
 
-## 13. 절대 하지 말 것
+## 14. 절대 하지 말 것
 
 - MVP에 hook을 넣지 말 것.
 - MVP에 MCP를 넣지 말 것.

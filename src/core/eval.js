@@ -184,7 +184,7 @@ export function buildEvalExplainResult(cwd = process.cwd(), options = {}) {
       "Memory proposal flow comes from proposals/memory-delta status directories.",
       "Hook warnings are read from existing local hook report files when present; eval does not run hook events automatically.",
       "memory.acceptance_rate is calculated from local proposal state only; it is not a success-rate improvement metric.",
-      "Token savings and success-rate improvement are unavailable because Orange Hyper does not collect token counts or compare agent outcomes in v0.8."
+      "Token savings and success-rate improvement are unavailable because Orange Hyper does not collect token counts or compare agent outcomes in the local-only eval surface."
     ]
   });
 }
@@ -567,7 +567,7 @@ function buildEvalMetrics(snapshot) {
       null,
       "insufficient-data",
       "unavailable",
-      "Orange Hyper v0.8 does not collect token counts, so token savings are unavailable and not estimated.",
+      "Orange Hyper does not collect token counts in the local-only eval surface, so token savings are unavailable and not estimated.",
       {
         unavailable: true,
         unavailable_reason: "token counts are not collected",
@@ -580,7 +580,7 @@ function buildEvalMetrics(snapshot) {
       null,
       "insufficient-data",
       "unavailable",
-      "Orange Hyper v0.8 does not compare raw-agent and Orange-assisted outcomes, so success-rate improvement is unavailable.",
+      "Orange Hyper does not compare raw-agent and Orange-assisted outcomes in the local-only eval surface, so success-rate improvement is unavailable.",
       {
         unavailable: true,
         unavailable_reason: "comparative task-pack outcomes are not collected",
@@ -694,8 +694,8 @@ function buildEvalReportSections(snapshot) {
     })),
     makeSection("Known Gaps", "insufficient-data", [
       "Token savings are unavailable because token counts are not collected.",
-      "Success-rate improvement is unavailable because v0.8 does not run comparative task packs.",
-      "Identity build does not automatically include eval summaries in v0.8 stable.",
+      "Success-rate improvement is unavailable because the local-only eval surface does not run comparative task packs.",
+      "Identity build does not automatically include eval summaries.",
       "HTML dashboards, external telemetry, network upload, LLM judges, hook auto-run, MCP auto-run, and auto planner loops are not included."
     ], ["token.savings", "success_rate.improvement"], "These metrics and integrations are intentionally unavailable rather than estimated or auto-generated.")
   ];
@@ -764,7 +764,7 @@ function buildEvalKnownGaps() {
     {
       id: "identity.eval_summary_integration",
       status: "insufficient-data",
-      reason: "identity build does not automatically add eval summaries in v0.8 stable.",
+      reason: "identity build does not automatically add eval summaries.",
       source: "future-target",
       limitation: "Eval report remains a separate explicit command and does not mutate identity artifacts.",
       future_target: "Consider an explicit user-approved identity integration in a future release."

@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.8-doc.2`
+- README version: `1.0-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.8.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable, and local-only Eval and Reports stable features.
+As of the v1.0.0-alpha.0 stabilization candidate, Orange Hyper re-audits the v0.1 through v0.8 boundaries for the Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports without adding a new runtime feature.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -115,6 +115,28 @@ As of v0.8.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usabili
 - Eval reports expose summary, section `status`, `reason`, `evidence_count`, unavailable metrics, and known gaps in JSON/Markdown.
 - Eval reports use stdout by default. Only explicit `--write-report` creates a Markdown report under `.orange-hyper/evals/reports/`.
 - Eval and Reports stable does not use external telemetry, network upload, LLM judges, token savings estimates, success-rate improvement claims, MCP execution, hook auto-run, or project memory/config auto-mutation.
+
+## Command Surface
+
+The v1.0-alpha audited CLI command surface is:
+
+<!-- orange-command-surface:start -->
+- `init`
+- `quest`
+- `route`
+- `capsule`
+- `remember`
+- `graph`
+- `hook`
+- `mcp`
+- `growth`
+- `adapter`
+- `eval`
+- `doctor`
+- `identity`
+<!-- orange-command-surface:end -->
+
+`init` is the bootstrap command. The other commands cover Quest, route, capsule, proposal-first memory, accepted graph, hook warning, MCP advice, growth preview, adapter recipe, local eval, doctor, and identity surfaces.
 
 ## Memory Lifecycle
 
@@ -201,7 +223,7 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports (stable)
-- v1.0 Stabilization candidate
+- v1.0 Stabilization Candidate (current alpha)
 
 ## Non-goals
 
@@ -233,4 +255,5 @@ Orange Hyper is not trying to be:
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
 - [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
+- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
 - [Release Notes](RELEASE_NOTES.md)

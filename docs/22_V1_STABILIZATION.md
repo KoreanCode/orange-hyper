@@ -1,0 +1,202 @@
+# v1 Stabilization Readiness
+
+Orange Hyper v1.0.0-alpha.0 is a stabilization candidate. It does not add a new
+CLI feature, runtime adapter, MCP runner, hook installer, role system, planner,
+LLM judge, or telemetry path. The release candidate re-audits the v0.1 through
+v0.8 surfaces and makes the existing boundaries easier to verify before a future
+v1.0 stable release.
+
+Version axes remain separate:
+
+- package version: `1.0.0-alpha.0`
+- README version: `1.0-doc.0`
+- Adapter JSON contract version: `0.1`
+
+## v0.1-v0.8 Summary
+
+| Version | Surface | Stabilized boundary |
+| --- | --- | --- |
+| v0.1 | Seed Kernel | repo-local Quest, Route, Capsule, Doctor, Identity placeholder |
+| v0.2 | Memory Delta Proposal | completed Quest -> proposal -> manual accept/reject |
+| v0.3 | Memory Graph Usability | current-project accepted memory graph read model |
+| v0.4 | Minimal Hook Preview | read-only / warning-first hook observations |
+| v0.5 | MCP Advisor | read-only MCP proposal cards, no install/run/config mutation |
+| v0.6 | Growth Signal Preview | deterministic advisory growth candidates, no unlock |
+| v0.7 | Adapter Invocation Contract | recipe and `--json` invocation contract, no adapter runtime |
+| v0.8 | Eval and Reports | local-only count/warning reports, no telemetry or LLM judge |
+
+## Boundary Audit
+
+| Boundary | v1.0-alpha result | Evidence surface |
+| --- | --- | --- |
+| Seed Kernel is lightweight | Pass. `init`, Quest, Route, Capsule, Doctor, and Identity remain repo-local file surfaces. No graph DB, vector DB, branch workflow, or external API is required. | README current features, `docs/10_DEVELOPMENT_ROADMAP.md`, `node bin/orange.js --help` |
+| Memory Proposal is not automatic storage | Pass. Only completed Quest state can create a pending proposal, and only explicit `remember accept` creates an accepted graph node. L0/L1 proposal creation remains disabled by default. | `docs/02_MEMORY_GRAPH_SPEC.md`, memory tests, `remember.*` JSON commands |
+| Graph sees accepted memory only | Pass. Graph list/show/search scan current-project accepted graph nodes with accepted proposal provenance. Pending/rejected proposals are not graph nodes. | `docs/02_MEMORY_GRAPH_SPEC.md`, graph reader, doctor graph diagnostics |
+| Hook is read-only / warning-first | Pass. Hook preview/status/run return observations, warnings, and hints. They do not repair doctor findings, rebuild graph, create proposals, accept memory, build identity, or install hooks. | `docs/17_MINIMAL_HOOK_PREVIEW.md`, hook tests |
+| MCP is Advisor | Pass. MCP commands produce deterministic proposal cards. They do not install, run, configure, persist API keys, call external networks, or write project memory/config. | `docs/18_MCP_ADVISOR.md`, MCP tests |
+| Growth is not automatic unlock | Pass. Growth commands read local signals and produce advisory candidates with `auto_unlock: false` and `requires_user_approval: true`. | `docs/19_GROWTH_SYSTEM.md`, growth tests |
+| Adapter is invocation contract | Pass. Adapter recipes describe safe `--json` command sequences and dry-runs. They do not execute recipes or mutate `.orange-hyper` directly. | `docs/16_ADAPTER_CONTRACT.md`, `docs/20_ADAPTER_LAYER.md`, adapter tests |
+| Eval is local-only report | Pass. Eval snapshot/report/explain read local `.orange-hyper` state only. Reports are stdout by default and write only under `.orange-hyper/evals/reports/` with `--write-report`. | `docs/21_EVAL_AND_REPORTS.md`, eval tests |
+
+## Adapter JSON Contract
+
+v1.0.0-alpha.0 keeps the adapter-facing JSON contract at `contract_version:
+"0.1"`. This is intentional: the package version changed, but the adapter
+envelope did not.
+
+Successful JSON output remains:
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "...",
+  "data": {}
+}
+```
+
+Failure JSON output remains:
+
+```json
+{
+  "ok": false,
+  "contract_version": "0.1",
+  "command": "...",
+  "error": {
+    "code": "...",
+    "message": "...",
+    "hint": "..."
+  }
+}
+```
+
+## Command Surface
+
+The v1.0-alpha audited top-level CLI command surface is:
+
+<!-- orange-command-surface:start -->
+- `init`
+- `quest`
+- `route`
+- `capsule`
+- `remember`
+- `graph`
+- `hook`
+- `mcp`
+- `growth`
+- `adapter`
+- `eval`
+- `doctor`
+- `identity`
+<!-- orange-command-surface:end -->
+
+`init` is the bootstrap command. The user-requested audit surface is the
+post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
+`hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`, and `identity`.
+
+## Shared vs Local State
+
+Shared project-memory state can be committed when it passes `orange doctor`:
+
+- `.orange-hyper/config.json`
+- `.orange-hyper/quests/completed/*.md`
+- `.orange-hyper/proposals/memory-delta/accepted/*.md`
+- `.orange-hyper/graph/**`
+
+Local/generated state remains ignored and should not be treated as shared
+project memory:
+
+- `.orange-hyper/capsules/`
+- `.orange-hyper/traces/`
+- `.orange-hyper/identity/`
+- `.orange-hyper/hooks/reports/`
+- `.orange-hyper/evals/reports/`
+- `.orange-hyper/proposals/memory-delta/pending/`
+- `.orange-hyper/proposals/memory-delta/rejected/`
+- `.orange-hyper/local/`
+
+`doctor` checks root `.gitignore`, `.orange-hyper/.gitignore`, accepted proposal
+provenance, graph/index consistency, tracked private `.orange-hyper` state,
+private-looking paths in public memory, and token/secret/auth-like strings in
+public memory.
+
+## Package Surface
+
+The npm package is expected to include:
+
+- `bin/`
+- `src/`
+- `docs/`
+- `README.md`, `README.en.md`, `README.zh-CN.md`, `README.ja.md`
+- `RELEASE_NOTES.md`
+- `LICENSE`
+- package metadata and provenance/security/citation files
+
+The package must not include:
+
+- `tests/`
+- `.orange-hyper/` local/generated artifacts
+- `node_modules/`
+- temporary output
+- `coverage/`
+
+## Known Limitations
+
+- The adapter layer is still an invocation contract, not a runtime.
+- MCP Advisor is a local deterministic recommender, not MCP installation or
+  execution.
+- Hook commands are preview observations only and are not installed into any
+  agent hook lifecycle.
+- Growth candidates are advisory labels; no role/tool/workflow unlock happens.
+- Eval reports are local count/warning summaries; token savings and
+  success-rate improvement remain unavailable.
+- Identity output is generated local state and not shared memory.
+- `graph rebuild-index` rewrites only the generated graph read model and should
+  not be treated as graph source editing.
+
+## Required Before v1.0 Stable
+
+- Keep the full validation gate green: `npm test`, `npm run typecheck`,
+  `npm run check:readme-sync`, `git diff --check`, CLI help, actual repo smoke,
+  and package dry-run.
+- Verify the published alpha package from a fresh temp workspace after
+  `v1.0.0-alpha.0` is published.
+- Reconfirm README/doc command surface and package surface from the published
+  tarball, not only the local checkout.
+- Keep Adapter JSON `contract_version` at `"0.1"` unless a real adapter-facing
+  breaking contract change is made.
+- Keep stable release notes focused on stabilization, not new runtime claims.
+
+## Non-Goals
+
+v1.0.0-alpha.0 does not include:
+
+- new CLI features
+- MCP automatic installation or execution
+- hook installation or automatic mutation
+- role automatic creation
+- subagent orchestration
+- auto planner or auto execution loop
+- LLM judge
+- telemetry or network upload
+- adapter runtime implementation
+- automatic project memory/config mutation
+
+## Trusted Publishing
+
+Official npm publishing remains tag-triggered GitHub Actions Trusted Publishing.
+The publish workflow has `id-token: write`, uses npm provenance through
+`publishConfig.provenance: true`, publishes `v*-alpha.*` tags with the npm
+`alpha` dist-tag, and publishes non-alpha `vX.Y.Z` tags with the default
+`latest` dist-tag.
+
+Local `npm publish` is not the official path. Local package checks should use
+`npm pack --dry-run` and fresh temp smoke tests; the actual publication path is
+the trusted GitHub Actions workflow.
+
+## Local-Only / No Telemetry Principle
+
+Orange Hyper reads and writes repo-local files only through explicit commands.
+It does not upload `.orange-hyper` state, emit telemetry, call external APIs,
+call LLM judges, or send reports over the network. Local reports are generated
+artifacts and stay opt-in under ignored local directories.

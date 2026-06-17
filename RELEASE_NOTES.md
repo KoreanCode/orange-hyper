@@ -1,5 +1,72 @@
 # Release Notes
 
+## v1.0.0-alpha.0
+
+v1.0 Stabilization Candidate alpha.
+
+- Package version is `1.0.0-alpha.0`.
+- README version is `1.0-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha is stabilization work, not a new feature release. It re-audits the
+  v0.1 through v0.8 Seed Kernel, Memory Proposal, Memory Graph, Hook, MCP
+  Advisor, Growth, Adapter, and Eval boundaries before a future v1.0 stable.
+- Added `docs/22_V1_STABILIZATION.md` as the v1 readiness report covering
+  v0.1-v0.8 summaries, boundary audit results, known limitations, stable
+  readiness work, non-goals, Trusted Publishing, and local-only/no-telemetry
+  principles.
+- README Korean, English, Simplified Chinese, and Japanese docs now mark the
+  README version as `1.0-doc.0`, describe v1 as a stabilization candidate, and
+  expose an audited command surface marker.
+- `docs/10_DEVELOPMENT_ROADMAP.md` now marks v1.0 Stabilization Candidate as
+  the current roadmap stage.
+- `src/core/origin.js` generator metadata now reports `1.0.0-alpha.0`.
+- Package metadata now targets `1.0.0-alpha.0`.
+- The Adapter JSON envelope remains unchanged:
+  `{ ok, contract_version: "0.1", command, data }` for success and
+  `{ ok, contract_version: "0.1", command, error }` for failure.
+- The audited command surface is `init`, `quest`, `route`, `capsule`,
+  `remember`, `graph`, `hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`,
+  and `identity`.
+- Shared `.orange-hyper` state remains limited to config, completed Quests,
+  accepted memory proposals, and graph provenance. Capsules, traces, identity,
+  hook reports, eval reports, pending/rejected proposals, and `local/` remain
+  local/generated state.
+- Package dry-run policy remains: include `bin`, `src`, `docs`, README files,
+  release notes, license, and public metadata; exclude tests, `.orange-hyper`
+  local/generated artifacts, `node_modules`, temporary output, and coverage.
+
+### Boundary summary
+
+- Seed Kernel stays lightweight: no graph DB, vector DB, branch workflow, or
+  external API requirement.
+- Memory Proposal stays proposal-first: no automatic memory write and no
+  accept without explicit user command.
+- Graph reads current-project accepted memory only; pending/rejected proposals
+  are not graph nodes.
+- Hook stays read-only / warning-first and does not repair, rebuild, generate,
+  install, or mutate state automatically.
+- MCP remains Advisor only and does not install, run, configure, persist keys,
+  call networks, or write project memory/config.
+- Growth remains preview only and keeps `auto_unlock: false` plus
+  `requires_user_approval: true`.
+- Adapter remains an invocation contract and does not execute recipes or
+  mutate `.orange-hyper` directly.
+- Eval remains local-only and does not upload telemetry, call LLM judges,
+  estimate token savings, claim success-rate improvement, or mutate state.
+
+### Explicitly not included
+
+- new CLI feature
+- MCP automatic installation or execution
+- hook automatic mutation or installation
+- role automatic creation
+- subagent orchestration
+- auto planner or auto execution loop
+- LLM judge
+- telemetry or network upload
+- adapter runtime implementation
+- project memory/config automatic mutation
+
 ## v0.8.0
 
 Local-only Eval and Reports stable release.

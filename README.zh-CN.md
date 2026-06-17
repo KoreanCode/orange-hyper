@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.8-doc.2`
+- README version: `1.0-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.8.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable、Adapter Invocation Contract stable 和 local-only Eval and Reports stable 功能。
+以 v1.0.0-alpha.0 stabilization candidate 为基准，Orange Hyper 不新增 runtime feature，而是重新审计 v0.1 到 v0.8 的 Seed Kernel、Memory Proposal、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor、Growth Signal Preview、Adapter Invocation Contract、local-only Eval and Reports 边界。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -115,6 +115,28 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - eval report 会在 JSON/Markdown 中暴露 summary、section `status`、`reason`、`evidence_count`、unavailable metric 和 known gap。
 - eval report 默认只输出到 stdout。只有显式传入 `--write-report` 时，才会在 `.orange-hyper/evals/reports/` 下创建 Markdown report。
 - Eval and Reports stable 不使用外部 telemetry、network upload、LLM judge、token savings estimate、success-rate improvement claim、MCP 执行、hook 自动运行，也不会自动修改 project memory/config。
+
+## Command Surface
+
+v1.0-alpha audit 的 CLI command surface 如下：
+
+<!-- orange-command-surface:start -->
+- `init`
+- `quest`
+- `route`
+- `capsule`
+- `remember`
+- `graph`
+- `hook`
+- `mcp`
+- `growth`
+- `adapter`
+- `eval`
+- `doctor`
+- `identity`
+<!-- orange-command-surface:end -->
+
+`init` 是 bootstrap command。其他 command 分别覆盖 Quest、route、capsule、proposal-first memory、accepted graph、hook warning、MCP advice、growth preview、adapter recipe、local eval、doctor 和 identity surface。
 
 ## Memory Lifecycle
 
@@ -201,7 +223,7 @@ orange doctor
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports (stable)
-- v1.0 Stabilization candidate
+- v1.0 Stabilization Candidate (current alpha)
 
 ## Non-goals
 
@@ -233,4 +255,5 @@ Orange Hyper 不打算成为：
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
 - [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
+- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
 - [Release Notes](RELEASE_NOTES.md)
