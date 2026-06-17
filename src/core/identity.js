@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { readProjectIdentity, requireInitialized } from "./config.js";
 import { listGraphNodes } from "./graph.js";
+import { buildGrowthStatus } from "./growth.js";
 import { pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTypes } from "./memory.js";
 import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
@@ -34,6 +35,7 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const acceptedMemoryNodes = graph.nodes.length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const graphPreview = buildGraphPreview(graph.nodes);
+  const growthPreview = buildGrowthPreview(buildGrowthStatus(cwd));
   const generatedAt = nowIso(options.clock);
   const projectName = project.project_name || path.basename(cwd);
   const origin = originMetadata();
@@ -59,6 +61,7 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     projectBoundaryActive: Boolean(project.project_id),
     topProposalNodeTypes: proposalNodeTypes,
     graphPreview,
+    growthPreview,
     graphWarnings: graph.warnings,
     origin,
     statusMessages: IDENTITY_STATUS_MESSAGES
@@ -140,6 +143,28 @@ function buildGraphPreview(nodes) {
   });
 }
 
+/**
+ * @param {import("./types.d.ts").GrowthStatus} status
+ * @returns {import("./types.d.ts").IdentitySummary["growthPreview"]}
+ */
+function buildGrowthPreview(status) {
+  return {
+    readOnly: true,
+    autoUnlock: false,
+    growthLevel: status.growthLevel,
+    growthLevelDescription: status.growthLevelDescription,
+    acceptedMemoryNodes: status.acceptedMemoryNodes,
+    nodeTypeDistribution: status.nodeTypeDistribution,
+    dominantAcceptedNodeType: status.dominantAcceptedNodeType,
+    questVerification: status.questVerification,
+    pendingMemoryProposals: status.pendingMemoryProposals,
+    hookWarningCount: status.hookWarningSummary.warningCount,
+    mcpAdvisorSignalCount: status.mcpAdvisorSignals.signalCount,
+    suggestedCommand: "orange growth suggest --json",
+    boundaries: status.boundaries
+  };
+}
+
 function renderIdentityHtml(model) {
   const routeRows = Object.entries(model.routeDistribution)
     .sort(([left], [right]) => left.localeCompare(right))
@@ -160,6 +185,11 @@ function renderIdentityHtml(model) {
     .join("\n");
   const graphNodes = graphRows || "<tr><td>none</td><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td></tr>";
   const nodeDetails = renderNodeDetails(model.graphPreview.nodes);
+  const growthTypeRows = Object.entries(model.growthPreview.nodeTypeDistribution)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([nodeType, count]) => `<tr><td>${escapeHtml(nodeType)}</td><td>${count}</td></tr>`)
+    .join("\n");
+  const growthTypes = growthTypeRows || "<tr><td>none</td><td>0</td></tr>";
   const statusMessages = model.statusMessages
     .map((message) => `<li>${escapeHtml(message)}</li>`)
     .join("\n");
@@ -175,6 +205,7 @@ function renderIdentityHtml(model) {
     projectBoundaryActive: model.projectBoundaryActive,
     nodeTypeDistribution: model.graphPreview.nodeTypeDistribution,
     graphPreview: model.graphPreview,
+    growthPreview: model.growthPreview,
     readOnly: true,
     editingSupported: false
   }, null, 2));
@@ -249,6 +280,39 @@ ${routes}
 ${proposals}
         </tbody>
       </table>
+    </section>
+    <section class="graph-preview" aria-label="Growth Signal Preview">
+      <h2>Growth Signal Preview</h2>
+      <div class="split">
+        <div>
+          <table>
+            <thead><tr><th>Signal</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Growth Level</td><td>${escapeHtml(model.growthPreview.growthLevel)} (preview only)</td></tr>
+              <tr><td>Accepted Memory Nodes</td><td>${model.growthPreview.acceptedMemoryNodes}</td></tr>
+              <tr><td>Pending Memory Proposals</td><td>${model.growthPreview.pendingMemoryProposals}</td></tr>
+              <tr><td>Verified Quest Ratio</td><td>${formatRatio(model.growthPreview.questVerification.verifiedRatio)}</td></tr>
+              <tr><td>Unverified Quest Ratio</td><td>${formatRatio(model.growthPreview.questVerification.unverifiedRatio)}</td></tr>
+              <tr><td>Hook Warnings</td><td>${model.growthPreview.hookWarningCount}</td></tr>
+              <tr><td>MCP Advisor Signals</td><td>${model.growthPreview.mcpAdvisorSignalCount}</td></tr>
+              <tr><td>Suggested Command</td><td><code>${escapeHtml(model.growthPreview.suggestedCommand)}</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <aside class="detail">
+          <h3>Preview Boundary</h3>
+          <p>${escapeHtml(model.growthPreview.growthLevelDescription)}</p>
+          <p>Auto unlock: ${model.growthPreview.autoUnlock ? "yes" : "no"}</p>
+          <p>Read-only: ${model.growthPreview.readOnly ? "yes" : "no"}</p>
+          <h3>Growth Node Types</h3>
+          <table>
+            <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
+            <tbody>
+${growthTypes}
+            </tbody>
+          </table>
+        </aside>
+      </div>
     </section>
     <section class="graph-preview" aria-label="Read-only graph preview">
       <h2>Memory Graph Preview</h2>
@@ -359,4 +423,8 @@ function escapeHtml(value) {
 
 function escapeScriptJson(value) {
   return String(value).replace(/</g, "\\u003c");
+}
+
+function formatRatio(value) {
+  return `${Math.round(Number(value || 0) * 100)}%`;
 }

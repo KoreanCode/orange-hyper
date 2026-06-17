@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.5-doc.2`
+- README version: `0.6-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.5.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview 和 MCP Advisor stable 功能。
+以 v0.6.0-alpha.0 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable 和 Growth Signal Preview 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -104,6 +104,8 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - `mcp list`、`mcp show`、`mcp suggest` 只提供带 score、confidence、matched_signals 和 no-suggestion 状态的 read-only MCP proposal card。
 - MCP Advisor proposal card 不是安装或执行结果，并保持 `requires_user_approval: true`、`not_executed: true`、`config_mutation: false` 边界。
 - MCP Advisor 不会安装或运行 MCP，不会修改 config，不会写入 project memory，也不会发起外部网络调用。
+- `growth status`、`growth suggest`、`growth explain` 会读取 Quest、Route、accepted Memory Graph、Hook warning 和 MCP advisor signal，预览项目成长状态和候选项。
+- Growth Signal Preview 的 `growthLevel` 只是装饰性候选，不会自动 unlock role、tool、hook、MCP、subagent 或 workflow。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
 
 ## Memory Lifecycle
@@ -162,6 +164,8 @@ npx -y --package orange-hyper@latest orange capsule
 npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
 npx -y --package orange-hyper@latest orange doctor
 npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
+npx -y --package orange-hyper@latest orange growth status --json
+npx -y --package orange-hyper@latest orange growth suggest --json
 ```
 
 从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
@@ -183,7 +187,7 @@ orange doctor
 - v0.3 Memory Graph Usability + Identity Graph Preview
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
-- v0.6 Growth System (next)
+- v0.6 Growth Signal Preview (current alpha)
 - v0.7 Adapter Layer
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
@@ -215,4 +219,5 @@ Orange Hyper 不打算成为：
 - [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
 - [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
+- [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Release Notes](RELEASE_NOTES.md)

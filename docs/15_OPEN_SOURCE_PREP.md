@@ -155,9 +155,10 @@ Orange Hyper evals are behavioral checks, not model capability benchmarks.
 v0.1.0-alpha: seed kernel
 v0.1.0: stable file schemas + CLI
 v0.2.0: memory graph usability
-v0.3.0: optional hooks preview
-v0.4.0: MCP advisor
-v0.5.0: growth system
+v0.3.0: memory graph hardening and identity preview
+v0.4.0: minimal hook preview
+v0.5.0: MCP advisor
+v0.6.0-alpha.0: Growth Signal Preview
 ```
 
 각 release는 migration note를 포함해야 한다.

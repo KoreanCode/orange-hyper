@@ -4,6 +4,7 @@ import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
+import { buildGrowthExplainResult, buildGrowthStatus, buildGrowthSuggestionResult } from "../core/growth.js";
 import { hookStatus, previewHook, runHookEvent } from "../core/hook.js";
 import { buildIdentityPlaceholder } from "../core/identity.js";
 import { listMcpCatalog, showMcpCatalogEntry, suggestMcp } from "../core/mcp.js";
@@ -38,6 +39,10 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").McpCatalogEntry} McpCatalogEntry
  * @typedef {import("../core/types.d.ts").McpProposalCard} McpProposalCard
  * @typedef {import("../core/types.d.ts").McpSuggestion} McpSuggestion
+ * @typedef {import("../core/types.d.ts").GrowthStatus} GrowthStatus
+ * @typedef {import("../core/types.d.ts").GrowthCandidate} GrowthCandidate
+ * @typedef {import("../core/types.d.ts").GrowthSuggestionResult} GrowthSuggestionResult
+ * @typedef {import("../core/types.d.ts").GrowthExplainResult} GrowthExplainResult
  *
  * @typedef {{
  *   id: string,
@@ -106,6 +111,11 @@ const COMMAND_IDS = {
     show: "graph.show",
     search: "graph.search",
     "rebuild-index": "graph.rebuildIndex"
+  },
+  growth: {
+    status: "growth.status",
+    suggest: "growth.suggest",
+    explain: "growth.explain"
   },
   hook: {
     preview: "hook.preview",
@@ -215,6 +225,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     return;
   }
 
+  if (command === "growth") {
+    await growthCommand(cwd, io, rest);
+    return;
+  }
+
   if (command === "hook") {
     await hookCommand(cwd, io, rest);
     return;
@@ -320,6 +335,43 @@ async function questCommand(cwd, io, argv) {
     return;
   }
   throw new Error(`Unknown quest command: ${subcommand}`);
+}
+
+async function growthCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, growthUsage());
+    return;
+  }
+  const args = parseArgs(rest);
+  if (subcommand === "status") {
+    const result = buildGrowthStatus(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.growth.status, result));
+      return;
+    }
+    write(io, formatGrowthStatus(result));
+    return;
+  }
+  if (subcommand === "suggest") {
+    const result = buildGrowthSuggestionResult(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.growth.suggest, result));
+      return;
+    }
+    write(io, formatGrowthSuggestionResult(result));
+    return;
+  }
+  if (subcommand === "explain") {
+    const result = buildGrowthExplainResult(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.growth.explain, result));
+      return;
+    }
+    write(io, formatGrowthExplainResult(result));
+    return;
+  }
+  throw new Error(`Unknown growth command: ${subcommand}`);
 }
 
 async function hookCommand(cwd, io, argv) {
@@ -912,6 +964,121 @@ function writeGraphWarnings(io, warnings) {
   for (const warning of warnings || []) {
     write(io, `Warning: ${warning}`);
   }
+}
+
+/**
+ * @param {GrowthStatus} result
+ */
+function formatGrowthStatus(result) {
+  const dominant = result.dominantAcceptedNodeType
+    ? `${result.dominantAcceptedNodeType.nodeType} (${result.dominantAcceptedNodeType.count})`
+    : "none";
+  return [
+    "Orange growth status",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Auto unlock: ${yesNo(result.autoUnlock)}`,
+    `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    `Growth level: ${result.growthLevel} (preview only)`,
+    `Accepted memory nodes: ${result.acceptedMemoryNodes}`,
+    `Dominant accepted node type: ${dominant}`,
+    `Node type distribution: ${formatCountMap(result.nodeTypeDistribution)}`,
+    `Route layer distribution: ${formatCountMap(result.routeLayerDistribution)}`,
+    `Quest layer distribution: ${formatCountMap(result.questLayerDistribution)}`,
+    `Quest verification: ${result.questVerification.verified}/${result.questVerification.completed} verified, ${result.questVerification.unverified}/${result.questVerification.completed} unverified`,
+    `Pending memory proposals: ${result.pendingMemoryProposals}`,
+    `Hook warnings: ${result.hookWarningSummary.warningCount}`,
+    `MCP advisor signals: ${result.mcpAdvisorSignals.signalCount} (no MCP call)`,
+    "No roles, MCPs, hooks, graph nodes, workflows, config, or project memory were changed."
+  ].join("\n");
+}
+
+/**
+ * @param {GrowthSuggestionResult} result
+ */
+function formatGrowthSuggestionResult(result) {
+  const lines = [
+    "Orange growth suggest",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Deterministic: ${yesNo(result.deterministic)}`,
+    `Auto unlock: ${yesNo(result.autoUnlock)}`,
+    `Growth level: ${result.growthLevel} (preview only)`
+  ];
+  if (!result.candidates.length) {
+    lines.push("");
+    lines.push("No growth candidates.");
+    lines.push(`Reason: ${result.no_candidate_reason}`);
+    lines.push("No roles, tools, hooks, graph nodes, or project memory were created.");
+    return lines.join("\n");
+  }
+  lines.push("");
+  result.candidates.forEach((candidate, index) => {
+    if (index > 0) {
+      lines.push("");
+    }
+    lines.push(...formatGrowthCandidate(candidate).split("\n"));
+  });
+  lines.push("");
+  lines.push("All candidates are advisory: auto_unlock=false and requires_user_approval=true.");
+  return lines.join("\n");
+}
+
+/**
+ * @param {GrowthExplainResult} result
+ */
+function formatGrowthExplainResult(result) {
+  const lines = [
+    "Orange growth explain",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Deterministic: ${yesNo(result.deterministic)}`,
+    `LLM call: ${yesNo(result.llmCall)}`,
+    `Network call: ${yesNo(result.networkCall)}`,
+    `MCP call: ${yesNo(result.mcpCall)}`,
+    `Auto unlock: ${yesNo(result.autoUnlock)}`
+  ];
+  if (!result.explanations.length) {
+    lines.push("");
+    lines.push("No growth candidate explanations.");
+    lines.push(`Reason: ${result.no_candidate_reason}`);
+    return lines.join("\n");
+  }
+  for (const explanation of result.explanations) {
+    lines.push("");
+    lines.push(`${explanation.candidate_id}: ${explanation.title}`);
+    lines.push(`  Rule: ${explanation.rule_id}`);
+    lines.push(`  Confidence: ${explanation.confidence}`);
+    lines.push(`  Why: ${explanation.why_suggested}`);
+    lines.push("  Evidence:");
+    for (const item of explanation.evidence) {
+      lines.push(`    - ${item}`);
+    }
+  }
+  lines.push("");
+  lines.push("No LLM, network, MCP, role unlock, hook policy change, graph node creation, or project memory mutation happened.");
+  return lines.join("\n");
+}
+
+/**
+ * @param {GrowthCandidate} candidate
+ */
+function formatGrowthCandidate(candidate) {
+  return [
+    `${candidate.id}: ${candidate.title}`,
+    `  Confidence: ${candidate.confidence}`,
+    `  Reason: ${candidate.reason}`,
+    "  Evidence:",
+    ...candidate.evidence.map((item) => `    - ${item}`),
+    `  Suggested next step: ${candidate.suggested_next_step}`,
+    `  Auto unlock: ${String(candidate.auto_unlock)}`,
+    `  Requires user approval: ${String(candidate.requires_user_approval)}`
+  ].join("\n");
+}
+
+function formatCountMap(value) {
+  const entries = Object.entries(value || {});
+  if (!entries.length) {
+    return "none";
+  }
+  return entries.map(([key, count]) => `${key}:${count}`).join(", ");
 }
 
 /**
@@ -1628,6 +1795,9 @@ function usage() {
     "  graph show <node-id> [--json]",
     "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
+    "  growth status [--json]",
+    "  growth suggest [--json]",
+    "  growth explain [--json]",
     "  mcp list [--json]",
     "  mcp show <mcp-id> [--json]",
     "  mcp suggest [--quest <quest-id>] [--query <text>] [--json]",
@@ -1649,6 +1819,17 @@ function hookUsage() {
     "  status [--json] [--write-report]",
     "  run session-start [--json] [--write-report]",
     "  run stop [--json] [--write-report]"
+  ].join("\n");
+}
+
+function growthUsage() {
+  return [
+    "orange growth <command>",
+    "",
+    "Commands:",
+    "  status [--json]",
+    "  suggest [--json]",
+    "  explain [--json]"
   ].join("\n");
 }
 

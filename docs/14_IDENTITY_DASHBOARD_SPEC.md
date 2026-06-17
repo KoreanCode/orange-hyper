@@ -13,6 +13,11 @@ graph engine, editor, graph state mutation은 포함하지 않는다.
 v0.4 이후 후보 identity 기능은 hook preview 이후 반복 증거에 따라 더 풍부한 graph
 view를 검토할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
+v0.6.0-alpha.0은 Identity Dashboard에 Growth Signal Preview summary를 추가한다.
+이는 Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을
+read-only로 요약하는 섹션이며 graph editor, role system, automatic unlock
+control은 포함하지 않는다.
+
 ```text
 1. 프로젝트가 어떤 기억을 쌓고 있는지 보여준다.
 2. 어떤 컴포넌트/도메인에 작업이 편향되어 있는지 보여준다.
@@ -174,6 +179,9 @@ Simple SVG node-link preview
 Selected node detail panel
 Graph preview is read-only
 Graph editing is not supported
+Growth Signal Preview summary
+Growth preview is read-only
+Growth level does not unlock roles/tools/hooks/MCPs/subagents/workflows
 ```
 
 ## 5. Dashboard 화면 구조 (v0.3+ target)

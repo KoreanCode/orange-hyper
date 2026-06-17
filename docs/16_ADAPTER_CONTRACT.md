@@ -1,9 +1,9 @@
 # Adapter Contract
 
-Orange Hyper v0.5.0 is still a Seed Kernel with Memory Graph Usability,
-a read-only Identity Graph Preview, a stable Minimal Hook Preview, and a
-stable read-only MCP Advisor. The `orange` CLI is the kernel control plane, not
-the final end-user UX.
+Orange Hyper v0.6.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
+read-only MCP Advisor, and a read-only Growth Signal Preview. The `orange` CLI
+is the kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -60,7 +60,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.5.0
+`contract_version` is the adapter-facing JSON contract version. v0.6.0-alpha.0
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -81,6 +81,9 @@ success and failure envelopes.
 - `graph.show`
 - `graph.search`
 - `graph.rebuildIndex`
+- `growth.status`
+- `growth.suggest`
+- `growth.explain`
 - `hook.preview`
 - `hook.status`
 - `hook.runSessionStart`
@@ -141,7 +144,134 @@ Graph, Doctor, and Hook state, but it must return proposal cards only. It must
 not install MCP servers, run MCP tools, write MCP config, store API keys, create
 Quest/Proposal/Graph state, write hook reports, or persist project memory.
 
+Growth Signal Preview commands are read-only. `orange growth status --json`,
+`orange growth suggest --json`, and `orange growth explain --json` may read
+Quest, Route, accepted Memory Graph, Hook warning, Doctor, and
+documentation/API freshness-shaped MCP advisor signals. They must not create
+roles, install or run MCPs, change hook policy, run subagents, start a planner
+loop, create graph nodes, mutate config, or write project memory. Growth
+candidates must keep `auto_unlock: false` and
+`requires_user_approval: true`.
+
 ## Command Examples
+
+### `growth status --json`
+
+```bash
+orange growth status --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "growth.status",
+  "data": {
+    "readOnly": true,
+    "deterministic": true,
+    "autoUnlock": false,
+    "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+    "project_name": "orange-hyper",
+    "acceptedMemoryNodes": 3,
+    "nodeTypeDistribution": {
+      "decision": 2,
+      "verification": 1
+    },
+    "dominantAcceptedNodeType": {
+      "nodeType": "decision",
+      "count": 2
+    },
+    "routeLayerDistribution": {
+      "L3": 1
+    },
+    "questLayerDistribution": {
+      "L2": 5
+    },
+    "questVerification": {
+      "completed": 5,
+      "verified": 4,
+      "unverified": 1,
+      "verifiedRatio": 0.8,
+      "unverifiedRatio": 0.2
+    },
+    "pendingMemoryProposals": 1,
+    "growthLevel": "branch",
+    "growthLevelUnlocks": false
+  }
+}
+```
+
+### `growth suggest --json`
+
+```bash
+orange growth suggest --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "growth.suggest",
+  "data": {
+    "readOnly": true,
+    "deterministic": true,
+    "llmCall": false,
+    "networkCall": false,
+    "mcpCall": false,
+    "autoUnlock": false,
+    "candidates": [
+      {
+        "id": "verification-discipline",
+        "title": "Verification discipline",
+        "reason": "Completed Quest history repeatedly records verification evidence.",
+        "evidence": [
+          "5 completed Quests observed",
+          "4/5 completed Quests verified"
+        ],
+        "confidence": "medium",
+        "suggested_next_step": "Keep using explicit evidence or unverified reasons before accepting new memory proposals.",
+        "auto_unlock": false,
+        "requires_user_approval": true
+      }
+    ]
+  }
+}
+```
+
+### `growth explain --json`
+
+```bash
+orange growth explain --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "growth.explain",
+  "data": {
+    "readOnly": true,
+    "deterministic": true,
+    "llmCall": false,
+    "networkCall": false,
+    "mcpCall": false,
+    "autoUnlock": false,
+    "explanations": [
+      {
+        "candidate_id": "verification-discipline",
+        "rule_id": "growth.verification-discipline",
+        "confidence": "medium",
+        "evidence": [
+          "5 completed Quests observed",
+          "4/5 completed Quests verified"
+        ],
+        "auto_unlock": false,
+        "requires_user_approval": true
+      }
+    ]
+  }
+}
+```
 
 ### `mcp list --json`
 
@@ -1133,7 +1263,7 @@ The report file payload has its own stable schema:
 {
   "generated_by": "Orange Hyper",
   "generator_package": "orange-hyper",
-  "generator_version": "0.5.0",
+  "generator_version": "0.6.0-alpha.0",
   "source_repository": "https://github.com/KoreanCode/orange-hyper",
   "official_package": "https://www.npmjs.com/package/orange-hyper",
   "license": "MIT",

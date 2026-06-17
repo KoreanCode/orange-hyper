@@ -1,5 +1,42 @@
 # Release Notes
 
+## v0.6.0-alpha.0
+
+Growth Signal Preview alpha.
+
+- Package version is `0.6.0-alpha.0`.
+- README version is `0.6-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha adds a read-only Growth Signal Preview command surface:
+  `orange growth status`, `orange growth suggest`, and
+  `orange growth explain`.
+- New JSON command ids are `growth.status`, `growth.suggest`, and
+  `growth.explain`.
+- `growth status` summarizes project identity, accepted memory nodes, node
+  type distribution, route/layer distribution, verified/unverified Quest
+  ratio, pending memory proposals, Hook warning summary, MCP advisor signal
+  summary, and decorative `growthLevel`.
+- `growth suggest` returns deterministic candidates such as verification
+  discipline, memory hygiene, backend/API focus, documentation focus, MCP
+  documentation advisor readiness, and hook hygiene.
+- Every growth candidate keeps `auto_unlock: false` and
+  `requires_user_approval: true`.
+- `growth explain` reports the deterministic evidence/rule path for each
+  candidate without LLM calls, network calls, MCP calls, or planner loops.
+- `identity build` now includes a compact Growth Signal Preview summary in the
+  generated HTML and summary JSON.
+
+### Explicitly not included
+
+- role automatic creation
+- MCP automatic installation or execution
+- hook policy automatic changes
+- subagent execution or recommendation automation
+- auto planner or auto execution loop
+- project memory automatic mutation
+- graph node automatic creation
+- workflow enforcement
+
 ## v0.5.0
 
 MCP Advisor stable release.

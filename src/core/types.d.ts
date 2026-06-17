@@ -13,6 +13,9 @@ export type CommandId =
   | "graph.show"
   | "graph.search"
   | "graph.rebuildIndex"
+  | "growth.status"
+  | "growth.suggest"
+  | "growth.explain"
   | "hook.preview"
   | "hook.status"
   | "hook.runSessionStart"
@@ -489,6 +492,146 @@ export interface McpAdvisorResult {
   proposal_cards: McpProposalCard[];
 }
 
+export type GrowthLevel = "seed" | "sprout" | "branch" | "canopy";
+export type GrowthConfidence = "low" | "medium" | "high";
+
+export interface GrowthBoundaryFlags {
+  auto_role_creation: false;
+  mcp_auto_install: false;
+  mcp_auto_run: false;
+  hook_policy_auto_change: false;
+  subagent_auto_run: false;
+  project_memory_auto_mutation: false;
+  config_auto_mutation: false;
+  graph_node_auto_creation: false;
+  workflow_enforcement: false;
+}
+
+export interface GrowthStatus {
+  readOnly: true;
+  deterministic: true;
+  autoUnlock: false;
+  autoMutation: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  project_id: string | null;
+  project_name: string;
+  acceptedMemoryNodes: number;
+  nodeTypeDistribution: Record<string, number>;
+  dominantAcceptedNodeType: {
+    nodeType: string;
+    count: number;
+  } | null;
+  routeLayerDistribution: Record<string, number>;
+  questLayerDistribution: Record<string, number>;
+  questVerification: {
+    completed: number;
+    verified: number;
+    unverified: number;
+    verifiedRatio: number;
+    unverifiedRatio: number;
+  };
+  pendingMemoryProposals: number;
+  hookWarningSummary: {
+    readOnly: true;
+    hookRun: false;
+    autoMutation: false;
+    warningCount: number;
+    warnings: HookWarning[];
+    doctorWarningCount: number;
+    doctorErrorCount: number;
+    diagnosticCodes: string[];
+    summary: string;
+  };
+  mcpAdvisorSignals: {
+    readOnly: true;
+    mcpCall: false;
+    networkCall: false;
+    autoInstall: false;
+    autoRun: false;
+    configMutation: false;
+    projectMemoryMutation: false;
+    signalCount: number;
+    signals: string[];
+    summary: string;
+  };
+  growthLevel: GrowthLevel;
+  growthLevelDescription: string;
+  growthLevelUnlocks: false;
+  warnings: string[];
+  boundaries: GrowthBoundaryFlags;
+}
+
+export interface GrowthCandidate {
+  id: string;
+  title: string;
+  reason: string;
+  evidence: string[];
+  confidence: GrowthConfidence;
+  suggested_next_step: string;
+  auto_unlock: false;
+  requires_user_approval: true;
+}
+
+export interface GrowthSuggestionResult {
+  readOnly: true;
+  deterministic: true;
+  llmCall: false;
+  networkCall: false;
+  mcpCall: false;
+  autoUnlock: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  growthLevel: GrowthLevel;
+  status: GrowthStatus;
+  candidates: GrowthCandidate[];
+  no_candidate_reason: string | null;
+  boundaries: GrowthBoundaryFlags;
+}
+
+export interface GrowthExplainResult {
+  readOnly: true;
+  deterministic: true;
+  llmCall: false;
+  networkCall: false;
+  mcpCall: false;
+  autoUnlock: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  growthLevel: GrowthLevel;
+  candidates: GrowthCandidate[];
+  explanations: Array<{
+    candidate_id: string;
+    title: string;
+    rule_id: string;
+    reason: string;
+    evidence: string[];
+    confidence: GrowthConfidence;
+    why_suggested: string;
+    auto_unlock: false;
+    requires_user_approval: true;
+  }>;
+  rules: Array<{
+    id: string;
+    description: string;
+    threshold: string;
+  }>;
+  no_candidate_reason: string | null;
+  boundaries: GrowthBoundaryFlags;
+}
+
 export interface IdentitySummary extends OriginMetadata {
   project_id: string;
   project_name: string;
@@ -526,6 +669,21 @@ export interface IdentitySummary extends OriginMetadata {
       source_proposal: string;
       accepted_at: string;
     }>;
+  };
+  growthPreview: {
+    readOnly: true;
+    autoUnlock: false;
+    growthLevel: GrowthLevel;
+    growthLevelDescription: string;
+    acceptedMemoryNodes: number;
+    nodeTypeDistribution: Record<string, number>;
+    dominantAcceptedNodeType: GrowthStatus["dominantAcceptedNodeType"];
+    questVerification: GrowthStatus["questVerification"];
+    pendingMemoryProposals: number;
+    hookWarningCount: number;
+    mcpAdvisorSignalCount: number;
+    suggestedCommand: string;
+    boundaries: GrowthBoundaryFlags;
   };
   graphWarnings: string[];
   origin: OriginMetadata;

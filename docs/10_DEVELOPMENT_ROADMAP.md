@@ -189,22 +189,45 @@ proposal card는 tool, why_now, expected_benefit, scope, risk, token_impact, ins
 use_once_or_persist, requires_user_approval, not_executed, config_mutation를 제공한다.
 ```
 
-## 7. v0.6 — Growth System
+## 7. v0.6 — Growth Signal Preview (current alpha)
 
-목표: role과 capability가 반복 증거 기반으로 성장한다.
+목표: Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을
+read-only로 읽어 프로젝트가 어떤 방향으로 성장 중인지 요약하고 성장 후보를
+제안한다. v0.6.0-alpha.0은 자동 성장 시스템이 아니라 preview다.
 
 포함:
 
-- growth profile
-- XP event log
-- role proposal
-- dormant/pruning proposal
-- project-specific role template generation
+- `orange growth status`
+- `orange growth suggest`
+- `orange growth explain`
+- Adapter JSON Contract를 따르는 `growth.status`, `growth.suggest`, `growth.explain`
+- accepted memory node count/type distribution/dominant type
+- route/layer distribution
+- verified/unverified Quest ratio
+- pending memory proposal count
+- Hook warning summary
+- MCP advisor signal summary
+- decorative `growthLevel`: `seed`, `sprout`, `branch`, `canopy`
+- Identity Dashboard의 Growth Signal Preview summary
+- deterministic evidence explanation
+
+제외:
+
+- role 자동 생성
+- MCP 자동 설치/실행
+- hook 정책 자동 변경
+- subagent 실행/추천 자동화
+- auto planner / auto execution loop
+- project memory 자동 mutation
+- graph node 자동 생성
+- workflow 강제
 
 완료 기준:
 
 ```text
-반복된 Spring backend review 작업이 있으면 spring_backend_reviewer role proposal을 만들 수 있다.
+반복 증거를 읽어 growth candidate를 제안하되, 모든 candidate는
+auto_unlock: false 및 requires_user_approval: true를 유지한다.
+growthLevel은 장식적 preview label이며 자동 unlock을 의미하지 않는다.
 ```
 
 ## 8. v0.7 — Adapter Layer
@@ -245,19 +268,19 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.6 Growth System
-2. growth profile and XP event log design
-3. role proposal boundary
-4. dormant/pruning proposal boundary
-5. project-specific role template generation
-6. docs and smoke checks that preserve explicit user approval
+1. v0.6 Growth Signal Preview alpha
+2. deterministic evidence rules for growth status/suggest/explain
+3. Identity Dashboard growth preview summary
+4. docs and smoke checks that preserve explicit user approval
+5. future growth profile design only after preview evidence stabilizes
+6. future role proposal boundary only after explicit user approval
 
 ## 11. 다음 개발 목표
 
 ```text
 Step 1: keep v0.5 MCP Advisor stable as recommendation-only
 Step 2: require user approval before MCP install or use
-Step 3: start v0.6 Growth System without auto role evolution
+Step 3: start v0.6 Growth Signal Preview without auto role evolution
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
 Step 6: defer real adapter layer to v0.7
