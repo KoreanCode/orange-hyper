@@ -571,7 +571,7 @@ function buildEvalMetrics(snapshot) {
       {
         unavailable: true,
         unavailable_reason: "token counts are not collected",
-        limitation: "No token usage collection exists in this local-only preview, so savings must remain unavailable."
+        limitation: "No token usage collection exists in this local-only eval surface, so savings must remain unavailable."
       }
     ),
     metric(
@@ -695,7 +695,7 @@ function buildEvalReportSections(snapshot) {
     makeSection("Known Gaps", "insufficient-data", [
       "Token savings are unavailable because token counts are not collected.",
       "Success-rate improvement is unavailable because v0.8 does not run comparative task packs.",
-      "Identity build does not automatically include eval summaries in v0.8-alpha.1.",
+      "Identity build does not automatically include eval summaries in v0.8 stable.",
       "HTML dashboards, external telemetry, network upload, LLM judges, hook auto-run, MCP auto-run, and auto planner loops are not included."
     ], ["token.savings", "success_rate.improvement"], "These metrics and integrations are intentionally unavailable rather than estimated or auto-generated.")
   ];
@@ -748,7 +748,7 @@ function buildEvalKnownGaps() {
     {
       id: "token.savings",
       status: "insufficient-data",
-      reason: "Token counts are not collected by the local-only Eval and Reports Preview.",
+      reason: "Token counts are not collected by the local-only Eval and Reports stable surface.",
       source: "unavailable",
       limitation: "Do not estimate token savings without explicit token usage collection.",
       future_target: "An opt-in usage dataset would be required before reporting token savings."
@@ -764,7 +764,7 @@ function buildEvalKnownGaps() {
     {
       id: "identity.eval_summary_integration",
       status: "insufficient-data",
-      reason: "identity build does not automatically add eval summaries in v0.8-alpha.1.",
+      reason: "identity build does not automatically add eval summaries in v0.8 stable.",
       source: "future-target",
       limitation: "Eval report remains a separate explicit command and does not mutate identity artifacts.",
       future_target: "Consider an explicit user-approved identity integration in a future release."
@@ -789,7 +789,7 @@ function renderEvalReportMarkdown(report) {
     `Insufficient data: ${report.summary.insufficient_data_count}`,
     `No telemetry: ${yesNo(report.summary.no_telemetry)}; no network: ${yesNo(report.summary.no_network)}; no LLM judge: ${yesNo(report.summary.no_llm_judge)}`,
     "",
-    "This is a local-only Eval and Reports Preview. It does not upload telemetry, call a network API, invoke an LLM judge, install or run MCP servers, run hooks automatically, or mutate project memory/config.",
+    "This is a local-only Eval and Reports report. It does not upload telemetry, call a network API, invoke an LLM judge, install or run MCP servers, run hooks automatically, or mutate project memory/config.",
     "",
     `Report file: ${report.localReport.written ? report.localReport.file : "stdout only (use --write-report to save)"}`,
     ""

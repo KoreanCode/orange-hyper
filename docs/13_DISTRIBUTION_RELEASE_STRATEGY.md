@@ -98,6 +98,9 @@ v0.2.0-alpha.0 — Memory Delta Proposal
 v0.3.0 — Memory Graph Usability + Identity Graph Preview
 v0.4.0 — Minimal Hook Preview
 v0.5.0 — MCP Advisor
+v0.6.0 — Growth Signal Preview
+v0.7.0 — Adapter Invocation Contract
+v0.8.0 — Eval and Reports
 ```
 
 ### 2.3 Later: curl installer
@@ -183,6 +186,8 @@ MAJOR.MINOR.PATCH
 0.4.x: Minimal Hook Preview
 0.5.x: MCP Advisor
 0.6.x: Growth Signal Preview
+0.7.x: Adapter Invocation Contract
+0.8.x: Eval and Reports
 ```
 
 Pre-release:

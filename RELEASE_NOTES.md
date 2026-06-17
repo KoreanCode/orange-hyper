@@ -1,5 +1,65 @@
 # Release Notes
 
+## v0.8.0
+
+Local-only Eval and Reports stable release.
+
+- Package version is `0.8.0`.
+- README version is `0.8-doc.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.8.0 promotes the validated v0.8.0-alpha.0 and v0.8.0-alpha.1 Eval
+  and Reports surface to stable without adding telemetry, upload, judging, or
+  automatic state mutation.
+- Stable command surface:
+  `orange eval snapshot`, `orange eval report`, and `orange eval explain`.
+- `eval snapshot` reads current local `.orange-hyper` project state and
+  summarizes project identity, Quest verification, Memory Delta Proposal flow,
+  accepted graph nodes, doctor diagnostics, existing local hook report
+  warnings, MCP Advisor signals, Growth Signal Preview, Adapter Invocation
+  Contract readiness, and identity report existence.
+- `eval report --json` exposes `report_id`, `schema_version: 2`,
+  `report_kind: "eval-report"`, `project_id`, `project_name`,
+  `local_only: true`, `telemetry: false`, `network_upload: false`,
+  `llm_judge: false`, `summary`, `sections`, `known_gaps`, and
+  `unavailable_metrics`.
+- Report sections use only `good`, `needs-attention`, and
+  `insufficient-data`. Every section includes a human-readable `reason` and
+  numeric `evidence_count`; v0.8.0 does not produce a score, rank, or grade.
+- `known_gaps` and `unavailable_metrics` keep unsupported measurements
+  explicit. `token.savings` is unavailable, and
+  `success_rate.improvement` is unavailable.
+- `token.savings` stays unavailable because token counts are not collected.
+  v0.8.0 does not estimate token savings.
+- `success_rate.improvement` stays unavailable because no comparative
+  task-pack outcome dataset is collected. v0.8.0 does not claim success-rate
+  improvement.
+- `eval explain` documents metric source, limitation, and unavailable reason
+  for local metrics, including `token.savings`,
+  `success_rate.improvement`, `hook.warning.usefulness`, and
+  `memory.acceptance_rate`.
+- `--write-report` remains the only eval write path. It writes a Markdown
+  local-only report under `.orange-hyper/evals/reports/` only when explicitly
+  requested and rejects path/value arguments.
+- Eval reports use local state only. They are generated artifacts, not project
+  memory, and they do not update config, Quest, Proposal, Graph, Identity,
+  hook, MCP, adapter, or growth state.
+- `identity build` does not automatically embed eval summaries; eval reports
+  remain separate explicit commands.
+
+### Explicitly not included
+
+- external telemetry
+- network upload or API calls
+- LLM judge calls
+- token savings estimation
+- success-rate improvement claims
+- project memory or config automatic mutation
+- automatic Quest, Proposal, Graph, or Identity creation
+- MCP automatic execution
+- hook automatic execution
+- subagent execution
+- auto planner or auto execution loop
+
 ## v0.8.0-alpha.1
 
 Eval Report Quality Hardening alpha.

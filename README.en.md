@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.8-doc.1`
+- README version: `0.8-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.7.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, and Adapter Invocation Contract stable features.
+As of v0.8.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable, and local-only Eval and Reports stable features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -111,6 +111,10 @@ As of v0.7.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, rea
 - Adapter dry-run describes safe invocation order with `missing_inputs`, `input_source`, `step_index`, and `next_user_decision`.
 - The Adapter Layer does not directly modify `.orange-hyper`, parse human output, or automatically run Quest, Memory, MCP, Hook, or Subagent flows.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
+- `eval snapshot`, `eval report`, and `eval explain` read only `.orange-hyper` local project state and conservatively summarize Quest, verification, proposal, graph, doctor, hook report, MCP Advisor, growth, adapter, and identity signals.
+- Eval reports expose summary, section `status`, `reason`, `evidence_count`, unavailable metrics, and known gaps in JSON/Markdown.
+- Eval reports use stdout by default. Only explicit `--write-report` creates a Markdown report under `.orange-hyper/evals/reports/`.
+- Eval and Reports stable does not use external telemetry, network upload, LLM judges, token savings estimates, success-rate improvement claims, MCP execution, hook auto-run, or project memory/config auto-mutation.
 
 ## Memory Lifecycle
 
@@ -171,6 +175,8 @@ npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest Rea
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
 npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
+npx -y --package orange-hyper@latest orange eval snapshot --json
+npx -y --package orange-hyper@latest orange eval report --json
 ```
 
 When upgrading a v0.2.0 project to the v0.2.1 Project Boundary Guard, run:
@@ -194,8 +200,8 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports
-- v1.0 Stable product boundary
+- v0.8 Eval and Reports (stable)
+- v1.0 Stabilization candidate
 
 ## Non-goals
 
@@ -226,4 +232,5 @@ Orange Hyper is not trying to be:
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
+- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
 - [Release Notes](RELEASE_NOTES.md)

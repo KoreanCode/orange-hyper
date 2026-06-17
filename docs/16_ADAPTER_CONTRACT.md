@@ -1,10 +1,10 @@
 # Adapter Contract
 
-Orange Hyper v0.8.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.8.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
 read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
 Invocation Contract stable surface. It also includes the local-only Eval and
-Reports Preview. The `orange` CLI is the kernel control plane, not the final
+Reports stable surface. The `orange` CLI is the kernel control plane, not the final
 end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
@@ -62,7 +62,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.8.0-alpha.0 keeps
+`contract_version` is the adapter-facing JSON contract version. v0.8.0 keeps
 `"0.1"` as the stable Seed Kernel adapter contract and appears in both success
 and failure envelopes.
 
@@ -176,7 +176,7 @@ structured `required_inputs`, `missing_inputs`, and `next_user_decision` so an
 adapter can distinguish user placeholders from previous-step outputs and
 project-state values before it considers running any real command.
 
-Eval and Reports Preview commands are local-only. `orange eval snapshot --json`,
+Eval and Reports commands are local-only. `orange eval snapshot --json`,
 `orange eval report --json`, and `orange eval explain --json` read existing
 `.orange-hyper` project state and return conservative count/warning signals.
 They must not upload telemetry, call APIs, call LLM judges, run MCP tools, run
@@ -423,12 +423,17 @@ Actual dry-run output also includes a `commands` alias with the same entries as
 orange eval snapshot --json
 ```
 
+The eval examples are abridged for readability, but every shown field name and
+boundary value matches the implementation.
+
 ```json
 {
   "ok": true,
   "contract_version": "0.1",
   "command": "eval.snapshot",
   "data": {
+    "schema_version": 2,
+    "generated_at": "2026-06-18T01:02:03.000Z",
     "readOnly": true,
     "deterministic": true,
     "localOnly": true,
@@ -437,8 +442,11 @@ orange eval snapshot --json
     "llmJudge": false,
     "mcpCall": false,
     "hookRun": false,
+    "autoMutation": false,
     "projectMemoryMutation": false,
     "configMutation": false,
+    "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+    "project_name": "orange-hyper",
     "project": {
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper"
@@ -491,11 +499,32 @@ orange eval snapshot --json
     "unavailableMetrics": [
       {
         "id": "token.savings",
+        "label": "Token savings",
         "status": "insufficient-data",
+        "source": "unavailable",
         "value": null,
-        "unavailable": true
+        "unavailable": true,
+        "unavailable_reason": "token counts are not collected"
       }
-    ]
+    ],
+    "boundaries": {
+      "local_only": true,
+      "external_telemetry": false,
+      "network_upload": false,
+      "api_call": false,
+      "llm_judge_call": false,
+      "mcp_call": false,
+      "hook_auto_run": false,
+      "subagent_run": false,
+      "auto_planner_loop": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "quest_auto_creation": false,
+      "proposal_auto_creation": false,
+      "graph_auto_creation": false,
+      "token_savings_estimation": false,
+      "success_rate_improvement_claim": false
+    }
   }
 }
 ```
@@ -526,9 +555,29 @@ orange eval report --json
     "network_upload": false,
     "llmJudge": false,
     "llm_judge": false,
+    "mcpCall": false,
     "hookRun": false,
+    "autoMutation": false,
     "projectMemoryMutation": false,
     "configMutation": false,
+    "boundaries": {
+      "local_only": true,
+      "external_telemetry": false,
+      "network_upload": false,
+      "api_call": false,
+      "llm_judge_call": false,
+      "mcp_call": false,
+      "hook_auto_run": false,
+      "subagent_run": false,
+      "auto_planner_loop": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "quest_auto_creation": false,
+      "proposal_auto_creation": false,
+      "graph_auto_creation": false,
+      "token_savings_estimation": false,
+      "success_rate_improvement_claim": false
+    },
     "summary": {
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper",
@@ -554,7 +603,7 @@ orange eval report --json
         "status": "good",
         "reason": "Project identity exists and local project signals can be summarized.",
         "evidence_count": 4,
-        "metrics": ["project.identity", "quest.count"]
+        "metrics": ["project.identity", "quest.count", "graph.accepted_nodes", "adapter.recipes"]
       },
       {
         "title": "Known Gaps",
@@ -568,7 +617,7 @@ orange eval report --json
       {
         "id": "token.savings",
         "status": "insufficient-data",
-        "reason": "Token counts are not collected by the local-only Eval and Reports Preview.",
+        "reason": "Token counts are not collected by the local-only Eval and Reports stable surface.",
         "source": "unavailable",
         "limitation": "Do not estimate token savings without explicit token usage collection.",
         "future_target": "An opt-in usage dataset would be required before reporting token savings."
@@ -583,7 +632,7 @@ orange eval report --json
         "value": null,
         "unavailable": true,
         "unavailable_reason": "token counts are not collected",
-        "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable."
+        "limitation": "No token usage collection exists in this local-only eval surface, so savings must remain unavailable."
       }
     ],
     "markdown": "# Orange Eval Report\n..."
@@ -613,11 +662,35 @@ orange eval explain --json
   "contract_version": "0.1",
   "command": "eval.explain",
   "data": {
+    "schema_version": 2,
+    "generated_at": "2026-06-18T01:02:03.000Z",
     "localOnly": true,
     "telemetry": false,
     "networkCall": false,
     "llmJudge": false,
     "hookRun": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
+    "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+    "project_name": "orange-hyper",
+    "boundaries": {
+      "local_only": true,
+      "external_telemetry": false,
+      "network_upload": false,
+      "api_call": false,
+      "llm_judge_call": false,
+      "mcp_call": false,
+      "hook_auto_run": false,
+      "subagent_run": false,
+      "auto_planner_loop": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "quest_auto_creation": false,
+      "proposal_auto_creation": false,
+      "graph_auto_creation": false,
+      "token_savings_estimation": false,
+      "success_rate_improvement_claim": false
+    },
     "metrics": [
       {
         "id": "quest.count",
@@ -637,7 +710,7 @@ orange eval explain --json
         "value": null,
         "source": "unavailable",
         "explanation": "Orange Hyper v0.8 does not collect token counts, so token savings are unavailable and not estimated.",
-        "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable.",
+        "limitation": "No token usage collection exists in this local-only eval surface, so savings must remain unavailable.",
         "unavailable": true,
         "unavailable_reason": "token counts are not collected"
       },

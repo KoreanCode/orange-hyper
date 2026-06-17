@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.8-doc.1`
+- README version: `0.8-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.8.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable, Eval and Reports Preview 기능을 제공합니다.
+v0.8.0 stable 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable, local-only Eval and Reports stable 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -114,7 +114,7 @@ v0.8.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability,
 - `eval snapshot`, `eval report`, `eval explain`은 `.orange-hyper` local project state만 읽어 Quest, verification, proposal, graph, doctor, hook report, MCP Advisor, growth, adapter, identity 신호를 보수적으로 요약합니다.
 - eval report는 summary, section별 status reason/evidence_count, unavailable metric, known gap을 JSON/Markdown에 명시합니다.
 - eval report는 기본적으로 stdout만 사용하며, `--write-report`를 명시했을 때만 `.orange-hyper/evals/reports/` 아래 Markdown report를 생성합니다.
-- Eval and Reports Preview는 외부 telemetry, 네트워크 업로드, LLM judge, MCP 실행, hook 자동 실행, project memory/config 자동 수정을 하지 않습니다.
+- Eval and Reports stable은 외부 telemetry, 네트워크 업로드, LLM judge, token savings 추정, success-rate improvement claim, MCP 실행, hook 자동 실행, project memory/config 자동 수정을 하지 않습니다.
 
 ## Memory Lifecycle
 
@@ -201,8 +201,8 @@ orange doctor
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports Preview (current alpha)
-- v1.0 Stable product boundary
+- v0.8 Eval and Reports (stable)
+- v1.0 Stabilization candidate
 
 ## Non-goals
 
@@ -233,5 +233,5 @@ Orange Hyper는 다음을 목표로 하지 않습니다.
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
-- [Eval and Reports Preview](docs/21_EVAL_AND_REPORTS.md)
+- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
 - [Release Notes](RELEASE_NOTES.md)

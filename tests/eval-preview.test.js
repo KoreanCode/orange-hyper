@@ -57,6 +57,24 @@ test("eval snapshot supports human and JSON output", async () => {
   assert.equal(payload.data.adapter.recipeCount, 5);
   assert.equal(payload.data.identity.summaryExists, true);
   assert.equal(payload.data.reportPolicy.written, false);
+  assert.deepEqual(payload.data.boundaries, {
+    local_only: true,
+    external_telemetry: false,
+    network_upload: false,
+    api_call: false,
+    llm_judge_call: false,
+    mcp_call: false,
+    hook_auto_run: false,
+    subagent_run: false,
+    auto_planner_loop: false,
+    project_memory_auto_mutation: false,
+    config_auto_mutation: false,
+    quest_auto_creation: false,
+    proposal_auto_creation: false,
+    graph_auto_creation: false,
+    token_savings_estimation: false,
+    success_rate_improvement_claim: false
+  });
   assert.equal(fs.existsSync(fixture.paths.evalReports), false);
 });
 
@@ -110,6 +128,22 @@ test("eval report supports human and JSON output without writing by default", as
   assert.equal(payload.data.summary.no_telemetry, true);
   assert.equal(payload.data.summary.no_network, true);
   assert.equal(payload.data.summary.no_llm_judge, true);
+  assert.equal(payload.data.boundaries.local_only, true);
+  assert.equal(payload.data.boundaries.external_telemetry, false);
+  assert.equal(payload.data.boundaries.network_upload, false);
+  assert.equal(payload.data.boundaries.api_call, false);
+  assert.equal(payload.data.boundaries.llm_judge_call, false);
+  assert.equal(payload.data.boundaries.mcp_call, false);
+  assert.equal(payload.data.boundaries.hook_auto_run, false);
+  assert.equal(payload.data.boundaries.subagent_run, false);
+  assert.equal(payload.data.boundaries.auto_planner_loop, false);
+  assert.equal(payload.data.boundaries.project_memory_auto_mutation, false);
+  assert.equal(payload.data.boundaries.config_auto_mutation, false);
+  assert.equal(payload.data.boundaries.quest_auto_creation, false);
+  assert.equal(payload.data.boundaries.proposal_auto_creation, false);
+  assert.equal(payload.data.boundaries.graph_auto_creation, false);
+  assert.equal(payload.data.boundaries.token_savings_estimation, false);
+  assert.equal(payload.data.boundaries.success_rate_improvement_claim, false);
   assert.equal(payload.data.sections.length, 11);
   assert.deepEqual(payload.data.sections.map((section) => section.title), [
     "Project Summary",
@@ -167,6 +201,22 @@ test("eval explain supports human and JSON output with metric sources", async ()
   assert.equal(payload.data.localOnly, true);
   assert.equal(payload.data.telemetry, false);
   assert.equal(payload.data.hookRun, false);
+  assert.equal(payload.data.boundaries.local_only, true);
+  assert.equal(payload.data.boundaries.external_telemetry, false);
+  assert.equal(payload.data.boundaries.network_upload, false);
+  assert.equal(payload.data.boundaries.api_call, false);
+  assert.equal(payload.data.boundaries.llm_judge_call, false);
+  assert.equal(payload.data.boundaries.mcp_call, false);
+  assert.equal(payload.data.boundaries.hook_auto_run, false);
+  assert.equal(payload.data.boundaries.subagent_run, false);
+  assert.equal(payload.data.boundaries.auto_planner_loop, false);
+  assert.equal(payload.data.boundaries.project_memory_auto_mutation, false);
+  assert.equal(payload.data.boundaries.config_auto_mutation, false);
+  assert.equal(payload.data.boundaries.quest_auto_creation, false);
+  assert.equal(payload.data.boundaries.proposal_auto_creation, false);
+  assert.equal(payload.data.boundaries.graph_auto_creation, false);
+  assert.equal(payload.data.boundaries.token_savings_estimation, false);
+  assert.equal(payload.data.boundaries.success_rate_improvement_claim, false);
   const metrics = new Map(payload.data.metrics.map((metric) => [metric.id, metric]));
   assert.equal(metrics.get("quest.count").source, ".orange-hyper/quests/");
   assert.match(metrics.get("quest.count").limitation, /does not judge task quality/);

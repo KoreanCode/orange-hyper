@@ -276,7 +276,7 @@ dry-run은 command sequence만 보여주며 실제 state mutation command를 실
 v0.7 stable은 runtime이 아니라 invocation contract까지만 제공한다.
 ```
 
-## 9. v0.8 — Eval and Reports Preview (current alpha)
+## 9. v0.8 — Eval and Reports (stable)
 
 목표: 외부 telemetry 없이 `.orange-hyper` local project state를 읽어
 Orange Hyper가 남긴 Quest, verification, proposal, graph, doctor, hook,
@@ -298,6 +298,11 @@ MCP Advisor, growth, adapter, identity 신호를 보수적으로 요약한다.
 - growth candidate count
 - adapter recipe count
 - identity report existence
+- `schema_version: 2` report payload
+- section `status`, `reason`, `evidence_count`
+- `known_gaps`와 `unavailable_metrics`
+- `local_only: true`, `telemetry: false`, `network_upload: false`,
+  `llm_judge: false`
 - `--write-report` 명시 옵션에서만 `.orange-hyper/evals/reports/` local
   Markdown report 생성
 - unavailable metric을 추정하지 않는 explain surface
@@ -313,7 +318,7 @@ token savings, success-rate improvement, model capability improvement는 수집 
 
 ## 10. 다음 구현 순서
 
-1. v0.8 Eval and Reports Preview hardening
+1. v1.0 candidate / stabilization
 2. Adapter recipe validation from real user workflows
 3. Adapter interface stabilization only after the stable invocation contract
    keeps holding
@@ -333,7 +338,9 @@ Step 3: preserve no automatic role, hook, subagent, planner, workflow, config, g
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
 Step 6: keep v0.7 stable as Adapter Invocation Contract only
-Step 7: defer real adapter runtime until a separate explicit runtime scope is opened
+Step 7: keep v0.8 stable as local-only Eval and Reports only
+Step 8: defer real adapter runtime until a separate explicit runtime scope is opened
+Step 9: move toward v1.0 through stabilization, not automatic planner/runtime expansion
 ```
 
 ## 12. 품질 기준

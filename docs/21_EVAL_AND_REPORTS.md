@@ -1,12 +1,13 @@
-# Eval and Reports Preview
+# Eval and Reports
 
-Orange Hyper v0.8.0-alpha.1 hardens the local-only Eval and Reports Preview
-introduced in v0.8.0-alpha.0.
+Orange Hyper v0.8.0 stabilizes the local-only Eval and Reports surface
+validated through v0.8.0-alpha.0 and v0.8.0-alpha.1.
 
 This is not telemetry. It does not upload data, call external APIs, call an LLM
 judge, run MCP servers, run hooks automatically, start subagents, or mutate
-project memory/config. It reads the current `.orange-hyper` project state and
-shows conservative signal summaries.
+project memory/config. It does not estimate token savings or claim
+success-rate improvement. It reads the current `.orange-hyper` project state
+and shows conservative signal summaries.
 
 ## Commands
 
@@ -124,7 +125,7 @@ The top of the Markdown report includes a short summary:
 ## JSON Report Schema
 
 `orange eval report --json` returns an adapter-friendly JSON payload. Existing
-camelCase boundary fields remain available, and v0.8.0-alpha.1 adds the fixed
+camelCase boundary fields remain available, and v0.8.0 keeps the fixed
 snake_case fields shown below.
 
 ```json
@@ -163,7 +164,7 @@ snake_case fields shown below.
     {
       "id": "token.savings",
       "status": "insufficient-data",
-      "reason": "Token counts are not collected by the local-only Eval and Reports Preview.",
+      "reason": "Token counts are not collected by the local-only Eval and Reports stable surface.",
       "source": "unavailable",
       "limitation": "Do not estimate token savings without explicit token usage collection.",
       "future_target": "An opt-in usage dataset would be required before reporting token savings."
@@ -178,7 +179,7 @@ snake_case fields shown below.
       "value": null,
       "unavailable": true,
       "unavailable_reason": "token counts are not collected",
-      "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable."
+      "limitation": "No token usage collection exists in this local-only eval surface, so savings must remain unavailable."
     }
   ]
 }
@@ -230,8 +231,8 @@ Unavailable metrics stay unavailable. v0.8 does not estimate:
 - model capability improvement
 - raw-agent versus Orange-assisted outcome deltas
 
-The preview must not claim improvements such as "90% success-rate increase" or
-"tokens saved" without collected evidence.
+The stable eval surface must not claim improvements such as "90% success-rate
+increase" or "tokens saved" without collected evidence.
 
 Current unavailable metric policy:
 
@@ -266,7 +267,7 @@ is a local generated artifact, not project memory.
 
 ## Identity Integration
 
-`identity build` does not automatically include eval summaries in
-v0.8.0-alpha.1. Eval reports remain available only through explicit
-`orange eval report` commands. A user-approved identity summary integration may
-be considered as a future target, but it is not part of this alpha.
+`identity build` does not automatically include eval summaries in v0.8.0. Eval
+reports remain available only through explicit `orange eval report` commands.
+A user-approved identity summary integration may be considered as a future
+target, but it is not part of this stable release.

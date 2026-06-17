@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.8-doc.1`
+- README version: `0.8-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.7.0 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract stable 功能。
+以 v0.8.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable、Adapter Invocation Contract stable 和 local-only Eval and Reports stable 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -111,6 +111,10 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - adapter dry-run 通过 `missing_inputs`、`input_source`、`step_index`、`next_user_decision` 描述安全调用顺序。
 - Adapter Layer 不直接修改 `.orange-hyper`，不解析 human output，也不会自动运行 Quest、Memory、MCP、Hook 或 Subagent 流程。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
+- `eval snapshot`、`eval report`、`eval explain` 只读取 `.orange-hyper` local project state，保守汇总 Quest、verification、proposal、graph、doctor、hook report、MCP Advisor、growth、adapter 和 identity 信号。
+- eval report 会在 JSON/Markdown 中暴露 summary、section `status`、`reason`、`evidence_count`、unavailable metric 和 known gap。
+- eval report 默认只输出到 stdout。只有显式传入 `--write-report` 时，才会在 `.orange-hyper/evals/reports/` 下创建 Markdown report。
+- Eval and Reports stable 不使用外部 telemetry、network upload、LLM judge、token savings estimate、success-rate improvement claim、MCP 执行、hook 自动运行，也不会自动修改 project memory/config。
 
 ## Memory Lifecycle
 
@@ -171,6 +175,8 @@ npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest Rea
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
 npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
+npx -y --package orange-hyper@latest orange eval snapshot --json
+npx -y --package orange-hyper@latest orange eval report --json
 ```
 
 从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
@@ -194,8 +200,8 @@ orange doctor
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports
-- v1.0 Stable product boundary
+- v0.8 Eval and Reports (stable)
+- v1.0 Stabilization candidate
 
 ## Non-goals
 
@@ -226,4 +232,5 @@ Orange Hyper 不打算成为：
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
+- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
 - [Release Notes](RELEASE_NOTES.md)
