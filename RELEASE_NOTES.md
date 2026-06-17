@@ -1,5 +1,54 @@
 # Release Notes
 
+## v1.0.1
+
+README after-intro onboarding patch for Orange Hyper.
+
+- Package version is `1.0.1`.
+- README version is `1.0-doc.2`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This patch does not add runtime features. It keeps the v1 stable command
+  surface and focuses on how users should actually start using Orange Hyper
+  with an AI.
+- The README sections after "Orange Hyper 소개" now lead with the AI-first
+  usage model: the user talks normally, and the AI or adapter calls
+  `orange ... --json` kernel commands when Orange Hyper is useful.
+- Added a Starter Prompt that tells the AI to use Orange Hyper without making
+  the user manage CLI commands, to avoid turning small explanations into
+  Quests, to record intent and verification evidence for real work, to propose
+  memory without auto-accepting it, to avoid MCP auto-installation, to keep
+  Hook/Growth/Eval advisory, and to use Orange Kernel commands instead of
+  direct `.orange-hyper` edits.
+- Added conversation-first examples for Quest capture, Memory Proposal,
+  Identity HTML plus Growth/Eval review, and MCP Advisor suggestions.
+- Reframed the feature list as artifacts Orange Hyper leaves behind: Quest,
+  Evidence, Memory Proposal, Accepted Memory, Knowledge Graph, Identity HTML,
+  Hook Warning, MCP Suggestion, Growth Signal, and Eval Report.
+- Clarified that the Knowledge Graph is an accepted project memory graph, not a
+  code dependency graph. It shows accepted decision, constraint, risk,
+  verification, and component memory, excludes pending/rejected proposals, and
+  is currently a read-only Identity HTML preview rather than a full graph
+  editor.
+- Moved CLI examples to lower reference sections: "For AI / Adapter authors",
+  "Manual fallback", and "Kernel command reference".
+- Synced the same structure across Korean, English, Simplified Chinese, and
+  Japanese README files while keeping Korean README as the source of truth.
+- `docs/22_V1_STABILIZATION.md` now records the AI-first usage model as part of
+  the v1 stable line.
+- Package metadata, package lock metadata, citation metadata, and
+  `src/core/origin.js` now target `1.0.1`.
+
+### Explicitly not included
+
+- new CLI command
+- runtime behavior change
+- Knowledge Graph renderer or full graph editor
+- MCP automatic installation or execution
+- hook automatic mutation or installation
+- adapter runtime implementation
+- project memory/config automatic mutation
+
 ## v1.0.0
 
 First stable boundary release for Orange Hyper.

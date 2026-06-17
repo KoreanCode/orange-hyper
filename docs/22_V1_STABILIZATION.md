@@ -1,17 +1,39 @@
 # v1 Stabilization Readiness
 
-Orange Hyper v1.0.0 is the first stable boundary release. It promotes the
-v1.0.0-alpha.0 Boundary Audit and v1.0.0-alpha.1 Stabilization Polish into a
-stable release surface without adding a new CLI feature, runtime adapter, MCP
-runner, hook installer, role system, planner, LLM judge, or telemetry path. The
-purpose of v1.0.0 is to make the v0.1 through v0.8 boundaries explicit,
-verified, and publish-ready.
+Orange Hyper v1.0.0 is the first stable boundary release. Orange Hyper v1.0.1
+keeps that stable boundary and adds a README after-intro onboarding patch
+without adding a new CLI feature, runtime adapter, MCP runner, hook installer,
+role system, planner, LLM judge, or telemetry path. The purpose of the v1
+stable line is to make the v0.1 through v0.8 boundaries explicit, verified, and
+publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.0.0`
+- package version: `1.0.1`
 - README version: `1.0-doc.2`
 - Adapter JSON contract version: `0.1`
+
+## AI-first Usage Model
+
+v1.0.1 documents Orange Hyper as an AI-first workflow, not a CLI-first product
+experience.
+
+- The user talks to an AI normally and does not need to memorize Orange CLI
+  commands.
+- The AI, skill, or adapter calls `orange ... --json` kernel commands when the
+  task benefits from Quest capture, verification evidence, Memory Proposal,
+  accepted memory graph reads, hook warnings, MCP suggestions, growth signals,
+  eval summaries, or Identity HTML refresh.
+- CLI commands remain the kernel interface. Human-readable output is for people;
+  adapters parse only `--json` output.
+- `.orange-hyper/` state is changed only through Orange Kernel commands, not by
+  direct adapter file mutation.
+- Small questions and simple explanations should stay lightweight. Real work can
+  become a Quest, and memorable decisions, constraints, risks, or verification
+  results should be proposed first, then accepted only after user approval.
+- Hook, Growth, and Eval remain warning/summary surfaces. MCP remains a
+  suggestion surface. None of them automatically repair, install, unlock, or
+  mutate project memory/config.
 
 ## v0.1-v0.8 Summary
 
@@ -41,7 +63,8 @@ Version axes remain separate:
 
 ## Adapter JSON Contract
 
-v1.0.0 keeps the adapter-facing JSON contract at `contract_version: "0.1"`.
+The v1 stable line keeps the adapter-facing JSON contract at
+`contract_version: "0.1"`.
 This is intentional: the package version changed, but the adapter envelope did
 not.
 
@@ -73,7 +96,7 @@ Failure JSON output remains:
 
 ## Command Surface
 
-The v1.0.0 stable audited top-level CLI command surface is:
+The v1 stable audited top-level CLI command surface is:
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -249,7 +272,7 @@ node bin/orange.js graph list --json
 
 ## Non-Goals
 
-v1.0.0 stable does not include:
+The v1 stable line does not include:
 
 - new CLI features
 - MCP automatic installation or execution
@@ -275,7 +298,7 @@ feature expansion queue.
 - Adapter Runtime Research: evaluate whether a runtime is needed separately
   from the already stable Adapter Invocation Contract.
 - TS Migration Review: assess source migration cost and safety without turning
-  v1.0.0 into a TypeScript rewrite.
+  the v1 stable line into a TypeScript rewrite.
 
 ## Trusted Publishing
 

@@ -80,45 +80,119 @@ A user request becomes a Quest and a Route Contract. The result and verification
 
 The goal is not a giant automation system. The user keeps asking lightly. The project remembers only what it should and strengthens verification only to the level the work needs.
 
-## Current Features
+## How Do You Use It?
 
-v1.0.0 stable is Orange Hyper's first stable boundary release. It is not a new feature release; it fixes the already validated v0.1 through v0.8 boundaries as the stable surface: Seed Kernel, Memory Delta Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports.
+You do not need to memorize CLI commands to use Orange Hyper.
 
-- `orange init` creates a repo-local `.orange-hyper/` structure.
-- Quest markdown and YAML frontmatter record work intent.
-- Route Contract records work level, procedure, tool, and verification budgets.
-- Context Capsule summarizes what the current task needs.
-- `quest done` requires verification evidence or an unverified reason.
-- A completed Quest can create a Memory Delta Proposal.
-- Pending proposals can be listed, shown, validated, revised, accepted, or rejected.
-- An accepted proposal becomes a graph node candidate with provenance.
-- `graph list`, `graph show`, `graph search`, and `graph rebuild-index` provide read-only navigation over accepted memory nodes for the current project.
-- `graph list --type ... --source-quest ... --source-proposal ...` and `graph search <query> --type ... --source-quest ...` narrow results to current-project accepted nodes.
-- Project Boundary prevents memory with a different `project_id` from being treated as current project memory.
-- `doctor` checks Quest, proposal, accepted node, and Project Boundary state.
-- `identity build` creates an Identity Dashboard file summarizing Seed Kernel state and the read-only Identity Graph Preview.
-- `hook preview`, `hook status`, `hook run session-start`, and `hook run stop` provide a read-only, warning-first hook preview.
-- The hook preview does not automatically modify Quest, Proposal, Graph, Identity, or Project Boundary state.
-- `--write-report` creates a local report only under `.orange-hyper/hooks/reports/`.
-- Hook warnings and local reports keep a stable JSON shape that adapters can interpret.
-- `mcp list`, `mcp show`, and `mcp suggest` provide score-, confidence-, matched_signals-, and no-suggestion-aware, read-only MCP proposal cards.
-- MCP Advisor proposal cards are not install or execution results and keep `requires_user_approval: true`, `not_executed: true`, and `config_mutation: false`.
-- MCP Advisor does not install or run MCPs, mutate config, write project memory, or make external network calls.
-- `growth status`, `growth suggest`, and `growth explain` read Quest, Route, accepted Memory Graph, Hook warning, and MCP advisor signals to preview conservative growth state and candidates with score/source evidence.
-- Growth candidates are suggestions only and keep `auto_unlock: false` and `requires_user_approval: true`.
-- Growth Signal Preview `growthLevel` is a decorative candidate only; it does not automatically unlock roles, tools, hooks, MCPs, subagents, or workflows.
-- `adapter list`, `adapter show <recipe-id>`, and `adapter dry-run <recipe-id>` describe how natural-language and skill layers should call the Orange Kernel through `--json` recipes.
-- Adapter dry-run describes safe invocation order with `missing_inputs`, `input_source`, `step_index`, and `next_user_decision`.
-- The Adapter Layer does not directly modify `.orange-hyper`, parse human output, or automatically run Quest, Memory, MCP, Hook, or Subagent flows.
-- Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
-- `eval snapshot`, `eval report`, and `eval explain` read only `.orange-hyper` local project state and conservatively summarize Quest, verification, proposal, graph, doctor, hook report, MCP Advisor, growth, adapter, and identity signals.
-- Eval reports expose summary, section `status`, `reason`, `evidence_count`, unavailable metrics, and known gaps in JSON/Markdown.
-- Eval reports use stdout by default. Only explicit `--write-report` creates a Markdown report under `.orange-hyper/evals/reports/`.
-- Eval and Reports stable does not use external telemetry, network upload, LLM judges, token savings estimates, success-rate improvement claims, MCP execution, hook auto-run, or project memory/config auto-mutation.
+Talk to your AI the way you normally would. When Orange Hyper is useful, the AI calls `orange ... --json` kernel commands to handle intent, verification evidence, memory proposals, graph reads, hook warnings, MCP suggestions, growth signals, and eval summaries.
 
-## Command Surface
+The CLI is not the main user experience. It is the kernel interface that skills, agents, and adapters use to talk to the Orange Kernel. Orange Hyper does not control your project; it stays beside it and cares for memory and verification.
 
-The v1.0.0 stable audited CLI command surface is:
+## Starter Prompt For Your AI
+
+Paste this into your AI when you want to use Orange Hyper in a new or existing repo.
+
+```text
+Use Orange Hyper for this project.
+
+I will not manage CLI commands directly. When needed, call orange ... --json kernel commands yourself.
+
+Do not turn small questions or simple explanations into Quests. When real work begins, record the intent and verification evidence.
+
+If a decision, constraint, risk, or verification result is worth remembering, propose it as a Memory Proposal. Do not accept a proposal before I approve it.
+
+Do not auto-install MCPs. Only suggest them when useful. Use Hook, Growth, and Eval only as warnings and summaries, not as automatic fixes.
+
+Do not edit .orange-hyper files directly. Use Orange Kernel commands.
+
+When useful, refresh Identity HTML so I can view the Knowledge Graph.
+```
+
+## Conversation Examples
+
+Start with conversation before reaching for CLI commands.
+
+**Example 1**
+
+User: Manage this work with Orange Hyper as you proceed.
+
+AI: This is worth recording as a Quest. I will record the intent and verification criteria in Orange Hyper, then proceed.
+
+**Example 2**
+
+User: I think this decision should be remembered later.
+
+AI: I will propose it as a Memory Proposal. If you approve it, it can become accepted memory.
+
+**Example 3**
+
+User: Show me how this project is growing right now.
+
+AI: I will refresh Identity HTML and check the Knowledge Graph plus Growth/Eval summaries.
+
+**Example 4**
+
+User: I probably need the latest docs for this library.
+
+AI: I will use MCP Advisor to suggest an appropriate tool. I will not install it automatically.
+
+## What Orange Hyper Leaves Behind
+
+Orange Hyper is easier to understand by its artifacts than by a feature list.
+
+- Quest: work intent and scope.
+- Evidence: proof that work was actually verified.
+- Memory Proposal: a candidate decision, constraint, risk, or verification result worth remembering.
+- Accepted Memory: project memory approved by the user.
+- Knowledge Graph: accepted memory read as decision, constraint, risk, verification, and component nodes.
+- Identity HTML: a single HTML view of project memory, accepted memory graph, growth signals, and eval summary.
+- Hook Warning: a warning without automatic repair.
+- MCP Suggestion: a tool suggestion without installation.
+- Growth Signal: a growth candidate without automatic unlock.
+- Eval Report: a local-only evaluation report.
+
+## What Is The Knowledge Graph?
+
+Orange Hyper's Knowledge Graph is not a code dependency graph. It is an accepted project memory graph.
+
+It shows user-approved decision, constraint, risk, verification, and component memory. Pending and rejected proposals are not included.
+
+Identity HTML contains a read-only Knowledge Graph Preview. It is not a full graph editor today; richer node-link visualization is a future dashboard direction.
+
+## Open Identity HTML
+
+If you tell the AI "refresh Identity HTML", the AI can use the Orange Kernel to update this file:
+
+```text
+.orange-hyper/identity/orange-hyper.html
+```
+
+That HTML is a read-only dashboard for project memory, the accepted memory graph, growth signals, and eval summary.
+
+## Memory Lifecycle
+
+<p align="center">
+  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper memory lifecycle" width="860" />
+</p>
+
+Orange Hyper does not store memory automatically. Only a user-accepted proposal becomes an accepted memory node candidate, and pending or rejected proposals are not graph nodes.
+
+## Type Safety Foundation
+
+In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewritten in TypeScript. It means the project now has a first safety check for the shapes it promises: `--json` output and the Quest, Proposal, Graph, Doctor, and Identity data.
+
+- Orange Hyper is still shipped as JavaScript.
+- TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
+- A full source migration remains a separate post-v1 TS Migration Review track.
+- Adapter JSON Contract still stays at `contract_version: "0.1"`.
+
+## For AI / Adapter authors
+
+v1.0.1 is a README onboarding patch, not a runtime feature release. The v1 stable command surface and Adapter JSON `contract_version: "0.1"` stay unchanged.
+
+AIs and adapters must parse `--json` output, not human-readable output. Do not edit `.orange-hyper/` files directly; call Orange Kernel commands.
+
+The v1 stable audited CLI command surface is:
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -138,26 +212,11 @@ The v1.0.0 stable audited CLI command surface is:
 
 `init` is the bootstrap command. The other commands cover Quest, route, capsule, proposal-first memory, accepted graph, hook warning, MCP advice, growth preview, adapter recipe, local eval, doctor, and identity surfaces.
 
-## Memory Lifecycle
-
-<p align="center">
-  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper memory lifecycle" width="860" />
-</p>
-
-Orange Hyper does not store memory automatically. Only a user-accepted proposal becomes an accepted memory node candidate, and pending or rejected proposals are not graph nodes.
-
-## Type Safety Foundation
-
-In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewritten in TypeScript. It means the project now has a first safety check for the shapes it promises: `--json` output and the Quest, Proposal, Graph, Doctor, and Identity data.
-
-- Orange Hyper is still shipped as JavaScript.
-- TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
-- A full source migration remains a separate post-v1 TS Migration Review track.
-- Adapter JSON Contract still stays at `contract_version: "0.1"`.
-
-## Install and Usage
+## Manual fallback
 
 Use `npx` with Node 20 or newer. The npm package name is `orange-hyper`; the primary CLI command is `orange`.
+
+Most users do not run these directly. Use them when the AI has no terminal access or you need to check something manually.
 
 Recommended:
 
@@ -185,7 +244,11 @@ npm link
 orange init
 ```
 
-Common commands:
+## Kernel command reference
+
+Adapters must parse `--json` output, not human output.
+
+Common kernel commands:
 
 ```bash
 npx -y --package orange-hyper@latest orange quest list

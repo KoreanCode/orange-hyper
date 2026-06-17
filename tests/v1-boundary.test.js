@@ -14,7 +14,7 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
 const EXPECTED_README_VERSION = "1.0-doc.2";
-const EXPECTED_PACKAGE_VERSION = "1.0.0";
+const EXPECTED_PACKAGE_VERSION = "1.0.1";
 const COMMAND_SURFACE = [
   "init",
   "quest",

@@ -80,45 +80,119 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 目标不是巨大的自动化系统。用户继续轻松提出请求。项目只记住需要记住的内容，并按工作需要的 level 增强验证。
 
-## 当前功能
+## 如何使用？
 
-v1.0.0 stable 是 Orange Hyper 的 first stable boundary release。它不是新的 feature release，而是把 v0.1 到 v0.8 已验证的 Seed Kernel、Memory Delta Proposal、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor、Growth Signal Preview、Adapter Invocation Contract、local-only Eval and Reports 边界固定为 stable surface。
+使用 Orange Hyper 不需要用户背 CLI 命令。
 
-- `orange init` 创建 repo-local `.orange-hyper/` 结构。
-- Quest markdown 和 YAML frontmatter 记录工作意图。
-- Route Contract 记录 work level、procedure、tool、verification budget。
-- Context Capsule 汇总当前任务需要的上下文。
-- `quest done` 要求 verification evidence 或 unverified reason。
-- completed Quest 可以创建 Memory Delta Proposal。
-- pending proposal 可以 list、show、validate、revise、accept、reject。
-- accepted proposal 会成为带 provenance 的 graph node candidate。
-- `graph list`、`graph show`、`graph search`、`graph rebuild-index` 可以 read-only 浏览当前项目的 accepted memory node。
-- `graph list --type ... --source-quest ... --source-proposal ...` 和 `graph search <query> --type ... --source-quest ...` 可以将结果限制在当前项目的 accepted node 内。
-- Project Boundary 不把不同 `project_id` 的 memory 当作当前项目 memory。
-- `doctor` 检查 Quest、proposal、accepted node 和 Project Boundary 状态。
-- `identity build` 会创建汇总 Seed Kernel 状态和 read-only Identity Graph Preview 的 Identity Dashboard 文件。
-- `hook preview`、`hook status`、`hook run session-start`、`hook run stop` 提供 read-only / warning-first hook preview。
-- hook preview 不会自动修改 Quest、Proposal、Graph、Identity 或 Project Boundary。
-- 只有显式传入 `--write-report` 时，才会在 `.orange-hyper/hooks/reports/` 下生成 local report。
-- hook warning 和 local report 会保持 adapter 可解析的稳定 JSON shape。
-- `mcp list`、`mcp show`、`mcp suggest` 只提供带 score、confidence、matched_signals 和 no-suggestion 状态的 read-only MCP proposal card。
-- MCP Advisor proposal card 不是安装或执行结果，并保持 `requires_user_approval: true`、`not_executed: true`、`config_mutation: false` 边界。
-- MCP Advisor 不会安装或运行 MCP，不会修改 config，不会写入 project memory，也不会发起外部网络调用。
-- `growth status`、`growth suggest`、`growth explain` 会读取 Quest、Route、accepted Memory Graph、Hook warning 和 MCP advisor signal，预览更保守的成长状态，以及带 score/source evidence 的候选项。
-- Growth candidate 只是建议，并保持 `auto_unlock: false` 和 `requires_user_approval: true`。
-- Growth Signal Preview 的 `growthLevel` 只是装饰性候选，不会自动 unlock role、tool、hook、MCP、subagent 或 workflow。
-- `adapter list`、`adapter show <recipe-id>`、`adapter dry-run <recipe-id>` 描述 natural-language/skill layer 如何通过 `--json` recipe 调用 Orange Kernel。
-- adapter dry-run 通过 `missing_inputs`、`input_source`、`step_index`、`next_user_decision` 描述安全调用顺序。
-- Adapter Layer 不直接修改 `.orange-hyper`，不解析 human output，也不会自动运行 Quest、Memory、MCP、Hook 或 Subagent 流程。
-- Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
-- `eval snapshot`、`eval report`、`eval explain` 只读取 `.orange-hyper` local project state，保守汇总 Quest、verification、proposal、graph、doctor、hook report、MCP Advisor、growth、adapter 和 identity 信号。
-- eval report 会在 JSON/Markdown 中暴露 summary、section `status`、`reason`、`evidence_count`、unavailable metric 和 known gap。
-- eval report 默认只输出到 stdout。只有显式传入 `--write-report` 时，才会在 `.orange-hyper/evals/reports/` 下创建 Markdown report。
-- Eval and Reports stable 不使用外部 telemetry、network upload、LLM judge、token savings estimate、success-rate improvement claim、MCP 执行、hook 自动运行，也不会自动修改 project memory/config。
+像平时一样和 AI 对话就可以。AI 认为需要 Orange Hyper 时，会调用 `orange ... --json` kernel command 来处理 intent、verification evidence、memory proposal、graph、hook warning、MCP suggestion、growth signal 和 eval summary。
 
-## Command Surface
+CLI 不是用户的主要 UX。它是 skill、agent、adapter 与 Orange Kernel 对话时使用的 kernel interface。Orange Hyper 不控制项目，而是在旁边照料记忆和验证。
 
-v1.0.0 stable audit 的 CLI command surface 如下：
+## 可以直接贴给 AI 的 Starter Prompt
+
+在新项目或已有 repo 里想使用 Orange Hyper 时，可以把下面这段直接贴给 AI。
+
+```text
+请在这个项目中使用 Orange Hyper。
+
+我不会直接管理 CLI 命令。需要时，请你调用 orange ... --json kernel command。
+
+不要把小问题或简单说明变成 Quest。真正开始推进工作时，请记录 intent 和 verification evidence。
+
+如果有值得记住的决定、约束、风险或验证结果，请作为 Memory Proposal 提出。在我批准之前，不要 accept proposal。
+
+不要自动安装 MCP。只在有需要时提出建议。Hook、Growth、Eval 只作为警告和摘要使用，不要作为自动修复。
+
+不要直接编辑 .orange-hyper 文件。请使用 Orange Kernel command。
+
+需要时，请刷新 Identity HTML，让我可以查看 Knowledge Graph。
+```
+
+## 对话示例
+
+先用对话开始，而不是先找 CLI 命令。
+
+**示例 1**
+
+用户：这个任务请用 Orange Hyper 管理着推进。
+
+AI：这个任务值得记录为 Quest。我会把 intent 和验证标准记录到 Orange Hyper，然后开始推进。
+
+**示例 2**
+
+用户：这个决定以后应该记住。
+
+AI：我会把它作为 Memory Proposal 提出。你批准后，它可以成为 accepted memory。
+
+**示例 3**
+
+用户：看看这个项目现在是怎么成长的。
+
+AI：我会刷新 Identity HTML，并查看 Knowledge Graph 与 Growth/Eval summary。
+
+**示例 4**
+
+用户：我可能需要这个库的最新文档。
+
+AI：我会用 MCP Advisor 建议合适的工具。不会自动安装。
+
+## Orange Hyper 会留下什么
+
+比起功能列表，用产物来理解 Orange Hyper 更容易。
+
+- Quest：工作意图和范围。
+- Evidence：工作确实经过验证的依据。
+- Memory Proposal：值得记住的决定、约束、风险或验证结果候选。
+- Accepted Memory：用户批准后的项目记忆。
+- Knowledge Graph：把 accepted memory 作为 decision、constraint、risk、verification、component node 来读取的图。
+- Identity HTML：在一个 HTML 中查看项目记忆、accepted memory graph、growth signal 和 eval summary。
+- Hook Warning：不会自动修复的警告。
+- MCP Suggestion：不会安装的工具建议。
+- Growth Signal：不会自动 unlock 的成长候选。
+- Eval Report：local-only 评价报告。
+
+## Knowledge Graph 是什么？
+
+Orange Hyper 的 Knowledge Graph 不是 code dependency graph。它是 accepted project memory graph。
+
+它展示用户批准过的 decision、constraint、risk、verification、component memory。pending/rejected proposal 不会包含在内。
+
+Identity HTML 中有 read-only Knowledge Graph Preview。它目前不是 full graph editor；更丰富的 node-link 可视化属于 future dashboard 方向。
+
+## 打开 Identity HTML
+
+对 AI 说“刷新 Identity HTML”时，AI 可以通过 Orange Kernel 更新这个文件：
+
+```text
+.orange-hyper/identity/orange-hyper.html
+```
+
+这个 HTML 是一个 read-only dashboard，用来集中查看项目记忆、accepted memory graph、growth signal 和 eval summary。
+
+## Memory Lifecycle
+
+<p align="center">
+  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper 记忆生命周期" width="860" />
+</p>
+
+Orange Hyper 不会自动保存记忆。只有用户 accept 的 proposal 才会成为 accepted memory node candidate，pending 或 rejected proposal 不是 graph node。
+
+## Type Safety Foundation（类型安全基础）
+
+在 v0.3 stable 中，Type Safety Foundation 并不是把 Orange Hyper 一次性改写成 TypeScript。它的意思是，项目先为自己承诺的数据形状加上一层检查：`--json` 输出，以及 Quest、Proposal、Graph、Doctor、Identity 之间传递的信息。
+
+- Orange Hyper 在这个阶段仍然以 JavaScript 包发布。
+- TypeScript 先作为安静的检查工具使用，帮助确认这些数据形状没有被不小心改坏。
+- 完整的 TypeScript 源码迁移会作为 v1 之后的 TS Migration Review track 单独评估。
+- Adapter JSON Contract 继续保持 `contract_version: "0.1"`。
+
+## For AI / Adapter authors
+
+v1.0.1 是 README onboarding patch，不是 runtime feature release。v1 stable command surface 和 Adapter JSON `contract_version: "0.1"` 保持不变。
+
+AI 和 adapter 必须解析 `--json` output，而不是 human-readable output。不要直接编辑 `.orange-hyper/` 文件；请调用 Orange Kernel command。
+
+v1 stable audit 的 CLI command surface 如下：
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -138,26 +212,11 @@ v1.0.0 stable audit 的 CLI command surface 如下：
 
 `init` 是 bootstrap command。其他 command 分别覆盖 Quest、route、capsule、proposal-first memory、accepted graph、hook warning、MCP advice、growth preview、adapter recipe、local eval、doctor 和 identity surface。
 
-## Memory Lifecycle
-
-<p align="center">
-  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper 记忆生命周期" width="860" />
-</p>
-
-Orange Hyper 不会自动保存记忆。只有用户 accept 的 proposal 才会成为 accepted memory node candidate，pending 或 rejected proposal 不是 graph node。
-
-## Type Safety Foundation（类型安全基础）
-
-在 v0.3 stable 中，Type Safety Foundation 并不是把 Orange Hyper 一次性改写成 TypeScript。它的意思是，项目先为自己承诺的数据形状加上一层检查：`--json` 输出，以及 Quest、Proposal、Graph、Doctor、Identity 之间传递的信息。
-
-- Orange Hyper 在这个阶段仍然以 JavaScript 包发布。
-- TypeScript 先作为安静的检查工具使用，帮助确认这些数据形状没有被不小心改坏。
-- 完整的 TypeScript 源码迁移会作为 v1 之后的 TS Migration Review track 单独评估。
-- Adapter JSON Contract 继续保持 `contract_version: "0.1"`。
-
-## 安装与使用
+## Manual fallback
 
 Node 20 或更高版本可以直接用 `npx` 运行。npm package name 是 `orange-hyper`，primary CLI command 是 `orange`。
+
+普通用户通常不需要直接执行这些命令。只有在 AI 没有终端权限，或需要手动确认时才使用。
 
 推荐用法：
 
@@ -185,7 +244,11 @@ npm link
 orange init
 ```
 
-常用命令：
+## Kernel command reference
+
+adapter 必须解析 `--json` output，而不是 human output。
+
+常用 kernel command：
 
 ```bash
 npx -y --package orange-hyper@latest orange quest list

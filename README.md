@@ -80,45 +80,119 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 목표는 거대한 자동화 시스템이 아닙니다. 사용자는 계속 가볍게 요청합니다. 프로젝트는 필요한 만큼만 기억하고, 필요한 수준으로 검증을 강화합니다.
 
-## 현재 제공 기능
+## 어떻게 사용하나요?
 
-v1.0.0 stable은 Orange Hyper의 first stable boundary release입니다. 새 feature release가 아니라 v0.1~v0.8에서 검증한 Seed Kernel, Memory Delta Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, local-only Eval and Reports 경계를 stable 표면으로 고정합니다.
+Orange Hyper를 쓰기 위해 사용자가 CLI 명령을 외울 필요는 없습니다.
 
-- `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
-- Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
-- Route Contract로 작업 level, procedure, tool, verification budget을 남깁니다.
-- Context Capsule로 현재 작업에 필요한 요약을 만듭니다.
-- `quest done`에서 verification evidence 또는 unverified reason을 요구합니다.
-- completed Quest에서 Memory Delta Proposal을 만듭니다.
-- pending proposal을 list, show, validate, revise, accept, reject할 수 있습니다.
-- accepted proposal은 provenance가 있는 graph node 후보가 됩니다.
-- `graph list`, `graph show`, `graph search`, `graph rebuild-index`로 현재 프로젝트의 accepted memory node를 read-only로 탐색할 수 있습니다.
-- `graph list --type ... --source-quest ... --source-proposal ...`와 `graph search <query> --type ... --source-quest ...`로 current-project accepted node를 좁혀 볼 수 있습니다.
-- Project Boundary는 `project_id`가 다른 memory를 현재 프로젝트 memory로 보지 않습니다.
-- `doctor`는 Quest, proposal, accepted node, Project Boundary 상태를 점검합니다.
-- `identity build`는 Seed Kernel 상태와 read-only Identity Graph Preview를 요약하는 Identity Dashboard 파일을 만듭니다.
-- `hook preview`, `hook status`, `hook run session-start`, `hook run stop`은 read-only / warning-first hook preview를 제공합니다.
-- hook preview는 자동 Quest/Proposal/Graph/Identity/Project Boundary 수정을 하지 않습니다.
-- `--write-report`를 명시했을 때만 `.orange-hyper/hooks/reports/` 아래에 local report를 생성합니다.
-- hook warning과 local report는 adapter가 해석할 수 있는 안정적인 JSON shape를 유지합니다.
-- `mcp list`, `mcp show`, `mcp suggest`는 현재 Quest/Graph/Doctor/Hook 상태와 요청 문맥을 바탕으로 score, confidence, matched_signals, no-suggestion 상태를 가진 read-only MCP proposal card만 제안합니다.
-- MCP Advisor proposal card는 설치/실행 결과가 아니며 `requires_user_approval: true`, `not_executed: true`, `config_mutation: false` 경계를 유지합니다.
-- MCP Advisor는 MCP를 자동 설치/실행하지 않고 config, Quest, Proposal, Graph, project memory를 자동 수정하지 않으며 외부 네트워크를 호출하지 않습니다.
-- `growth status`, `growth suggest`, `growth explain`은 Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을 읽어 보수적인 성장 상태와 score/source evidence가 있는 후보를 preview합니다.
-- Growth candidate는 제안일 뿐이며 `auto_unlock: false`, `requires_user_approval: true`를 유지합니다.
-- Growth Signal Preview의 `growthLevel`은 장식적 후보이며 role/tool/hook/MCP/subagent/workflow를 자동 unlock하지 않습니다.
-- `adapter list`, `adapter show <recipe-id>`, `adapter dry-run <recipe-id>`는 natural-language/skill layer가 Orange Kernel을 `--json`으로 호출하는 recipe 계약을 보여줍니다.
-- adapter dry-run은 `missing_inputs`, `input_source`, `step_index`, `next_user_decision`으로 안전한 호출 순서를 설명합니다.
-- Adapter Layer는 `.orange-hyper` 직접 수정, human output parsing, 자동 Quest/Memory/MCP/Hook/Subagent 실행을 하지 않습니다.
-- Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
-- `eval snapshot`, `eval report`, `eval explain`은 `.orange-hyper` local project state만 읽어 Quest, verification, proposal, graph, doctor, hook report, MCP Advisor, growth, adapter, identity 신호를 보수적으로 요약합니다.
-- eval report는 summary, section별 status reason/evidence_count, unavailable metric, known gap을 JSON/Markdown에 명시합니다.
-- eval report는 기본적으로 stdout만 사용하며, `--write-report`를 명시했을 때만 `.orange-hyper/evals/reports/` 아래 Markdown report를 생성합니다.
-- Eval and Reports stable은 외부 telemetry, 네트워크 업로드, LLM judge, token savings 추정, success-rate improvement claim, MCP 실행, hook 자동 실행, project memory/config 자동 수정을 하지 않습니다.
+평소처럼 AI에게 작업을 말하세요. AI가 Orange Hyper가 필요하다고 판단하면 `orange ... --json` kernel command를 호출해 의도, 검증 evidence, memory proposal, graph, hook warning, MCP suggestion, growth signal, eval summary를 다룹니다.
 
-## Command Surface
+CLI는 사용자의 주 UX가 아닙니다. skill, agent, adapter가 Orange Kernel과 대화하기 위한 kernel interface입니다. Orange Hyper는 프로젝트를 통제하지 않고, 곁에서 기억과 검증을 돌봅니다.
 
-v1.0.0 stable audit 기준 CLI command surface는 다음과 같습니다.
+## AI에게 붙여넣을 Starter Prompt
+
+새 프로젝트나 기존 repo에서 Orange Hyper를 쓰고 싶다면 AI에게 아래 문장을 그대로 붙여넣어도 됩니다.
+
+```text
+이 프로젝트에서 Orange Hyper를 사용해줘.
+
+나는 CLI 명령을 직접 관리하지 않을 거야. 필요한 경우 네가 orange ... --json kernel command를 호출해줘.
+
+작은 질문이나 단순 설명은 Quest로 만들지 마. 작업이 실제로 진행되면 의도와 검증 evidence를 남겨줘.
+
+기억할 만한 결정, 제약, 위험, 검증 결과가 있으면 Memory Proposal로 제안해줘. 내가 승인하기 전에는 proposal을 accept하지 마.
+
+MCP는 자동 설치하지 말고 필요할 때 제안만 해줘. Hook, Growth, Eval은 자동 수정이 아니라 경고와 요약으로만 사용해줘.
+
+.orange-hyper 파일을 직접 수정하지 말고 Orange Kernel command를 사용해줘.
+
+필요하면 Identity HTML을 갱신해서 Knowledge Graph를 볼 수 있게 해줘.
+```
+
+## 대화 예시
+
+CLI 명령보다 먼저 이런 식으로 말하면 됩니다.
+
+**예시 1**
+
+사용자: 이 작업을 Orange Hyper로 관리하면서 진행해줘.
+
+AI: 이 작업은 Quest로 남길 만합니다. Orange Hyper에 의도와 검증 기준을 기록하고 진행하겠습니다.
+
+**예시 2**
+
+사용자: 이 결정은 나중에 기억해야 할 것 같아.
+
+AI: Memory Proposal로 제안하겠습니다. 승인하면 accepted memory로 남기겠습니다.
+
+**예시 3**
+
+사용자: 지금 이 프로젝트가 어떻게 성장하고 있는지 보여줘.
+
+AI: Identity HTML을 갱신하고 Knowledge Graph와 Growth/Eval 요약을 확인하겠습니다.
+
+**예시 4**
+
+사용자: 이 라이브러리 최신 문서가 필요할 것 같아.
+
+AI: MCP Advisor로 적절한 도구를 제안하겠습니다. 자동 설치는 하지 않습니다.
+
+## Orange Hyper가 남기는 것
+
+Orange Hyper는 기능 목록보다 산출물로 이해하는 편이 쉽습니다.
+
+- Quest: 작업 의도와 범위입니다.
+- Evidence: 작업이 실제로 검증됐는지 보여주는 근거입니다.
+- Memory Proposal: 나중에 기억할 만한 결정, 제약, 위험, 검증 결과의 후보입니다.
+- Accepted Memory: 사용자가 승인한 프로젝트 기억입니다.
+- Knowledge Graph: accepted memory를 decision, constraint, risk, verification, component 같은 node로 읽는 그래프입니다.
+- Identity HTML: 프로젝트 기억, accepted memory graph, growth signal, eval summary를 한 곳에서 보는 단일 HTML입니다.
+- Hook Warning: 자동 수정 없는 경고입니다.
+- MCP Suggestion: 설치하지 않는 도구 제안입니다.
+- Growth Signal: 자동 unlock 없는 성장 후보입니다.
+- Eval Report: local-only 평가 보고입니다.
+
+## Knowledge Graph는 무엇인가요?
+
+Orange Hyper의 Knowledge Graph는 code dependency graph가 아닙니다. accepted project memory graph입니다.
+
+이 그래프는 사용자가 승인한 decision, constraint, risk, verification, component memory를 보여줍니다. pending/rejected proposal은 포함하지 않습니다.
+
+Identity HTML 안에는 read-only Knowledge Graph Preview가 있습니다. 현재는 full graph editor가 아니며, 더 풍부한 node-link 시각화는 future dashboard 방향입니다.
+
+## Identity HTML 열기
+
+AI에게 "Identity HTML을 갱신해줘"라고 말하면, AI는 Orange Kernel을 통해 다음 파일을 갱신할 수 있습니다.
+
+```text
+.orange-hyper/identity/orange-hyper.html
+```
+
+이 HTML은 프로젝트의 기억, accepted memory graph, growth signal, eval summary를 한 곳에서 보는 read-only dashboard입니다.
+
+## Memory Lifecycle
+
+<p align="center">
+  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper 메모리 생명주기" width="860" />
+</p>
+
+Orange Hyper는 자동으로 기억을 저장하지 않습니다. 사용자가 accept한 proposal만 accepted memory node 후보가 되며, pending/rejected proposal은 graph node가 아닙니다.
+
+## Type Safety Foundation
+
+v0.3 stable의 Type Safety Foundation은 Orange Hyper 전체를 한 번에 TypeScript로 바꾸는 작업이 아닙니다. 먼저 `--json` 출력과 Quest, Proposal, Graph, Doctor, Identity가 주고받는 정보의 모양을 확인하는 바탕을 마련한 단계입니다. 기능을 크게 바꾸기보다, 앞으로 깨지면 안 되는 약속을 조용히 고정합니다.
+
+- Orange Hyper는 이 단계에서도 JavaScript 패키지로 배포됩니다.
+- TypeScript는 먼저 안전 확인용으로 씁니다. 약속한 JSON과 상태 정보가 맞는지 살피는 역할입니다.
+- 전체 소스를 TypeScript로 옮기는 일은 v1 이후 TS Migration Review track으로 별도 검토합니다.
+- Adapter JSON Contract는 계속 `contract_version: "0.1"`을 유지합니다.
+
+## For AI / Adapter authors
+
+v1.0.1은 runtime 기능을 추가하지 않는 README onboarding patch입니다. v1 stable command surface와 Adapter JSON `contract_version: "0.1"`은 그대로 유지됩니다.
+
+AI와 adapter는 사람에게 보여주는 출력이 아니라 `--json` 출력을 파싱해야 합니다. `.orange-hyper/` 파일을 직접 수정하지 말고 Orange Kernel command를 호출하세요.
+
+v1 stable audit 기준 CLI command surface는 다음과 같습니다.
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -138,26 +212,11 @@ v1.0.0 stable audit 기준 CLI command surface는 다음과 같습니다.
 
 `init`은 bootstrap command입니다. 나머지 command는 Quest, route, capsule, proposal-first memory, accepted graph, hook warning, MCP advice, growth preview, adapter recipe, local eval, doctor, identity surface를 담당합니다.
 
-## Memory Lifecycle
-
-<p align="center">
-  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper 메모리 생명주기" width="860" />
-</p>
-
-Orange Hyper는 자동으로 기억을 저장하지 않습니다. 사용자가 accept한 proposal만 accepted memory node 후보가 되며, pending/rejected proposal은 graph node가 아닙니다.
-
-## Type Safety Foundation
-
-v0.3 stable의 Type Safety Foundation은 Orange Hyper 전체를 한 번에 TypeScript로 바꾸는 작업이 아닙니다. 먼저 `--json` 출력과 Quest, Proposal, Graph, Doctor, Identity가 주고받는 정보의 모양을 확인하는 바탕을 마련한 단계입니다. 기능을 크게 바꾸기보다, 앞으로 깨지면 안 되는 약속을 조용히 고정합니다.
-
-- Orange Hyper는 이 단계에서도 JavaScript 패키지로 배포됩니다.
-- TypeScript는 먼저 안전 확인용으로 씁니다. 약속한 JSON과 상태 정보가 맞는지 살피는 역할입니다.
-- 전체 소스를 TypeScript로 옮기는 일은 v1 이후 TS Migration Review track으로 별도 검토합니다.
-- Adapter JSON Contract는 계속 `contract_version: "0.1"`을 유지합니다.
-
-## 설치/사용법
+## Manual fallback
 
 Node 20 이상이면 설치 없이 `npx`로 실행할 수 있습니다. npm package name은 `orange-hyper`, primary CLI command는 `orange`입니다.
+
+일반 사용자는 보통 직접 실행하지 않습니다. AI가 터미널 접근 권한이 없거나, 수동으로 확인해야 할 때만 사용하세요.
 
 권장 실행법:
 
@@ -185,7 +244,11 @@ npm link
 orange init
 ```
 
-자주 쓰는 명령:
+## Kernel command reference
+
+adapter는 human output이 아니라 `--json` output만 파싱해야 합니다.
+
+자주 쓰는 kernel command:
 
 ```bash
 npx -y --package orange-hyper@latest orange quest list
