@@ -13,6 +13,10 @@ export type CommandId =
   | "graph.show"
   | "graph.search"
   | "graph.rebuildIndex"
+  | "hook.preview"
+  | "hook.status"
+  | "hook.runSessionStart"
+  | "hook.runStop"
   | "identity.build"
   | "quest.done"
   | "quest.new"
@@ -275,6 +279,70 @@ export interface DoctorResult {
       repairs: DoctorDiagnostic[];
     };
   };
+}
+
+export type HookEvent = "session-start" | "stop";
+
+export interface HookWarning {
+  code: string;
+  message: string;
+  hint: string;
+}
+
+export interface HookReportStatus {
+  directory: string;
+  defaultWrite: false;
+  written: boolean;
+  file: string | null;
+}
+
+export interface HookProjectSnapshot {
+  initialized: boolean;
+  project_id: string | null;
+  project_name: string;
+  projectIdExists: boolean;
+  orangeRootExists?: boolean;
+  configExists?: boolean;
+}
+
+export interface HookPreviewResult {
+  previewAvailable: true;
+  installed: false;
+  readOnly: true;
+  autoMutation: false;
+  project: HookProjectSnapshot;
+  checks: Array<{
+    id: string;
+    label: string;
+    target: string;
+    readOnly?: true;
+    current?: boolean;
+  }>;
+  localReport: HookReportStatus;
+  warnings: HookWarning[];
+}
+
+export interface HookStatusResult {
+  previewAvailable: true;
+  installed: false;
+  readOnly: true;
+  autoMutation: false;
+  supportedEvents: HookEvent[];
+  unsupportedEvents: string[];
+  localReport: HookReportStatus;
+  project: HookProjectSnapshot;
+  warnings: HookWarning[];
+}
+
+export interface HookRunResult {
+  event: HookEvent;
+  installed: false;
+  readOnly: true;
+  autoMutation: false;
+  report: HookReportStatus;
+  observations: JsonObject;
+  warnings: HookWarning[];
+  hints: string[];
 }
 
 export interface IdentitySummary extends OriginMetadata {

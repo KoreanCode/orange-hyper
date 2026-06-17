@@ -140,7 +140,7 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
         );
       }
       if (config.features?.hooks || config.features?.mcp || config.features?.subagents || config.features?.auto_execution_loop) {
-        errors.push("v0.1 feature flags must keep hooks, MCP, subagents, and auto execution loop disabled");
+        errors.push("preview feature flags must keep runtime hooks, MCP, subagents, and auto execution loop disabled");
       }
       checks.push("config.json parses");
     } catch (error) {

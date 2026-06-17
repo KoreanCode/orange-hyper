@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.3-doc.3`
+- README version: `0.4-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.3.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, and read-only Identity Graph Preview features.
+As of v0.4.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, and Minimal Hook Preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -97,6 +97,9 @@ As of v0.3.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usabili
 - Project Boundary prevents memory with a different `project_id` from being treated as current project memory.
 - `doctor` checks Quest, proposal, accepted node, and Project Boundary state.
 - `identity build` creates an Identity Dashboard file summarizing Seed Kernel state and the read-only Identity Graph Preview.
+- `hook preview`, `hook status`, `hook run session-start`, and `hook run stop` provide a read-only, warning-first hook preview.
+- The hook preview does not automatically modify Quest, Proposal, Graph, Identity, or Project Boundary state.
+- `--write-report` creates a local report only under `.orange-hyper/hooks/reports/`.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
 
 ## Memory Lifecycle
@@ -173,7 +176,7 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview (next)
+- v0.4 Minimal Hook Preview (alpha)
 - v0.5 MCP Advisor
 - v0.6 Growth System
 - v0.7 Adapter Layer
@@ -204,4 +207,5 @@ Orange Hyper is not trying to be:
 - [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
 - [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
 - [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
 - [Release Notes](RELEASE_NOTES.md)

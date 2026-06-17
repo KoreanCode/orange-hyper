@@ -2,5 +2,6 @@ capsules/
 traces/
 identity/
 local/
+hooks/reports/
 proposals/memory-delta/pending/
 proposals/memory-delta/rejected/

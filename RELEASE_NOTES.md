@@ -1,5 +1,51 @@
 # Release Notes
 
+## v0.4.0-alpha.0
+
+Minimal Hook Preview alpha.
+
+- Package version is `0.4.0-alpha.0`.
+- README version is `0.4-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha adds a read-only, warning-first hook command surface only:
+  `orange hook preview`, `orange hook status`,
+  `orange hook run session-start`, and `orange hook run stop`.
+- New JSON command ids are `hook.preview`, `hook.status`,
+  `hook.runSessionStart`, and `hook.runStop`.
+- `hook preview` shows project_id, doctor quick check, capsule freshness,
+  identity summary, graph/index, local report, `readOnly: true`, and
+  `autoMutation: false` targets without installing hooks.
+- `hook status` reports `previewAvailable: true`, `installed: false`,
+  `readOnly: true`, `autoMutation: false`, supported events
+  `session-start` and `stop`, and future unsupported events such as
+  `user-prompt-submit` and `post-tool-use`.
+- `hook run session-start` observes `.orange-hyper`, `config.project_id`,
+  Project Boundary, identity summary presence, accepted memory node count, and
+  doctor quick status.
+- `hook run stop` observes doctor quick status, completed Quest verification
+  anomalies, accepted graph node provenance anomalies, pending memory proposal
+  count, stale/missing capsule or identity warnings, and project boundary
+  warnings.
+- Hook run warnings are returned as warnings and hints; missing project_id or
+  doctor diagnostics do not trigger automatic repair.
+- Hook reports are off by default. `--write-report` writes only under
+  `.orange-hyper/hooks/reports/`, which is ignored by default, and the option
+  does not accept a path or filename.
+
+### Explicitly not included
+
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic proposal accept/reject
+- automatic graph rebuild
+- automatic doctor repair
+- hook installation
+- MCP implementation or installation
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+- branch/PR/SPEC workflow enforcement
+
 ## v0.3.0
 
 Memory Graph Usability stable release.

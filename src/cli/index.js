@@ -4,6 +4,7 @@ import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
+import { hookStatus, previewHook, runHookEvent } from "../core/hook.js";
 import { buildIdentityPlaceholder } from "../core/identity.js";
 import {
   acceptMemoryDelta,
@@ -29,6 +30,9 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").GraphNode} GraphNode
  * @typedef {import("../core/types.d.ts").IdentityBuildResult} IdentityBuildResult
  * @typedef {import("../core/types.d.ts").IdentitySummary} IdentitySummary
+ * @typedef {import("../core/types.d.ts").HookPreviewResult} HookPreviewResult
+ * @typedef {import("../core/types.d.ts").HookRunResult} HookRunResult
+ * @typedef {import("../core/types.d.ts").HookStatusResult} HookStatusResult
  *
  * @typedef {{
  *   id: string,
@@ -97,6 +101,14 @@ const COMMAND_IDS = {
     show: "graph.show",
     search: "graph.search",
     "rebuild-index": "graph.rebuildIndex"
+  },
+  hook: {
+    preview: "hook.preview",
+    status: "hook.status",
+    run: {
+      "session-start": "hook.runSessionStart",
+      stop: "hook.runStop"
+    }
   },
   identity: {
     build: "identity.build"
@@ -190,6 +202,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "graph") {
     await graphCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "hook") {
+    await hookCommand(cwd, io, rest);
     return;
   }
 
@@ -288,6 +305,56 @@ async function questCommand(cwd, io, argv) {
     return;
   }
   throw new Error(`Unknown quest command: ${subcommand}`);
+}
+
+async function hookCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, hookUsage());
+    return;
+  }
+  if (subcommand === "preview") {
+    const args = parseHookArgs(rest);
+    const result = previewHook(cwd, {
+      writeReport: Boolean(args.flags["write-report"])
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.hook.preview, result));
+      return;
+    }
+    write(io, formatHookPreview(result));
+    return;
+  }
+  if (subcommand === "status") {
+    const args = parseHookArgs(rest);
+    const result = hookStatus(cwd, {
+      writeReport: Boolean(args.flags["write-report"])
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.hook.status, result));
+      return;
+    }
+    write(io, formatHookStatus(result));
+    return;
+  }
+  if (subcommand === "run") {
+    const [event, ...eventRest] = rest;
+    if (!event) {
+      throw new Error("Hook event is required. Supported events: session-start, stop.");
+    }
+    const args = parseHookArgs(eventRest);
+    const commandId = hookRunCommandId(event);
+    const result = runHookEvent(cwd, event, {
+      writeReport: Boolean(args.flags["write-report"])
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(commandId, result));
+      return;
+    }
+    write(io, formatHookRun(result));
+    return;
+  }
+  throw new Error(`Unknown hook command: ${subcommand}`);
 }
 
 async function identityCommand(cwd, io, argv) {
@@ -586,7 +653,7 @@ async function routeCommand(cwd, io, argv) {
 function parseArgs(argv) {
   const flags = {};
   const positionals = [];
-  const booleanFlags = new Set(["all", "completed", "force", "json", "open", "repair-project-id"]);
+  const booleanFlags = new Set(["all", "completed", "force", "json", "open", "repair-project-id", "write-report"]);
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (!value.startsWith("--")) {
@@ -610,6 +677,45 @@ function parseArgs(argv) {
     }
   }
   return { flags, positionals };
+}
+
+function parseHookArgs(argv) {
+  const args = parseArgs(argv);
+  assertOnlyFlags(args.flags, new Set(["json", "write-report"]));
+  assertNoHookPositionals(args.positionals);
+  assertHookWriteReportFlag(args.flags);
+  return args;
+}
+
+function assertOnlyFlags(flags, allowed) {
+  for (const key of Object.keys(flags)) {
+    if (!allowed.has(key)) {
+      throw new Error(`Unsupported hook flag: --${key}`);
+    }
+  }
+}
+
+function assertNoHookPositionals(positionals) {
+  if (positionals.length) {
+    throw new Error(`Unexpected hook argument: ${positionals[0]}`);
+  }
+}
+
+function assertHookWriteReportFlag(flags) {
+  if (!Object.hasOwn(flags, "write-report")) {
+    return;
+  }
+  if (flags["write-report"] !== true) {
+    throw new Error("--write-report does not accept a path or value; hook reports are written to .orange-hyper/hooks/reports/.");
+  }
+}
+
+function hookRunCommandId(event) {
+  const commandId = COMMAND_IDS.hook.run[event];
+  if (!commandId) {
+    throw new Error(`Unsupported hook event: ${event}`);
+  }
+  return commandId;
 }
 
 function formatQuestList(quests) {
@@ -744,6 +850,93 @@ function writeGraphWarnings(io, warnings) {
   }
 }
 
+/**
+ * @param {HookPreviewResult} result
+ */
+function formatHookPreview(result) {
+  const lines = [
+    "Orange hook preview",
+    `Preview available: ${yesNo(result.previewAvailable)}`,
+    `Installed: ${yesNo(result.installed)}`,
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Auto mutation: ${yesNo(result.autoMutation)}`,
+    `Project ID: ${result.project.projectIdExists ? result.project.project_id : "missing"}`,
+    "Checks:"
+  ];
+  for (const check of result.checks) {
+    lines.push(`  - ${check.label}: ${check.target}`);
+  }
+  lines.push(`Local report: ${result.localReport.directory} (only with --write-report)`);
+  appendHookWarnings(lines, result.warnings);
+  return lines.join("\n");
+}
+
+/**
+ * @param {HookStatusResult} result
+ */
+function formatHookStatus(result) {
+  const lines = [
+    "Orange hook status",
+    `Preview available: ${yesNo(result.previewAvailable)}`,
+    `Installed: ${yesNo(result.installed)}`,
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Auto mutation: ${yesNo(result.autoMutation)}`,
+    `Supported events: ${result.supportedEvents.join(", ")}`,
+    `Unsupported future events: ${result.unsupportedEvents.join(", ")}`,
+    `Local report: ${result.localReport.directory} (only with --write-report)`
+  ];
+  appendHookWarnings(lines, result.warnings);
+  return lines.join("\n");
+}
+
+/**
+ * @param {HookRunResult} result
+ */
+function formatHookRun(result) {
+  const lines = [
+    `Orange hook run: ${result.event}`,
+    `Installed: ${yesNo(result.installed)}`,
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Auto mutation: ${yesNo(result.autoMutation)}`,
+    `Report written: ${yesNo(result.report.written)}${result.report.file ? ` (${result.report.file})` : ""}`,
+    "Observations:"
+  ];
+  for (const [key, value] of Object.entries(result.observations)) {
+    lines.push(`  - ${key}: ${formatHookValue(value)}`);
+  }
+  appendHookWarnings(lines, result.warnings);
+  return lines.join("\n");
+}
+
+function appendHookWarnings(lines, warnings) {
+  if (!warnings.length) {
+    lines.push("Warnings: none");
+    return;
+  }
+  lines.push("Warnings:");
+  for (const item of warnings) {
+    lines.push(`  - ${item.code}: ${item.message}`);
+    lines.push(`    Hint: ${item.hint}`);
+  }
+}
+
+function formatHookValue(value) {
+  if (Array.isArray(value)) {
+    return value.length ? value.join("; ") : "none";
+  }
+  if (value && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "boolean") {
+    return yesNo(value);
+  }
+  return String(value);
+}
+
+function yesNo(value) {
+  return value ? "yes" : "no";
+}
+
 function formatDoctor(result) {
   const lines = ["Orange doctor"];
   for (const check of result.checks) {
@@ -853,7 +1046,15 @@ export function commandName(argv = []) {
   if (!subcommand || subcommand.startsWith("--")) {
     return `${command}.unknown`;
   }
-  return commandId[subcommand] || `${command}.${subcommand}`;
+  const subcommandId = commandId[subcommand];
+  if (!subcommandId) {
+    return `${command}.${subcommand}`;
+  }
+  if (typeof subcommandId === "string") {
+    return subcommandId;
+  }
+  const event = argv[2];
+  return subcommandId[event] || `${command}.${subcommand}`;
 }
 
 export function jsonErrorFor(error, argv = []) {
@@ -1239,8 +1440,24 @@ function usage() {
     "  graph show <node-id> [--json]",
     "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
+    "  hook preview [--json] [--write-report]",
+    "  hook status [--json] [--write-report]",
+    "  hook run session-start [--json] [--write-report]",
+    "  hook run stop [--json] [--write-report]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
+  ].join("\n");
+}
+
+function hookUsage() {
+  return [
+    "orange hook <command>",
+    "",
+    "Commands:",
+    "  preview [--json] [--write-report]",
+    "  status [--json] [--write-report]",
+    "  run session-start [--json] [--write-report]",
+    "  run stop [--json] [--write-report]"
   ].join("\n");
 }
 

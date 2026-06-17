@@ -9,7 +9,7 @@
 ## 2. Hook 철학
 
 ```text
-Hook should observe, warn, summarize, and propose.
+Hook should observe, warn, summarize, and suggest explicit next commands.
 Hook should not force ceremony by default.
 ```
 
@@ -49,11 +49,12 @@ Hook should not force ceremony by default.
 
 - L2 이상인데 route가 없으면 경고
 - verification claim 누락 경고
-- memory delta proposal 생성
+- pending memory proposal count 요약
 - token trace 기록
 
 금지:
 
+- memory delta proposal 자동 생성
 - 자동 memory accept
 - 자동 commit
 - 자동 PR 생성
@@ -98,15 +99,16 @@ S4: hard block, explicit user opt-in only
 
 ## 6. Hook 이벤트별 MVP
 
-v0.4 후보:
+v0.4 실제 alpha:
 
 ```text
 SessionStart:
-  orange capsule --session-start
+  orange hook run session-start
+  .orange-hyper/config.json, Project Boundary, identity summary, accepted node count, doctor quick status 관찰
 
 Stop:
-  orange doctor --turn-end
-  orange remember propose --quest <completed-quest-id>
+  orange hook run stop
+  doctor quick status, completed Quest verification, graph provenance, pending proposal count, capsule/identity freshness 관찰
 ```
 
 v0.3 후보:
@@ -170,6 +172,7 @@ hooks:
 1. v0.1: hook 없음, CLI만 구현
 2. v0.2: Stop hook만 optional 제공
 3. v0.3: SessionStart hook optional 제공
-4. v0.4: UserPromptSubmit hook optional 제공
+4. v0.4: SessionStart/Stop read-only preview만 제공
+5. v0.7 이후: 실제 adapter layer에서 hook 설치/연동 논의
 
 이 순서가 안전하다. 처음부터 hook으로 시작하면 다시 강한 하네스가 된다.

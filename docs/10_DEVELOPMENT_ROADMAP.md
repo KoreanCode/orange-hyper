@@ -107,28 +107,44 @@ accept한 proposal만 graph node 후보를 생성한다.
 identity build에서 read-only graph preview와 source provenance를 볼 수 있다.
 ```
 
-## 5. v0.4 — Minimal Hook Preview (next)
+## 5. v0.4 — Minimal Hook Preview
 
-목표: hook을 optional safety layer로 도입한다.
+목표: hook을 강한 하네스가 아니라 read-only / warning-first preview로 도입한다.
 
 포함:
 
-- Stop hook template
-- SessionStart hook template
-- hook strictness config
-- verification claim 누락 경고
-- memory delta 자동 proposal
+- `orange hook preview`
+- `orange hook status`
+- `orange hook run session-start`
+- `orange hook run stop`
+- `--json` Adapter JSON Contract 유지
+- `--write-report` 명시 옵션에서만 local report 생성
+- session-start read-only 관찰
+- stop read-only 관찰
+- missing project_id, stale capsule/identity, project boundary, doctor quick warning/hint
 
 제외:
 
+- hook 설치
+- 자동 Quest 생성
+- 자동 memory proposal 생성
+- 자동 accept/reject
+- 자동 graph rebuild
+- 자동 doctor repair
 - 자동 memory accept
 - 자동 SPEC 생성
 - 자동 branch/PR workflow
+- MCP 구현/설치
+- subagent 실행
+- role evolution
+- auto planner / auto execution loop
 
 완료 기준:
 
 ```text
-사용자가 명시적으로 hook을 켜면, L2 이상 작업에서 verification claim 누락을 경고하고 memory delta proposal을 만든다.
+사용자는 hook preview로 session-start/stop에서 무엇을 관찰할지 확인할 수 있다.
+hook run은 warning과 hint만 반환하고 Quest/Proposal/Graph/Identity/Project Boundary를 자동 수정하지 않는다.
+report는 --write-report를 명시했을 때만 .orange-hyper/hooks/reports/ 아래에 생성된다.
 ```
 
 ## 6. v0.5 — MCP Advisor
@@ -205,24 +221,22 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.4 Minimal Hook Preview scope freeze
-2. opt-in hook config and strictness policy
-3. Stop/SessionStart hook templates
-4. verification-claim warning path
-5. memory delta auto-proposal preview
-6. hook-off default and rollback documentation
-7. tests and smoke checks
-8. README and release notes examples
+1. v0.4 Minimal Hook Preview alpha
+2. hook warning vocabulary hardening
+3. optional hook config discussion without installation
+4. adapter-neutral event contract refinement
+5. tests and smoke checks for read-only behavior
+6. README and release notes examples
 
 ## 11. 다음 개발 목표
 
 ```text
-Step 1: define the minimal hook preview boundary
-Step 2: keep hooks opt-in and off by default
-Step 3: warn on missing verification claims without auto-executing work
-Step 4: propose memory deltas without automatic accept
-Step 5: preserve the v0.3 read-only graph surface
-Step 6: document rollback and no-hook operation
+Step 1: keep v0.4 hooks preview-only
+Step 2: keep session-start and stop read-only
+Step 3: return warnings and hints without auto-repair
+Step 4: keep reports local/generated and opt-in
+Step 5: preserve the v0.3 read-only graph and identity surface
+Step 6: defer real adapter layer to v0.7
 ```
 
 ## 12. 품질 기준

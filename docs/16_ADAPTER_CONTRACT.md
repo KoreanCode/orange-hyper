@@ -1,8 +1,8 @@
 # Adapter Contract
 
-Orange Hyper v0.3.0 stable is still a Seed Kernel with Memory Graph Usability
-and a read-only Identity Graph Preview. The `orange` CLI is the
-kernel control plane, not the final end-user UX.
+Orange Hyper v0.4.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+a read-only Identity Graph Preview, and a Minimal Hook Preview. The `orange`
+CLI is the kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -59,7 +59,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.3.0 stable
+`contract_version` is the adapter-facing JSON contract version. v0.4.0-alpha.0
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -80,6 +80,10 @@ success and failure envelopes.
 - `graph.show`
 - `graph.search`
 - `graph.rebuildIndex`
+- `hook.preview`
+- `hook.status`
+- `hook.runSessionStart`
+- `hook.runStop`
 - `doctor.run`
 - `identity.build`
 
@@ -114,6 +118,12 @@ must not overwrite a different existing `project_id`.
 
 Adapters should read stdout as JSON only in `--json` mode. Human-readable
 diagnostics are reserved for non-JSON command usage.
+
+Hook preview commands are warning-first. If `orange hook run ... --json`
+observes missing project state, stale reports, or doctor diagnostics, it still
+returns a success envelope unless the hook command itself is invalid. Adapters
+should inspect `data.warnings` and `data.hints` instead of treating warning
+observations as state-changing failures.
 
 ## Command Examples
 
@@ -497,6 +507,228 @@ Adapters must not create memory proposal or graph node files directly. They
 should call `remember propose`, review with `remember show`,
 `remember validate`, and `remember revise`, then wait for user approval through
 `remember accept` or `remember reject`.
+
+### `hook preview --json`
+
+```bash
+orange hook preview --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "hook.preview",
+  "data": {
+    "previewAvailable": true,
+    "installed": false,
+    "readOnly": true,
+    "autoMutation": false,
+    "project": {
+      "initialized": true,
+      "orangeRootExists": true,
+      "configExists": true,
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "projectIdExists": true
+    },
+    "checks": [
+      {
+        "id": "project_id",
+        "label": "project_id exists",
+        "target": ".orange-hyper/config.json",
+        "current": true
+      },
+      {
+        "id": "doctor.quick",
+        "label": "doctor quick check",
+        "target": "orange doctor --json",
+        "readOnly": true
+      },
+      {
+        "id": "capsule.freshness",
+        "label": "capsule freshness check",
+        "target": ".orange-hyper/capsules/current.md",
+        "readOnly": true
+      },
+      {
+        "id": "identity.summary",
+        "label": "identity summary check",
+        "target": ".orange-hyper/identity/summary.json",
+        "readOnly": true
+      },
+      {
+        "id": "graph.index",
+        "label": "graph/index check",
+        "target": ".orange-hyper/graph/index.json",
+        "readOnly": true
+      }
+    ],
+    "localReport": {
+      "directory": ".orange-hyper/hooks/reports",
+      "defaultWrite": false,
+      "written": false,
+      "file": null
+    },
+    "warnings": []
+  }
+}
+```
+
+`hook preview` does not install a hook. It only describes what the preview would
+observe.
+
+### `hook status --json`
+
+```bash
+orange hook status --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "hook.status",
+  "data": {
+    "previewAvailable": true,
+    "installed": false,
+    "readOnly": true,
+    "autoMutation": false,
+    "supportedEvents": ["session-start", "stop"],
+    "unsupportedEvents": [
+      "user-prompt-submit",
+      "pre-tool-use",
+      "post-tool-use",
+      "notification",
+      "subagent-stop"
+    ],
+    "localReport": {
+      "directory": ".orange-hyper/hooks/reports",
+      "defaultWrite": false,
+      "written": false,
+      "file": null
+    },
+    "project": {
+      "initialized": true,
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "projectIdExists": true
+    },
+    "warnings": []
+  }
+}
+```
+
+### `hook run session-start --json`
+
+```bash
+orange hook run session-start --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "hook.runSessionStart",
+  "data": {
+    "event": "session-start",
+    "installed": false,
+    "readOnly": true,
+    "autoMutation": false,
+    "report": {
+      "directory": ".orange-hyper/hooks/reports",
+      "defaultWrite": false,
+      "written": false,
+      "file": null
+    },
+    "observations": {
+      "orangeRootExists": true,
+      "configExists": true,
+      "projectIdExists": true,
+      "projectBoundaryActive": true,
+      "identitySummaryExists": true,
+      "acceptedMemoryNodeCount": 2,
+      "doctorQuickStatus": {
+        "ok": true,
+        "checkCount": 25,
+        "errorCount": 0,
+        "warningCount": 0,
+        "repairCount": 0,
+        "projectBoundaryErrorCount": 0,
+        "projectBoundaryWarningCount": 0
+      }
+    },
+    "warnings": [],
+    "hints": []
+  }
+}
+```
+
+`session-start` never runs `init`, `doctor --repair-project-id`,
+`identity build`, or `graph rebuild-index`.
+
+### `hook run stop --json`
+
+```bash
+orange hook run stop --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "hook.runStop",
+  "data": {
+    "event": "stop",
+    "installed": false,
+    "readOnly": true,
+    "autoMutation": false,
+    "report": {
+      "directory": ".orange-hyper/hooks/reports",
+      "defaultWrite": false,
+      "written": false,
+      "file": null
+    },
+    "observations": {
+      "doctorQuickStatus": {
+        "ok": true,
+        "checkCount": 25,
+        "errorCount": 0,
+        "warningCount": 0,
+        "repairCount": 0,
+        "projectBoundaryErrorCount": 0,
+        "projectBoundaryWarningCount": 0
+      },
+      "completedQuestVerificationAnomalies": [],
+      "acceptedGraphNodeProvenanceAnomalies": [],
+      "pendingMemoryProposalCount": 0,
+      "capsule": {
+        "path": "capsules/current.md",
+        "exists": true,
+        "mtimeMs": 1780000000000,
+        "stale": false
+      },
+      "identity": {
+        "path": "identity/summary.json",
+        "exists": true,
+        "mtimeMs": 1780000000000,
+        "stale": false
+      },
+      "graphIndexExists": true,
+      "projectBoundaryActive": true,
+      "projectBoundaryWarnings": [],
+      "acceptedMemoryNodeCount": 2
+    },
+    "warnings": [],
+    "hints": []
+  }
+}
+```
+
+`stop` never creates proposals, accepts/rejects proposals, rebuilds the graph,
+or runs doctor repair. If `--write-report` is passed, the report is created
+only under `.orange-hyper/hooks/reports/`; `--write-report` does not accept a
+path or filename.
 
 ### `graph list --json`
 
