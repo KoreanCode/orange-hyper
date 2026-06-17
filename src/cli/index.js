@@ -224,7 +224,7 @@ export async function main(argv = process.argv.slice(2), env = {}) {
         writeJson(io, jsonError(COMMAND_IDS.doctor, {
           code: "DOCTOR_FAILED",
           message: `Orange doctor found ${result.errors.length} problem(s).`,
-          hint: "Run `orange doctor` without --json for human-readable diagnostics.",
+          hint: "Run `orange doctor` without --json to read each diagnostic; use `orange doctor --repair-project-id` only for explicit legacy project identity repair.",
           data: result
         }));
         process.exitCode = EXIT_CODES.validation;
@@ -977,7 +977,7 @@ function assertEvalWriteReportFlag(flags) {
 function hookRunCommandId(event) {
   const commandId = COMMAND_IDS.hook.run[event];
   if (!commandId) {
-    throw new Error(`Unsupported hook event: ${event}`);
+    throw new Error(`Unsupported hook event: ${event}. Supported events: session-start, stop.`);
   }
   return commandId;
 }
@@ -1720,7 +1720,11 @@ function formatDoctor(result) {
       lines.push(`ERROR ${error}`);
     }
   }
-  lines.push(result.ok ? "No problems found." : `${result.errors.length} problem(s) found.`);
+  if (result.ok && result.warnings.length) {
+    lines.push(`${result.warnings.length} warning(s) found; no blocking problems found.`);
+  } else {
+    lines.push(result.ok ? "No blocking problems found." : `${result.errors.length} problem(s) found.`);
+  }
   return lines.join("\n");
 }
 
@@ -1805,8 +1809,9 @@ export function commandName(argv = []) {
 }
 
 export function jsonErrorFor(error, argv = []) {
-  const normalized = normalizeError(error);
-  return jsonError(commandName(argv), normalized);
+  const command = commandName(argv);
+  const normalized = normalizeError(error, command);
+  return jsonError(command, normalized);
 }
 
 export function exitCodeForError(error) {
@@ -1864,12 +1869,12 @@ function jsonError(command, error) {
   return payload;
 }
 
-function normalizeError(error) {
+function normalizeError(error, command = "command") {
   const message = error instanceof Error ? error.message : String(error);
   return {
     code: errorCodeFor(error, message),
     message,
-    hint: defaultErrorHint()
+    hint: error?.orangeHint || defaultErrorHint(command)
   };
 }
 
@@ -1899,6 +1904,18 @@ function isValidationError(message) {
 }
 
 function defaultErrorHint(command = "command") {
+  if (command.startsWith("adapter.")) {
+    return "Run `orange adapter list` to inspect built-in recipe ids; adapter dry-runs describe commands but do not execute or mutate `.orange-hyper`.";
+  }
+  if (command.startsWith("doctor.")) {
+    return "Run `orange doctor` without --json to read each diagnostic; repair flags should be explicit user actions.";
+  }
+  if (command.startsWith("eval.")) {
+    return "Run `orange eval report` without --json for a readable local-only report; `--write-report` is a boolean flag and does not accept a path.";
+  }
+  if (command.startsWith("hook.")) {
+    return "Run `orange hook status` to inspect supported preview events; add `--write-report` only when you want a local report under `.orange-hyper/hooks/reports/`.";
+  }
   return "Run `orange --help` for command usage, or rerun without --json for human-readable diagnostics.";
 }
 

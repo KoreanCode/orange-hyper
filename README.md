@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.0`
+- README version: `1.0-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v1.0.0-alpha.0 stabilization candidate 기준으로 Orange Hyper는 v0.1~v0.8에서 구현한 Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, local-only Eval and Reports 경계를 새 기능 추가 없이 재검증합니다.
+v1.0.0-alpha.1 stabilization polish 기준으로 Orange Hyper는 v0.1~v0.8에서 구현한 Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, local-only Eval and Reports 경계를 새 기능 추가 없이 재검증합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.

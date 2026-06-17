@@ -1,15 +1,15 @@
 # v1 Stabilization Readiness
 
-Orange Hyper v1.0.0-alpha.0 is a stabilization candidate. It does not add a new
-CLI feature, runtime adapter, MCP runner, hook installer, role system, planner,
-LLM judge, or telemetry path. The release candidate re-audits the v0.1 through
-v0.8 surfaces and makes the existing boundaries easier to verify before a future
-v1.0 stable release.
+Orange Hyper v1.0.0-alpha.1 is stabilization polish after the v1.0.0-alpha.0
+Boundary Audit and npm alpha smoke. It does not add a new CLI feature, runtime
+adapter, MCP runner, hook installer, role system, planner, LLM judge, or
+telemetry path. This alpha keeps the v0.1 through v0.8 boundaries easy to verify
+before a future v1.0 stable release.
 
 Version axes remain separate:
 
-- package version: `1.0.0-alpha.0`
-- README version: `1.0-doc.0`
+- package version: `1.0.0-alpha.1`
+- README version: `1.0-doc.1`
 - Adapter JSON contract version: `0.1`
 
 ## v0.1-v0.8 Summary
@@ -40,7 +40,7 @@ Version axes remain separate:
 
 ## Adapter JSON Contract
 
-v1.0.0-alpha.0 keeps the adapter-facing JSON contract at `contract_version:
+v1.0.0-alpha.1 keeps the adapter-facing JSON contract at `contract_version:
 "0.1"`. This is intentional: the package version changed, but the adapter
 envelope did not.
 
@@ -94,6 +94,36 @@ The v1.0-alpha audited top-level CLI command surface is:
 post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
 `hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`, and `identity`.
 
+## Alpha Smoke
+
+The npm alpha smoke for `v1.0.0-alpha.0` was run from the published alpha
+package after the Boundary Audit. The smoke is recorded as stabilization
+evidence, not as a new feature claim.
+
+Passed command surface:
+
+- `orange --help`
+- `orange doctor --json`
+- `orange eval report --json`
+- `orange adapter dry-run project-status --json`
+- `orange growth status --json`
+- `orange hook run stop --json`
+- `orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json`
+- `orange graph list --json`
+
+The smoke kept the adapter JSON envelope at `contract_version: "0.1"` and did
+not install MCPs, run MCP servers, install hooks, mutate hook state, execute
+adapter recipes, upload telemetry, call an LLM judge, or automatically mutate
+project memory/config.
+
+Known warning:
+
+- `hook run stop` may surface local generated-state warnings such as a missing
+  or stale capsule/identity summary. This is not a smoke failure. The hook
+  surface is read-only and warning-first; it reports the state and leaves the
+  manual follow-up to the user. Run `orange capsule` or `orange identity build`
+  only when a refreshed generated artifact is explicitly wanted.
+
 ## Shared vs Local State
 
 Shared project-memory state can be committed when it passes `orange doctor`:
@@ -127,7 +157,9 @@ The npm package is expected to include:
 - `bin/`
 - `src/`
 - `docs/`
+- `scripts/check-readme-sync.js`
 - `README.md`, `README.en.md`, `README.zh-CN.md`, `README.ja.md`
+- `readme-hero.png` and `assets/readme/`
 - `RELEASE_NOTES.md`
 - `LICENSE`
 - package metadata and provenance/security/citation files
@@ -159,17 +191,19 @@ The package must not include:
 - Keep the full validation gate green: `npm test`, `npm run typecheck`,
   `npm run check:readme-sync`, `git diff --check`, CLI help, actual repo smoke,
   and package dry-run.
-- Verify the published alpha package from a fresh temp workspace after
-  `v1.0.0-alpha.0` is published.
+- Verify the `v1.0.0-alpha.1` package from a fresh temp workspace after it is
+  published on the npm alpha channel.
 - Reconfirm README/doc command surface and package surface from the published
   tarball, not only the local checkout.
+- Treat hook warnings as manual follow-up evidence, not release failures, when
+  the command exits successfully and preserves read-only/no-mutation flags.
 - Keep Adapter JSON `contract_version` at `"0.1"` unless a real adapter-facing
   breaking contract change is made.
 - Keep stable release notes focused on stabilization, not new runtime claims.
 
 ## Non-Goals
 
-v1.0.0-alpha.0 does not include:
+v1.0.0-alpha.1 does not include:
 
 - new CLI features
 - MCP automatic installation or execution

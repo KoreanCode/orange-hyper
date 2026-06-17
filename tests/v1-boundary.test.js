@@ -13,8 +13,8 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.0-doc.0";
-const EXPECTED_PACKAGE_VERSION = "1.0.0-alpha.0";
+const EXPECTED_README_VERSION = "1.0-doc.1";
+const EXPECTED_PACKAGE_VERSION = "1.0.0-alpha.1";
 const COMMAND_SURFACE = [
   "init",
   "quest",
@@ -152,7 +152,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.0-doc.0", () => {
+test("README version metadata stays synchronized at 1.0-doc.1", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);
@@ -231,11 +231,15 @@ test("npm package surface includes release files and excludes tests/local artifa
     "README.en.md",
     "README.zh-CN.md",
     "README.ja.md",
+    "readme-hero.png",
+    "assets/readme/core-flow.png",
+    "assets/readme/memory-lifecycle.png",
     "RELEASE_NOTES.md",
     "LICENSE",
     "PROVENANCE.md",
     "SECURITY.md",
     "CITATION.cff",
+    "scripts/check-readme-sync.js",
     "docs/22_V1_STABILIZATION.md"
   ]) {
     assert.ok(files.includes(required), `package should include ${required}`);

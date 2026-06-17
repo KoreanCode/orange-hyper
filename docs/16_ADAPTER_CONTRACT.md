@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v1.0.0-alpha.0 is a stabilization candidate for the v0.1 through
+Orange Hyper v1.0.0-alpha.1 is a stabilization polish release for the v0.1 through
 v0.8 surfaces: Seed Kernel, Memory Proposal, Memory Graph Usability, read-only
 Identity Graph Preview, Minimal Hook Preview, read-only MCP Advisor, read-only
 Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and
@@ -62,7 +62,7 @@ Structured failures use this envelope:
 ```
 
 `contract_version` is the adapter-facing JSON contract version.
-v1.0.0-alpha.0 keeps `"0.1"` intentionally: the package version changed, but
+v1.0.0-alpha.1 keeps `"0.1"` intentionally: the package version changed, but
 the adapter envelope did not. The contract version appears in both success and
 failure envelopes.
 

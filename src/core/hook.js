@@ -118,7 +118,7 @@ export function hookStatus(cwd = process.cwd(), options = {}) {
  */
 export function runHookEvent(cwd = process.cwd(), event, options = {}) {
   if (!HOOK_SUPPORTED_EVENTS.includes(event)) {
-    throw new Error(`Unsupported hook event: ${event}`);
+    throw new Error(`Unsupported hook event: ${event}. Supported events: ${HOOK_SUPPORTED_EVENTS.join(", ")}.`);
   }
   const result = event === "session-start"
     ? buildSessionStartResult(cwd)

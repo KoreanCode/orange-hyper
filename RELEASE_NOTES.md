@@ -1,5 +1,52 @@
 # Release Notes
 
+## v1.0.0-alpha.1
+
+v1 Stabilization Polish alpha.
+
+- Package version is `1.0.0-alpha.1`.
+- README version is `1.0-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha is stabilization polish after the `v1.0.0-alpha.0` Boundary Audit
+  and npm alpha smoke. It does not add a new CLI command, runtime adapter, MCP
+  runner, hook installer, role system, planner, LLM judge, telemetry path, or
+  automatic project memory/config mutation.
+- `docs/22_V1_STABILIZATION.md` now records the published alpha.0 smoke surface:
+  `orange --help`, `doctor --json`, `eval report --json`,
+  `adapter dry-run project-status --json`, `growth status --json`,
+  `hook run stop --json`, `mcp suggest --query ... --json`, and
+  `graph list --json`.
+- The alpha.0 smoke warning policy is now explicit: local generated-state hook
+  warnings such as missing or stale capsule/identity summaries are manual
+  follow-up evidence, not failures, when the command exits successfully and
+  preserves read-only/no-mutation flags.
+- CLI diagnostic text is clearer for v1 users without changing runtime
+  behavior: doctor now distinguishes warnings from blocking problems, hook
+  unsupported-event errors list supported events, adapter unknown-recipe errors
+  list available recipe ids, and JSON failure hints for doctor/hook/eval/adapter
+  point to the safest manual next command.
+- Package surface policy remains clean: `npm pack --dry-run` is expected to
+  include `bin`, `src`, `docs`, README files, release notes, license, public
+  metadata, assets, and `scripts/check-readme-sync.js`, while excluding tests,
+  `.orange-hyper` local/generated artifacts, `node_modules`, coverage, and temp
+  output.
+- `CITATION.cff`, package metadata, package lock metadata, README metadata,
+  roadmap notes, adapter contract wording, v1 boundary tests, and
+  `src/core/origin.js` now target `1.0.0-alpha.1` / `1.0-doc.1` as appropriate.
+
+### Explicitly not included
+
+- new CLI feature
+- MCP automatic installation or execution
+- hook automatic mutation or installation
+- role automatic creation
+- subagent orchestration
+- auto planner or auto execution loop
+- LLM judge
+- telemetry or network upload
+- adapter runtime implementation
+- project memory/config automatic mutation
+
 ## v1.0.0-alpha.0
 
 v1.0 Stabilization Candidate alpha.

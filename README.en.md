@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.0`
+- README version: `1.0-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of the v1.0.0-alpha.0 stabilization candidate, Orange Hyper re-audits the v0.1 through v0.8 boundaries for the Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports without adding a new runtime feature.
+As of the v1.0.0-alpha.1 stabilization polish, Orange Hyper re-audits the v0.1 through v0.8 boundaries for the Seed Kernel, Memory Proposal, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor, Growth Signal Preview, Adapter Invocation Contract, and local-only Eval and Reports without adding a new runtime feature.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.

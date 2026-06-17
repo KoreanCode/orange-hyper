@@ -327,10 +327,10 @@ report, regression test 보강이 범위다.
 
 - v0.1~v0.8 boundary summary
 - Adapter JSON `contract_version: "0.1"` 유지 확인
-- README 4종 `1.0-doc.0` 동기화
+- README 4종 `1.0-doc.1` 동기화
 - `docs/22_V1_STABILIZATION.md`
-- `RELEASE_NOTES.md` v1.0.0-alpha.0 섹션
-- package version `1.0.0-alpha.0`
+- `RELEASE_NOTES.md` v1.0.0-alpha.1 섹션
+- package version `1.0.0-alpha.1`
 - package surface dry-run 검증
 - shared/local `.orange-hyper` state policy 재검증
 

@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.0`
+- README version: `1.0-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v1.0.0-alpha.0 stabilization candidate 为基准，Orange Hyper 不新增 runtime feature，而是重新审计 v0.1 到 v0.8 的 Seed Kernel、Memory Proposal、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor、Growth Signal Preview、Adapter Invocation Contract、local-only Eval and Reports 边界。
+以 v1.0.0-alpha.1 stabilization polish 为基准，Orange Hyper 不新增 runtime feature，而是重新审计 v0.1 到 v0.8 的 Seed Kernel、Memory Proposal、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor、Growth Signal Preview、Adapter Invocation Contract、local-only Eval and Reports 边界。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。

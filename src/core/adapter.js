@@ -519,7 +519,11 @@ function buildNextUserDecision(recipeId, missingInputs) {
 }
 
 function unknownRecipeError(id) {
-  const error = /** @type {Error & { orangeCode?: string }} */ (new Error(`Unknown adapter recipe: ${id || "(missing)"}`));
+  const availableRecipes = Array.from(RECIPES_BY_ID.keys()).join(", ");
+  const error = /** @type {Error & { orangeCode?: string, orangeHint?: string }} */ (
+    new Error(`Unknown adapter recipe: ${id || "(missing)"}. Available recipes: ${availableRecipes}.`)
+  );
   error.orangeCode = "ADAPTER_UNKNOWN_RECIPE";
+  error.orangeHint = "Run `orange adapter list` to inspect recipe ids, then rerun `orange adapter show <recipe-id>` or `orange adapter dry-run <recipe-id>`.";
   return error;
 }
