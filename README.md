@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.1`
+- README version: `0.7-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.7.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract alpha 기능을 제공합니다.
+v0.7.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -171,7 +171,7 @@ npx -y --package orange-hyper@latest orange hook preview --json
 npx -y --package orange-hyper@latest orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
-npx -y --package orange-hyper@alpha orange adapter dry-run project-status --json
+npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
 ```
 
 v0.2.0 프로젝트를 v0.2.1 Project Boundary Guard로 올릴 때는 다음을 먼저 실행합니다.
@@ -194,7 +194,7 @@ orange doctor
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Invocation Contract (current alpha)
+- v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
 

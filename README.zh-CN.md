@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.1`
+- README version: `0.7-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.7.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract alpha 功能。
+以 v0.7.0 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract stable 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -170,7 +170,7 @@ npx -y --package orange-hyper@latest orange doctor
 npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
-npx -y --package orange-hyper@alpha orange adapter dry-run project-status --json
+npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
 ```
 
 从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
@@ -193,7 +193,7 @@ orange doctor
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Invocation Contract (current alpha)
+- v0.7 Adapter Invocation Contract (stable)
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
 

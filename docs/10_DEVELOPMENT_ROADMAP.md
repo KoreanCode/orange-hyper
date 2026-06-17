@@ -230,7 +230,7 @@ auto_unlock: false 및 requires_user_approval: true를 유지한다.
 growthLevel은 장식적 preview label이며 자동 unlock을 의미하지 않는다.
 ```
 
-## 8. v0.7 — Adapter Invocation Contract (current alpha)
+## 8. v0.7 — Adapter Invocation Contract (stable)
 
 목표: 실제 adapter runtime을 만들기 전에 natural-language layer, skill layer,
 agent adapter가 Orange Kernel을 안전하게 호출하는 command recipe와 JSON
@@ -273,10 +273,10 @@ contract를 고정한다.
 adapter는 Orange CLI --json command만 호출한다.
 adapter는 .orange-hyper를 직접 수정하지 않고 human output을 파싱하지 않는다.
 dry-run은 command sequence만 보여주며 실제 state mutation command를 실행하지 않는다.
-v0.7 alpha는 runtime이 아니라 invocation contract까지만 제공한다.
+v0.7 stable은 runtime이 아니라 invocation contract까지만 제공한다.
 ```
 
-## 9. v0.8 — Eval and Reports
+## 9. v0.8 — Eval and Reports (next)
 
 목표: 오픈소스 신뢰성을 위한 평가 체계를 제공한다.
 
@@ -296,11 +296,13 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.7 Adapter Invocation Contract alpha
+1. v0.8 Eval and Reports
 2. Adapter recipe validation from real user workflows
-3. Adapter interface stabilization after the invocation contract holds
-4. Codex adapter and generic CLI adapter proof
-5. Claude Code adapter draft
+3. Adapter interface stabilization only after the stable invocation contract
+   keeps holding
+4. Codex adapter and generic CLI adapter proof only after explicit adapter
+   runtime scope is opened
+5. Claude Code adapter draft only after explicit adapter runtime scope is opened
 6. model capability profile
 7. future growth profile design only after preview evidence remains stable
 8. future role proposal boundary only after explicit user approval
@@ -313,8 +315,8 @@ Step 2: keep user approval before MCP install/use and growth candidate action
 Step 3: preserve no automatic role, hook, subagent, planner, workflow, config, graph, or project-memory mutation
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
-Step 6: keep v0.7 alpha as Adapter Invocation Contract only
-Step 7: defer real adapter runtime until the command recipe contract is stable
+Step 6: keep v0.7 stable as Adapter Invocation Contract only
+Step 7: defer real adapter runtime until a separate explicit runtime scope is opened
 ```
 
 ## 12. 품질 기준

@@ -1,10 +1,10 @@
 # Adapter Contract
 
-Orange Hyper v0.7.0-alpha.1 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.7.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
 read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
-Invocation Contract alpha. The `orange` CLI is the kernel control plane, not the
-final end-user UX.
+Invocation Contract stable surface. The `orange` CLI is the kernel control
+plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -61,9 +61,9 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.7.0-alpha.1
-keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
-success and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. v0.7.0 keeps
+`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
+and failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
@@ -400,7 +400,7 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
 ```
 
 Actual dry-run output also includes a `commands` alias with the same entries as
-`steps` for compatibility with the initial v0.7 alpha.
+`steps` for v0.7 dry-run compatibility.
 
 ### `growth status --json`
 
@@ -1612,7 +1612,7 @@ The report file payload has its own stable schema:
 {
   "generated_by": "Orange Hyper",
   "generator_package": "orange-hyper",
-  "generator_version": "0.6.0",
+  "generator_version": "0.7.0",
   "source_repository": "https://github.com/KoreanCode/orange-hyper",
   "official_package": "https://www.npmjs.com/package/orange-hyper",
   "license": "MIT",

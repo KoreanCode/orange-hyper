@@ -1,5 +1,54 @@
 # Release Notes
 
+## v0.7.0
+
+Adapter Invocation Contract stable release.
+
+- Package version is `0.7.0`.
+- README version is `0.7-doc.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.7.0 promotes the validated v0.7.0-alpha.0 and v0.7.0-alpha.1 Adapter
+  Invocation Contract surface to stable without adding adapter runtime
+  execution.
+- Stable command surface:
+  `orange adapter list`, `orange adapter show <recipe-id>`, and
+  `orange adapter dry-run <recipe-id>`.
+- Built-in adapter recipes are `quest-capture`, `work-complete-to-memory`,
+  `project-status`, `hook-check`, and `mcp-advice`.
+- `adapter dry-run` returns a dry-run execution plan with `recipe_id`,
+  `dry_run: true`, `executed: false`, `steps`, `commands`,
+  `required_inputs`, `missing_inputs`, `safety_flags`,
+  `expected_contract_version`, `next_user_decision`, `mutation_policy`, and
+  `adapter_rules`.
+- Recipe inputs declare whether values come from `user`, `previous_step`, or
+  `project_state`, so adapters can distinguish user prompts from prior JSON
+  outputs and existing kernel state.
+- Every recipe step declares `mutates_project_state` and
+  `requires_user_approval`; mutating steps require approval, while read-only
+  status/advice/hook checks do not.
+- Safety flags remain fixed as `direct_file_mutation: false`,
+  `parses_human_output: false`, `requires_json_mode: true`,
+  `auto_accept: false`, `auto_install: false`, and `auto_unlock: false`.
+- The stable Adapter Layer remains an invocation contract: adapters call Orange
+  CLI `--json`, parse JSON envelopes only, avoid `.orange-hyper` direct file
+  mutation, and do not duplicate kernel state logic.
+
+### Explicitly not included
+
+- actual adapter runtime
+- Codex/Claude-specific adapter automatic installation
+- direct `.orange-hyper` file mutation
+- human output parsing
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic accept or reject
+- automatic graph rebuild
+- automatic hook execution
+- MCP automatic installation or execution
+- subagent orchestration
+- auto planner or auto execution loop
+- recipe automatic execution
+
 ## v0.7.0-alpha.1
 
 Adapter Recipe Quality Hardening.

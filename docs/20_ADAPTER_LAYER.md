@@ -1,7 +1,7 @@
 # Adapter Layer
 
-Orange Hyper v0.7.0-alpha.1 hardens the Adapter Invocation Contract recipe
-quality surface.
+Orange Hyper v0.7.0 stabilizes the Adapter Invocation Contract recipe quality
+surface.
 
 This is not a Codex adapter runtime, Claude adapter runtime, MCP bridge,
 subagent orchestrator, or auto planner. It is the first contract that tells a
@@ -22,7 +22,7 @@ The Adapter Layer documents command recipes that an adapter can follow when it
 needs to capture a Quest, complete work into memory, summarize project status,
 check hook warnings, or ask for MCP advice.
 
-The recipes do not execute automatically. The v0.7 alpha exposes:
+The recipes do not execute automatically. The v0.7 stable surface exposes:
 
 ```bash
 orange adapter list
@@ -236,9 +236,9 @@ Safety notes:
 - The adapter must not persist MCP configuration or API keys.
 - The adapter must not run MCP tools or subagents automatically.
 
-## Not Included In v0.7 Alpha
+## Not Included In v0.7 Stable
 
-v0.7.0-alpha.1 intentionally does not include:
+v0.7.0 intentionally does not include:
 
 - Codex-specific adapter automatic installation
 - Claude-specific adapter automatic installation
@@ -253,6 +253,6 @@ v0.7.0-alpha.1 intentionally does not include:
 - `.orange-hyper` direct file mutation
 - auto planner or auto execution loop
 
-The alpha is complete when adapters can inspect recipes, read the JSON contract,
-dry-run the command sequence they would call later, and see which inputs are
-missing before any state-changing command is considered.
+The stable surface is complete when adapters can inspect recipes, read the JSON
+contract, dry-run the command sequence they would call later, and see which
+inputs are missing before any state-changing command is considered.
