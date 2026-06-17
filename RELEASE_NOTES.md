@@ -1,5 +1,53 @@
 # Release Notes
 
+## v0.4.0
+
+Minimal Hook Preview stable release.
+
+- Package version is `0.4.0`.
+- README version is `0.4-doc.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.4.0 promotes the validated v0.4.0-alpha.0 and v0.4.0-alpha.1
+  Minimal Hook Preview surface to stable without adding new CLI behavior.
+- `orange hook preview`, `orange hook status`,
+  `orange hook run session-start`, and `orange hook run stop` are the stable
+  read-only / warning-first hook preview commands.
+- `session-start` and `stop` perform read-only checks only. They observe
+  project identity, Project Boundary, doctor quick status, graph/index state,
+  pending proposals, and capsule/identity freshness without repairing or
+  generating project memory.
+- Hook warnings use stable adapter-facing `{ code, message, hint }` objects
+  with `HOOK_*` warning codes such as `HOOK_PROJECT_ID_MISSING`,
+  `HOOK_IDENTITY_SUMMARY_MISSING`, `HOOK_CAPSULE_STALE`,
+  `HOOK_PENDING_PROPOSALS`, `HOOK_DOCTOR_NOT_OK`, and
+  `HOOK_GRAPH_PROVENANCE_WARNING`.
+- Hook report files use the stable report schema with generator metadata,
+  `schema_version`, `report_kind`, `generated_at`, `project_id`,
+  `project_name`, `event`, `readOnly: true`, `autoMutation: false`,
+  `warnings`, `summaries` for doctor/graph/identity/capsule, and
+  `recommended_commands`.
+- The no-mutation invariant is stable: default hook preview/status/run
+  commands do not modify Quest, Proposal, Graph, Capsule, Identity, Project
+  Boundary, or config state.
+- `--write-report` is the only hook option that writes a file. It writes a
+  local-only diagnostic report under `.orange-hyper/hooks/reports/`, which is
+  ignored by default and is not project memory.
+- v0.5 MCP Advisor is the next roadmap step after this stable hook preview
+  boundary.
+
+### Explicitly not included
+
+- MCP implementation or installation
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic proposal accept/reject
+- automatic graph rebuild
+- automatic doctor repair
+- automatic Quest, Proposal, or Graph mutation
+
 ## v0.4.0-alpha.1
 
 Minimal Hook Preview hardening alpha.

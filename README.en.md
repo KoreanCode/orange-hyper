@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.4-doc.1`
+- README version: `0.4-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.4.0-alpha.1, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, and Minimal Hook Preview features.
+As of v0.4.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, and Minimal Hook Preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -117,7 +117,7 @@ In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewri
 
 - Orange Hyper is still shipped as JavaScript.
 - TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
-- A full move of the source code to TypeScript is planned separately before or around the v0.4 hook work.
+- A full move of the source code to TypeScript remains separate future work after v0.4 stable.
 - Adapter JSON Contract still stays at `contract_version: "0.1"`.
 
 ## Install and Usage
@@ -131,10 +131,10 @@ npx -y --package orange-hyper@latest orange init
 npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
 ```
 
-Future v0.4 alpha channel:
+Stable latest channel:
 
 ```bash
-npx -y --package orange-hyper@alpha orange init
+npx -y --package orange-hyper@latest orange init
 ```
 
 Source checkout:
@@ -177,8 +177,8 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.1 Seed Kernel
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview (alpha)
-- v0.5 MCP Advisor
+- v0.4 Minimal Hook Preview (stable)
+- v0.5 MCP Advisor (next)
 - v0.6 Growth System
 - v0.7 Adapter Layer
 - v0.8 Eval and Reports

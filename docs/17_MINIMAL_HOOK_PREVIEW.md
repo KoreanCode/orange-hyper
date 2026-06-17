@@ -1,9 +1,8 @@
 # Minimal Hook Preview
 
-Orange Hyper v0.4.0-alpha.1 hardens the minimal hook preview introduced in
-v0.4.0-alpha.0. It is a
-read-only, warning-first command surface, not a strong harness and not an
-adapter runtime.
+Orange Hyper v0.4.0 promotes the Minimal Hook Preview validated in
+v0.4.0-alpha.0 and v0.4.0-alpha.1 to stable. It is a read-only,
+warning-first command surface, not a strong harness and not an adapter runtime.
 
 The preview shows what a future hook layer could observe at session start or
 stop. It does not install hooks, register MCP servers, run subagents, evolve
@@ -206,7 +205,14 @@ Report payloads use this stable schema:
 
 ```json
 {
+  "generated_by": "Orange Hyper",
+  "generator_package": "orange-hyper",
+  "generator_version": "0.4.0",
+  "source_repository": "https://github.com/KoreanCode/orange-hyper",
+  "official_package": "https://www.npmjs.com/package/orange-hyper",
+  "license": "MIT",
   "schema_version": 1,
+  "report_kind": "hook-run-stop",
   "generated_at": "2026-06-17T00:00:00.000Z",
   "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
   "project_name": "orange-hyper",

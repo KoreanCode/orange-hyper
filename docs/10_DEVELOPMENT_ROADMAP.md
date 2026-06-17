@@ -107,7 +107,7 @@ accept한 proposal만 graph node 후보를 생성한다.
 identity build에서 read-only graph preview와 source provenance를 볼 수 있다.
 ```
 
-## 5. v0.4 — Minimal Hook Preview
+## 5. v0.4 — Minimal Hook Preview (stable)
 
 목표: hook을 강한 하네스가 아니라 read-only / warning-first preview로 도입한다.
 
@@ -145,9 +145,10 @@ identity build에서 read-only graph preview와 source provenance를 볼 수 있
 사용자는 hook preview로 session-start/stop에서 무엇을 관찰할지 확인할 수 있다.
 hook run은 warning과 hint만 반환하고 Quest/Proposal/Graph/Identity/Project Boundary를 자동 수정하지 않는다.
 report는 --write-report를 명시했을 때만 .orange-hyper/hooks/reports/ 아래에 생성된다.
+v0.4 stable은 이 preview-only boundary를 고정하고, MCP는 v0.5로 넘긴다.
 ```
 
-## 6. v0.5 — MCP Advisor
+## 6. v0.5 — MCP Advisor (next)
 
 목표: MCP를 기본 장착이 아니라 역제안 체계로 제공한다.
 
@@ -221,19 +222,19 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.4 Minimal Hook Preview alpha
-2. hook warning vocabulary hardening
-3. optional hook config discussion without installation
-4. adapter-neutral event contract refinement
-5. tests and smoke checks for read-only behavior
-6. README and release notes examples
+1. v0.5 MCP Advisor
+2. MCP catalog and proposal card design
+3. use once / persistent install recommendation boundary
+4. risk and token impact wording
+5. adapter-facing command suggestion format
+6. docs and smoke checks that preserve explicit user approval
 
 ## 11. 다음 개발 목표
 
 ```text
-Step 1: keep v0.4 hooks preview-only
-Step 2: keep session-start and stop read-only
-Step 3: return warnings and hints without auto-repair
+Step 1: keep v0.4 hooks preview-only as stable
+Step 2: start v0.5 MCP Advisor as recommendation-only
+Step 3: require user approval before MCP install or use
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
 Step 6: defer real adapter layer to v0.7

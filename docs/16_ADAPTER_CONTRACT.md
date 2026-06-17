@@ -1,8 +1,8 @@
 # Adapter Contract
 
-Orange Hyper v0.4.0-alpha.1 is still a Seed Kernel with Memory Graph Usability,
-a read-only Identity Graph Preview, and a Minimal Hook Preview. The `orange`
-CLI is the kernel control plane, not the final end-user UX.
+Orange Hyper v0.4.0 is still a Seed Kernel with Memory Graph Usability, a
+read-only Identity Graph Preview, and a stable Minimal Hook Preview. The
+`orange` CLI is the kernel control plane, not the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -59,9 +59,9 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.4.0-alpha.1
-keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
-success and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. v0.4.0 keeps
+`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
+and failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
@@ -768,7 +768,42 @@ write is the local report file named in `data.report.file`.
       "written": true,
       "file": ".orange-hyper/hooks/reports/hook-run-stop-20260617T000000000Z.json"
     },
-    "observations": {},
+    "observations": {
+      "doctorQuickStatus": {
+        "ok": true,
+        "checkCount": 25,
+        "errorCount": 0,
+        "warningCount": 0,
+        "repairCount": 0,
+        "projectBoundaryErrorCount": 0,
+        "projectBoundaryWarningCount": 0
+      },
+      "completedQuestVerificationAnomalies": [],
+      "acceptedGraphNodeProvenanceAnomalies": [],
+      "pendingMemoryProposalCount": 0,
+      "capsule": {
+        "path": "capsules/current.md",
+        "exists": true,
+        "mtimeMs": 1780000000000,
+        "latestSourceMtimeMs": 1780000000000,
+        "latestSourcePath": "graph/index.json",
+        "stale": false,
+        "staleReason": null
+      },
+      "identity": {
+        "path": "identity/summary.json",
+        "exists": true,
+        "mtimeMs": 1780000000000,
+        "latestSourceMtimeMs": 1780000000000,
+        "latestSourcePath": "graph/index.json",
+        "stale": false,
+        "staleReason": null
+      },
+      "graphIndexExists": true,
+      "projectBoundaryActive": true,
+      "projectBoundaryWarnings": [],
+      "acceptedMemoryNodeCount": 2
+    },
     "warnings": [],
     "hints": []
   }
@@ -779,7 +814,14 @@ The report file payload has its own stable schema:
 
 ```json
 {
+  "generated_by": "Orange Hyper",
+  "generator_package": "orange-hyper",
+  "generator_version": "0.4.0",
+  "source_repository": "https://github.com/KoreanCode/orange-hyper",
+  "official_package": "https://www.npmjs.com/package/orange-hyper",
+  "license": "MIT",
   "schema_version": 1,
+  "report_kind": "hook-run-stop",
   "generated_at": "2026-06-17T00:00:00.000Z",
   "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
   "project_name": "orange-hyper",
