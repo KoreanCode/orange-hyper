@@ -1,6 +1,6 @@
 # MCP Advisor
 
-Orange Hyper v0.5.0-alpha.1 keeps MCP Advisor as a read-only recommendation
+Orange Hyper v0.5.0 stabilizes MCP Advisor as a read-only recommendation
 layer. It is not MCP integration.
 
 The advisor can explain when an MCP may help, but it does not install, run,
@@ -26,7 +26,7 @@ All JSON output uses the Adapter JSON Contract envelope with
 
 ## Catalog
 
-v0.5 starts with a small built-in catalog:
+v0.5 stable ships with a small built-in catalog:
 
 | id | category | useful when |
 | --- | --- | --- |
@@ -68,6 +68,7 @@ The advisor then returns zero or more proposal cards:
 - product/task tracking context -> `linear`
 
 No suggestion is a command to act. It is only a card the user can evaluate.
+Proposal cards are not install results, run results, or durable project memory.
 
 Scoring is deterministic and local-only. Orange Hyper does not call an LLM,
 network service, MCP server, installer, or config writer while scoring. Each
@@ -78,6 +79,11 @@ matched catalog signal contributes a fixed score. Suggestions include:
 - `matched_signals`
 - `why_now`
 - `requires_user_approval: true`
+
+Proposal cards include:
+
+- `not_executed: true`
+- `config_mutation: false`
 
 Current signal coverage is intentionally small and multilingual:
 
@@ -189,4 +195,5 @@ runs when the user explicitly calls `orange mcp ...`.
 - role evolution
 - auto planner
 - auto execution loop
+- project memory automatic mutation
 - unapproved state changes

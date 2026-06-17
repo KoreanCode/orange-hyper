@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.5-doc.1`
+- README version: `0.5-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.5.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor alpha 기능을 제공합니다.
+v0.5.0 stable 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -101,8 +101,9 @@ v0.5.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability,
 - hook preview는 자동 Quest/Proposal/Graph/Identity/Project Boundary 수정을 하지 않습니다.
 - `--write-report`를 명시했을 때만 `.orange-hyper/hooks/reports/` 아래에 local report를 생성합니다.
 - hook warning과 local report는 adapter가 해석할 수 있는 안정적인 JSON shape를 유지합니다.
-- `mcp list`, `mcp show`, `mcp suggest`는 현재 Quest/Graph/Doctor/Hook 상태와 요청 문맥을 바탕으로 score와 no-suggestion 상태를 가진 read-only MCP proposal card만 제안합니다.
-- MCP Advisor는 MCP를 자동 설치/실행하지 않고 config, Quest, Proposal, Graph, project memory를 자동 수정하지 않습니다.
+- `mcp list`, `mcp show`, `mcp suggest`는 현재 Quest/Graph/Doctor/Hook 상태와 요청 문맥을 바탕으로 score, confidence, matched_signals, no-suggestion 상태를 가진 read-only MCP proposal card만 제안합니다.
+- MCP Advisor proposal card는 설치/실행 결과가 아니며 `requires_user_approval: true`, `not_executed: true`, `config_mutation: false` 경계를 유지합니다.
+- MCP Advisor는 MCP를 자동 설치/실행하지 않고 config, Quest, Proposal, Graph, project memory를 자동 수정하지 않으며 외부 네트워크를 호출하지 않습니다.
 - Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
 
 ## Memory Lifecycle
@@ -182,8 +183,8 @@ orange doctor
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
 - v0.4 Minimal Hook Preview (stable)
-- v0.5 MCP Advisor (current alpha)
-- v0.6 Growth System
+- v0.5 MCP Advisor (stable)
+- v0.6 Growth System (next)
 - v0.7 Adapter Layer
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary

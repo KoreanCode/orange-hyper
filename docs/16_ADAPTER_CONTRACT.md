@@ -1,8 +1,8 @@
 # Adapter Contract
 
-Orange Hyper v0.5.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.5.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, and a
-read-only MCP Advisor alpha. The `orange` CLI is the kernel control plane, not
+stable read-only MCP Advisor. The `orange` CLI is the kernel control plane, not
 the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
@@ -60,7 +60,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.5.0-alpha.0
+`contract_version` is the adapter-facing JSON contract version. v0.5.0
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -162,9 +162,20 @@ orange mcp list --json
           "id": "context7",
           "name": "Context7",
           "category": "documentation",
-          "use_cases": ["version-specific library documentation lookup"],
-          "useful_when": ["framework/library freshness matters"],
-          "risks": ["external documentation context can increase prompt size"],
+          "use_cases": [
+            "version-specific library documentation lookup",
+            "framework API freshness checks",
+            "migration or deprecation review"
+          ],
+          "useful_when": [
+            "framework/library freshness matters",
+            "the task depends on current API examples",
+            "hallucinated or stale library usage would be costly"
+          ],
+          "risks": [
+            "external documentation context can increase prompt size",
+            "documentation results still need user/model review before code changes"
+          ],
           "token_impact": "medium",
           "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
           "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
@@ -173,9 +184,20 @@ orange mcp list --json
           "id": "github",
           "name": "GitHub",
           "category": "repository",
-          "use_cases": ["issue and pull request context"],
-          "useful_when": ["repo issue/PR context matters"],
-          "risks": ["repository metadata may include private discussion or user data"],
+          "use_cases": [
+            "issue and pull request context",
+            "repository discussion or review context",
+            "linked commit or branch investigation"
+          ],
+          "useful_when": [
+            "repo issue/PR context matters",
+            "the task references external GitHub threads",
+            "review comments or issue decisions are needed"
+          ],
+          "risks": [
+            "repository metadata may include private discussion or user data",
+            "credentials must stay in the MCP client or provider, not Orange Hyper memory"
+          ],
           "token_impact": "medium",
           "install_hint": "codex mcp add github -- <github-mcp-server-command>",
           "persistent_use_policy": "Use once for a specific issue or PR. Persist only for repositories where the user explicitly approves ongoing access."
@@ -184,9 +206,20 @@ orange mcp list --json
           "id": "sentry",
           "name": "Sentry",
           "category": "observability",
-          "use_cases": ["runtime error and incident context"],
-          "useful_when": ["runtime incident/error context exists"],
-          "risks": ["incident data can include sensitive runtime details"],
+          "use_cases": [
+            "runtime error and incident context",
+            "stack trace and release health investigation",
+            "production regression triage"
+          ],
+          "useful_when": [
+            "runtime incident/error context exists",
+            "stack traces or event samples would change the fix",
+            "production release health matters"
+          ],
+          "risks": [
+            "incident data can include sensitive runtime details",
+            "high-volume traces can consume many tokens"
+          ],
           "token_impact": "high",
           "install_hint": "codex mcp add sentry -- <sentry-mcp-server-command>",
           "persistent_use_policy": "Use once for a bounded incident. Persist only after explicit approval for a specific project and read-only scope."
@@ -195,9 +228,20 @@ orange mcp list --json
           "id": "linear",
           "name": "Linear",
           "category": "product",
-          "use_cases": ["product issue and work item context"],
-          "useful_when": ["product/task tracking context is needed"],
-          "risks": ["work items may include private roadmap or customer context"],
+          "use_cases": [
+            "product issue and work item context",
+            "roadmap or backlog clarification",
+            "task tracking and acceptance criteria lookup"
+          ],
+          "useful_when": [
+            "product/task tracking context is needed",
+            "acceptance criteria live outside the repo",
+            "work item state changes the implementation scope"
+          ],
+          "risks": [
+            "work items may include private roadmap or customer context",
+            "task tracker context should not be copied into project memory wholesale"
+          ],
           "token_impact": "medium",
           "install_hint": "codex mcp add linear -- <linear-mcp-server-command>",
           "persistent_use_policy": "Use once for a specific work item. Persist only after repeated product-tracking work and explicit user approval."
@@ -224,9 +268,20 @@ orange mcp show context7 --json
       "id": "context7",
       "name": "Context7",
       "category": "documentation",
-      "use_cases": ["version-specific library documentation lookup"],
-      "useful_when": ["framework/library freshness matters"],
-      "risks": ["external documentation context can increase prompt size"],
+      "use_cases": [
+        "version-specific library documentation lookup",
+        "framework API freshness checks",
+        "migration or deprecation review"
+      ],
+      "useful_when": [
+        "framework/library freshness matters",
+        "the task depends on current API examples",
+        "hallucinated or stale library usage would be costly"
+      ],
+      "risks": [
+        "external documentation context can increase prompt size",
+        "documentation results still need user/model review before code changes"
+      ],
       "token_impact": "medium",
       "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
       "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
@@ -309,9 +364,20 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
           "id": "context7",
           "name": "Context7",
           "category": "documentation",
-          "use_cases": ["version-specific library documentation lookup"],
-          "useful_when": ["framework/library freshness matters"],
-          "risks": ["external documentation context can increase prompt size"],
+          "use_cases": [
+            "version-specific library documentation lookup",
+            "framework API freshness checks",
+            "migration or deprecation review"
+          ],
+          "useful_when": [
+            "framework/library freshness matters",
+            "the task depends on current API examples",
+            "hallucinated or stale library usage would be costly"
+          ],
+          "risks": [
+            "external documentation context can increase prompt size",
+            "documentation results still need user/model review before code changes"
+          ],
           "token_impact": "medium",
           "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
           "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
@@ -1067,7 +1133,7 @@ The report file payload has its own stable schema:
 {
   "generated_by": "Orange Hyper",
   "generator_package": "orange-hyper",
-  "generator_version": "0.4.0",
+  "generator_version": "0.5.0",
   "source_repository": "https://github.com/KoreanCode/orange-hyper",
   "official_package": "https://www.npmjs.com/package/orange-hyper",
   "license": "MIT",

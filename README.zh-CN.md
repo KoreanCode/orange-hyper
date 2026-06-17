@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.5-doc.1`
+- README version: `0.5-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.5.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview 和 MCP Advisor alpha 功能。
+以 v0.5.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview 和 MCP Advisor stable 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -101,8 +101,9 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - hook preview 不会自动修改 Quest、Proposal、Graph、Identity 或 Project Boundary。
 - 只有显式传入 `--write-report` 时，才会在 `.orange-hyper/hooks/reports/` 下生成 local report。
 - hook warning 和 local report 会保持 adapter 可解析的稳定 JSON shape。
-- `mcp list`、`mcp show`、`mcp suggest` 只提供带 score 和 no-suggestion 状态的 read-only MCP proposal card。
-- MCP Advisor 不会安装或运行 MCP，不会修改 config，也不会写入 project memory。
+- `mcp list`、`mcp show`、`mcp suggest` 只提供带 score、confidence、matched_signals 和 no-suggestion 状态的 read-only MCP proposal card。
+- MCP Advisor proposal card 不是安装或执行结果，并保持 `requires_user_approval: true`、`not_executed: true`、`config_mutation: false` 边界。
+- MCP Advisor 不会安装或运行 MCP，不会修改 config，不会写入 project memory，也不会发起外部网络调用。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
 
 ## Memory Lifecycle
@@ -160,6 +161,7 @@ npx -y --package orange-hyper@latest orange route "查找搜索排序 bug 的原
 npx -y --package orange-hyper@latest orange capsule
 npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
 npx -y --package orange-hyper@latest orange doctor
+npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
 ```
 
 从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
@@ -180,8 +182,8 @@ orange doctor
 - v0.2 Memory Delta Proposal
 - v0.3 Memory Graph Usability + Identity Graph Preview
 - v0.4 Minimal Hook Preview (stable)
-- v0.5 MCP Advisor (next)
-- v0.6 Growth System
+- v0.5 MCP Advisor (stable)
+- v0.6 Growth System (next)
 - v0.7 Adapter Layer
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
@@ -197,6 +199,7 @@ Orange Hyper 不打算成为：
 - 未经用户批准的 memory accept
 - raw prompt archive
 - 从第一天就启用的 role zoo、MCP bundle、hook system 或 subagent orchestration
+- MCP 自动安装、自动执行或 config 自动修改
 - auto planner 或 auto execution loop
 - 必须依赖 graph DB 或 vector DB 的系统
 - 自动把外部 report、clipboard、file 当作 project memory 的系统
@@ -211,4 +214,5 @@ Orange Hyper 不打算成为：
 - [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
 - [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
 - [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
+- [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Release Notes](RELEASE_NOTES.md)

@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.5.0
+
+MCP Advisor stable release.
+
+- Package version is `0.5.0`.
+- README version is `0.5-doc.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.5.0 promotes the validated MCP Advisor alpha surface to stable without
+  adding MCP integration or automatic execution behavior.
+- Stable command surface:
+  `orange mcp list`, `orange mcp show <mcp-id>`, and
+  `orange mcp suggest [--quest <quest-id>] [--query <text>]`.
+- The built-in MCP catalog remains local and deterministic, starting with
+  `context7`, `github`, `sentry`, and `linear`.
+- `mcp suggest` returns proposal cards with score-backed recommendation
+  metadata: `score`, `confidence`, `matched_signals`, `why_now`, and
+  `requires_user_approval: true`.
+- Proposal cards remain recommendation cards, not install or execution results;
+  they include `not_executed: true` and `config_mutation: false`.
+- Weak or unrelated inputs return the explicit no-suggestion state with
+  `suggestions: []`, `proposal_cards: []`, `no_suggestion_reason`, and
+  `suggested_next_step`.
+- Ranking is deterministic by descending `score`, built-in catalog order, and
+  MCP id tie-breaker.
+- Korean and English catalog signal matching is stable for docs/version/API,
+  repository issue/PR, runtime incident/error, and product ticket/task contexts.
+- Quest-based suggestions remain read-only and can use active or completed
+  Quest title, request, constraints, and notes without mutating the Quest or
+  project memory.
+
+### Explicitly not included
+
+- MCP automatic installation
+- MCP automatic execution
+- MCP config automatic modification
+- API key storage
+- external network calls
+- hook-triggered MCP suggestion, installation, or execution
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+- automatic Quest, Proposal, Graph, config, or project memory mutation
+
 ## v0.5.0-alpha.1
 
 MCP Advisor recommendation-quality hardening.

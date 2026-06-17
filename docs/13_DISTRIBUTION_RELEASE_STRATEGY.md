@@ -256,7 +256,8 @@ npm provenance에 필요한 OIDC provider가 없어 실패할 수 있다.
 
 긴급하게 로컬 publish가 꼭 필요할 때는 provenance를 끌 수 있다. 다만 이 방식은
 stable과 alpha 모두에서 공식 release path가 아니며, 기본 배포 경로로 문서화하거나
-반복 사용하지 않는다.
+반복 사용하지 않는다. alpha는 `--tag alpha`, stable은 npm 기본 `latest` tag를
+따르지만 둘 다 공식 경로는 GitHub Actions Trusted Publishing이다.
 
 ```bash
 NPM_CONFIG_PROVENANCE=false npm publish --tag alpha
@@ -288,7 +289,7 @@ push tag v*:
 ```
 
 `v*-alpha.*` tag는 npm `alpha` dist-tag로 publish한다. 일반
-`vX.Y.Z` tag는 npm 기본 dist-tag인 `latest`로 publish한다. 따라서 `v0.3.0`
+`vX.Y.Z` tag는 npm 기본 dist-tag인 `latest`로 publish한다. 따라서 `v0.5.0`
 stable tag는 GitHub Actions Trusted Publishing 경로에서 `npm publish`를 실행하고
 `latest` dist-tag를 받는다.
 
