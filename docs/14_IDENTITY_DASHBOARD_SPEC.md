@@ -13,10 +13,15 @@ graph engine, editor, graph state mutation은 포함하지 않는다.
 v0.4 이후 후보 identity 기능은 hook preview 이후 반복 증거에 따라 더 풍부한 graph
 view를 검토할 수 있다. 단, 목적은 예쁜 그래프가 아니다. 장기 목표는 다음이다.
 
-v0.6.0-alpha.0은 Identity Dashboard에 Growth Signal Preview summary를 추가한다.
+v0.6.0 stable은 Identity Dashboard에 Growth Signal Preview summary를 제공한다.
 이는 Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을
 read-only로 요약하는 섹션이며 graph editor, role system, automatic unlock
 control은 포함하지 않는다.
+
+이 summary는 automatic unlock UI가 아니다. Candidate를 보여주더라도 role,
+tool, hook, MCP, subagent, workflow를 생성/설치/실행/변경하지 않으며,
+project memory나 config도 수정하지 않는다. 사용자가 직접 `orange growth ...`
+명령을 실행해 evidence를 확인하고 별도 승인 흐름을 선택해야 한다.
 
 ```text
 1. 프로젝트가 어떤 기억을 쌓고 있는지 보여준다.

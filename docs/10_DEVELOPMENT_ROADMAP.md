@@ -189,11 +189,11 @@ proposal card는 tool, why_now, expected_benefit, scope, risk, token_impact, ins
 use_once_or_persist, requires_user_approval, not_executed, config_mutation를 제공한다.
 ```
 
-## 7. v0.6 — Growth Signal Preview (current alpha)
+## 7. v0.6 — Growth Signal Preview (stable)
 
 목표: Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을
 read-only로 읽어 프로젝트가 어떤 방향으로 성장 중인지 요약하고 성장 후보를
-제안한다. v0.6.0-alpha.0은 자동 성장 시스템이 아니라 preview다.
+제안한다. v0.6.0 stable은 자동 성장 시스템이 아니라 stable preview surface다.
 
 포함:
 
@@ -230,7 +230,7 @@ auto_unlock: false 및 requires_user_approval: true를 유지한다.
 growthLevel은 장식적 preview label이며 자동 unlock을 의미하지 않는다.
 ```
 
-## 8. v0.7 — Adapter Layer
+## 8. v0.7 — Adapter Layer (next)
 
 목표: Codex 외 client도 지원 가능한 구조로 확장한다.
 
@@ -268,22 +268,23 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.6 Growth Signal Preview alpha
-2. deterministic evidence rules for growth status/suggest/explain
-3. Identity Dashboard growth preview summary
-4. docs and smoke checks that preserve explicit user approval
-5. future growth profile design only after preview evidence stabilizes
-6. future role proposal boundary only after explicit user approval
+1. v0.7 Adapter Layer
+2. Adapter interface stabilization
+3. Codex adapter and generic CLI adapter proof
+4. Claude Code adapter draft
+5. model capability profile
+6. future growth profile design only after preview evidence remains stable
+7. future role proposal boundary only after explicit user approval
 
 ## 11. 다음 개발 목표
 
 ```text
-Step 1: keep v0.5 MCP Advisor stable as recommendation-only
-Step 2: require user approval before MCP install or use
-Step 3: start v0.6 Growth Signal Preview without auto role evolution
+Step 1: keep v0.6 Growth Signal Preview stable as preview-only
+Step 2: keep user approval before MCP install/use and growth candidate action
+Step 3: preserve no automatic role, hook, subagent, planner, workflow, config, graph, or project-memory mutation
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
-Step 6: defer real adapter layer to v0.7
+Step 6: move next to the real v0.7 Adapter Layer
 ```
 
 ## 12. 품질 기준

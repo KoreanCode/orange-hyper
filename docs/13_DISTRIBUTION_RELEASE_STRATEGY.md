@@ -182,7 +182,7 @@ MAJOR.MINOR.PATCH
 0.3.x: Memory Graph Usability + Identity Graph Preview
 0.4.x: Minimal Hook Preview
 0.5.x: MCP Advisor
-0.6.x: Role/Growth System
+0.6.x: Growth Signal Preview
 ```
 
 Pre-release:

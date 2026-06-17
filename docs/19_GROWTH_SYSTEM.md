@@ -1,6 +1,6 @@
 # Growth Signal Preview
 
-Orange Hyper v0.6.0-alpha.1 hardens Growth Signal Preview quality.
+Orange Hyper v0.6.0 stabilizes Growth Signal Preview.
 
 This is not an automatic growth system. It is a read-only preview that observes
 repeated evidence from Quest, Route, accepted Memory Graph, Hook warning, and
@@ -138,6 +138,9 @@ generic `API` text in a Route Contract does not create the backend/API focus
 candidate unless a non-generic backend, endpoint, service, data-access, auth,
 server, request, or response signal also repeats.
 
+A single Quest smoke with too little repeated evidence should produce no
+candidate. That is the expected negative case, not a failure.
+
 Ranking is deterministic:
 
 1. higher `score`
@@ -192,6 +195,10 @@ The Identity Dashboard still does not include:
 - MCP install or run controls
 - hook policy controls
 
+The Growth Signal Preview section is not an automatic unlock UI. It displays
+candidate evidence and points users back to explicit commands; it does not
+accept candidates, create roles, install tools, run hooks, or mutate memory.
+
 ## Hook and MCP Boundaries
 
 Hooks do not run Growth Signal Preview automatically. Growth commands run only
@@ -203,7 +210,7 @@ install MCPs, run MCP tools, or write MCP config.
 
 ## Release Boundary
 
-v0.6.0-alpha.1 intentionally stops at preview hardening:
+v0.6.0 intentionally stops at stable Growth Signal Preview:
 
 - no role automatic creation
 - no MCP automatic installation or execution
@@ -213,3 +220,16 @@ v0.6.0-alpha.1 intentionally stops at preview hardening:
 - no project memory automatic mutation
 - no graph node automatic creation
 - no workflow enforcement
+
+## Stable Smoke Evidence
+
+The v0.6 stable prep smoke keeps these expectations explicit:
+
+- A single Quest smoke can return no candidate when evidence does not repeat.
+- Repeated documentation, verification, and memory hygiene evidence can create
+  candidates.
+- Positive repo smoke produced `verification-discipline`,
+  `documentation-focus`, and `memory-hygiene` candidates with score, source
+  evidence, `auto_unlock: false`, and `requires_user_approval: true`.
+- The same positive smoke kept `growthLevel` at `sprout`, because higher labels
+  remain conservative preview labels rather than automatic unlocks.

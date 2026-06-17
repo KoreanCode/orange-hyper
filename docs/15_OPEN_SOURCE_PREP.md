@@ -158,7 +158,7 @@ v0.2.0: memory graph usability
 v0.3.0: memory graph hardening and identity preview
 v0.4.0: minimal hook preview
 v0.5.0: MCP advisor
-v0.6.0-alpha.0: Growth Signal Preview
+v0.6.0: Growth Signal Preview
 ```
 
 각 release는 migration note를 포함해야 한다.

@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v0.6.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.6.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
 read-only MCP Advisor, and a read-only Growth Signal Preview. The `orange` CLI
 is the kernel control plane, not the final end-user UX.
@@ -60,7 +60,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.6.0-alpha.0
+`contract_version` is the adapter-facing JSON contract version. v0.6.0
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -171,6 +171,9 @@ orange growth status --json
     "readOnly": true,
     "deterministic": true,
     "autoUnlock": false,
+    "autoMutation": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
     "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
     "project_name": "orange-hyper",
     "acceptedMemoryNodes": 3,
@@ -202,7 +205,18 @@ orange growth status --json
     "repeatedEvidenceCount": 14,
     "growthLevel": "branch",
     "growthLevelReason": "Branch requires accepted nodes plus node-type diversity, verified Quest history, repeated evidence, manageable pending proposals, doctor ok, and active project boundary.",
-    "growthLevelUnlocks": false
+    "growthLevelUnlocks": false,
+    "boundaries": {
+      "auto_role_creation": false,
+      "mcp_auto_install": false,
+      "mcp_auto_run": false,
+      "hook_policy_auto_change": false,
+      "subagent_auto_run": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "graph_node_auto_creation": false,
+      "workflow_enforcement": false
+    }
   }
 }
 ```
@@ -225,6 +239,8 @@ orange growth suggest --json
     "networkCall": false,
     "mcpCall": false,
     "autoUnlock": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
     "candidates": [
       {
         "id": "verification-discipline",
@@ -274,7 +290,19 @@ orange growth suggest --json
         "auto_unlock": false,
         "requires_user_approval": true
       }
-    ]
+    ],
+    "no_candidate_reason": null,
+    "boundaries": {
+      "auto_role_creation": false,
+      "mcp_auto_install": false,
+      "mcp_auto_run": false,
+      "hook_policy_auto_change": false,
+      "subagent_auto_run": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "graph_node_auto_creation": false,
+      "workflow_enforcement": false
+    }
   }
 }
 ```
@@ -297,6 +325,8 @@ orange growth explain --json
     "networkCall": false,
     "mcpCall": false,
     "autoUnlock": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
     "explanations": [
       {
         "candidate_id": "verification-discipline",
@@ -329,7 +359,19 @@ orange growth explain --json
         "auto_unlock": false,
         "requires_user_approval": true
       }
-    ]
+    ],
+    "no_candidate_reason": null,
+    "boundaries": {
+      "auto_role_creation": false,
+      "mcp_auto_install": false,
+      "mcp_auto_run": false,
+      "hook_policy_auto_change": false,
+      "subagent_auto_run": false,
+      "project_memory_auto_mutation": false,
+      "config_auto_mutation": false,
+      "graph_node_auto_creation": false,
+      "workflow_enforcement": false
+    }
   }
 }
 ```
@@ -1324,7 +1366,7 @@ The report file payload has its own stable schema:
 {
   "generated_by": "Orange Hyper",
   "generator_package": "orange-hyper",
-  "generator_version": "0.6.0-alpha.0",
+  "generator_version": "0.6.0",
   "source_repository": "https://github.com/KoreanCode/orange-hyper",
   "official_package": "https://www.npmjs.com/package/orange-hyper",
   "license": "MIT",

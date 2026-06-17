@@ -1,5 +1,50 @@
 # Release Notes
 
+## v0.6.0
+
+Growth Signal Preview stable release.
+
+- Package version is `0.6.0`.
+- README version is `0.6-doc.2`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- v0.6.0 promotes the validated v0.6.0-alpha.0 and v0.6.0-alpha.1 Growth
+  Signal Preview surface to stable without adding automatic role, tool, hook,
+  subagent, planner, workflow, config, graph, or project-memory mutation.
+- Stable command surface:
+  `orange growth status`, `orange growth suggest`, and
+  `orange growth explain`.
+- `growth status` reports conservative project growth state from Quest, Route,
+  accepted Memory Graph, Hook warning, Doctor, and MCP-advisor-shaped
+  documentation/API freshness signals.
+- `growth suggest` creates candidates only from repeated source-backed
+  evidence. Each candidate includes `score`, `evidence_count`,
+  `matched_signals`, `confidence`, `reason`, `suggested_next_step`,
+  `auto_unlock: false`, and `requires_user_approval: true`.
+- `growth explain` reports the same deterministic rule path with source-backed
+  evidence instead of LLM calls, network calls, MCP calls, or planner loops.
+- No-candidate negative cases are expected when evidence is too thin; a single
+  Quest or one-off generic signal should not create a candidate.
+- Positive repo smoke showed repeated documentation, verification, and memory
+  hygiene evidence producing `verification-discipline`, `documentation-focus`,
+  and `memory-hygiene` candidates while keeping `growthLevel` conservatively at
+  `sprout`.
+- `identity build` includes a Growth Signal Preview summary with growth level
+  reason, candidate count, top candidates, growth confidence summary, and
+  `No automatic unlocks`.
+- v0.7 Adapter Layer is the next roadmap step after this stable Growth Signal
+  Preview boundary.
+
+### Explicitly not included
+
+- role automatic creation
+- MCP automatic installation or execution
+- hook policy automatic changes
+- subagent execution or recommendation automation
+- auto planner or auto execution loop
+- project memory automatic mutation
+- graph node automatic creation
+- workflow enforcement
+
 ## v0.6.0-alpha.1
 
 Growth Signal Preview quality hardening.
