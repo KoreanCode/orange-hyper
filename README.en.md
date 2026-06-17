@@ -107,6 +107,15 @@ As of v0.3.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usabili
 
 Orange Hyper does not store memory automatically. Only a user-accepted proposal becomes an accepted memory node candidate, and pending or rejected proposals are not graph nodes.
 
+## Type Safety Foundation
+
+In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewritten in TypeScript. It means the project now has a first safety check for the shapes it promises: `--json` output and the Quest, Proposal, Graph, Doctor, and Identity data.
+
+- Orange Hyper is still shipped as JavaScript.
+- TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
+- A full move of the source code to TypeScript is planned separately before or around the v0.4 hook work.
+- Adapter JSON Contract still stays at `contract_version: "0.1"`.
+
 ## Install and Usage
 
 Use `npx` with Node 20 or newer. The npm package name is `orange-hyper`; the primary CLI command is `orange`.

@@ -107,6 +107,15 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 Orange Hyper 不会自动保存记忆。只有用户 accept 的 proposal 才会成为 accepted memory node candidate，pending 或 rejected proposal 不是 graph node。
 
+## Type Safety Foundation（类型安全基础）
+
+在 v0.3 stable 中，Type Safety Foundation 并不是把 Orange Hyper 一次性改写成 TypeScript。它的意思是，项目先为自己承诺的数据形状加上一层检查：`--json` 输出，以及 Quest、Proposal、Graph、Doctor、Identity 之间传递的信息。
+
+- Orange Hyper 在这个阶段仍然以 JavaScript 包发布。
+- TypeScript 先作为安静的检查工具使用，帮助确认这些数据形状没有被不小心改坏。
+- 完整的 TypeScript 源码迁移会在 v0.4 hook 工作前后单独推进。
+- Adapter JSON Contract 继续保持 `contract_version: "0.1"`。
+
 ## 安装与使用
 
 Node 20 或更高版本可以直接用 `npx` 运行。npm package name 是 `orange-hyper`，primary CLI command 是 `orange`。

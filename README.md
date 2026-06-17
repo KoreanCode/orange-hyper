@@ -109,14 +109,12 @@ Orange Hyper는 자동으로 기억을 저장하지 않습니다. 사용자가 a
 
 ## Type Safety Foundation
 
-v0.3 stable의 Type Safety Foundation은 전체 TypeScript rewrite가 아니라
-Adapter JSON Contract와 Quest/Proposal/Graph/Doctor/Identity schema를 먼저
-고정하기 위한 contract-checking layer입니다.
+v0.3 stable의 Type Safety Foundation은 Orange Hyper 전체를 한 번에 TypeScript로 바꾸는 작업이 아닙니다. 먼저 `--json` 출력과 Quest, Proposal, Graph, Doctor, Identity가 주고받는 정보의 모양을 확인하는 바탕을 마련한 단계입니다. 기능을 크게 바꾸기보다, 앞으로 깨지면 안 되는 약속을 조용히 고정합니다.
 
-- Orange Hyper is still distributed as JavaScript in this phase.
-- TypeScript is used first as a contract checker.
-- Full TS source migration is planned before/around v0.4 hook work.
-- Adapter JSON Contract remains contract_version `"0.1"`.
+- Orange Hyper는 이 단계에서도 JavaScript 패키지로 배포됩니다.
+- TypeScript는 먼저 안전 확인용으로 씁니다. 약속한 JSON과 상태 정보가 맞는지 살피는 역할입니다.
+- 전체 소스를 TypeScript로 옮기는 일은 v0.4 hook 작업 전후에 따로 진행할 예정입니다.
+- Adapter JSON Contract는 계속 `contract_version: "0.1"`을 유지합니다.
 
 ## 설치/사용법
 
