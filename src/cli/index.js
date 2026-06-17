@@ -6,6 +6,7 @@ import { runDoctor } from "../core/doctor.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
 import { hookStatus, previewHook, runHookEvent } from "../core/hook.js";
 import { buildIdentityPlaceholder } from "../core/identity.js";
+import { listMcpCatalog, showMcpCatalogEntry, suggestMcp } from "../core/mcp.js";
 import {
   acceptMemoryDelta,
   findMemoryDeltaProposal,
@@ -33,6 +34,9 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").HookPreviewResult} HookPreviewResult
  * @typedef {import("../core/types.d.ts").HookRunResult} HookRunResult
  * @typedef {import("../core/types.d.ts").HookStatusResult} HookStatusResult
+ * @typedef {import("../core/types.d.ts").McpAdvisorResult} McpAdvisorResult
+ * @typedef {import("../core/types.d.ts").McpCatalogEntry} McpCatalogEntry
+ * @typedef {import("../core/types.d.ts").McpProposalCard} McpProposalCard
  *
  * @typedef {{
  *   id: string,
@@ -112,6 +116,11 @@ const COMMAND_IDS = {
   },
   identity: {
     build: "identity.build"
+  },
+  mcp: {
+    list: "mcp.list",
+    show: "mcp.show",
+    suggest: "mcp.suggest"
   },
   quest: {
     done: "quest.done",
@@ -207,6 +216,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "hook") {
     await hookCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "mcp") {
+    await mcpCommand(cwd, io, rest);
     return;
   }
 
@@ -355,6 +369,55 @@ async function hookCommand(cwd, io, argv) {
     return;
   }
   throw new Error(`Unknown hook command: ${subcommand}`);
+}
+
+async function mcpCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, mcpUsage());
+    return;
+  }
+  if (subcommand === "list") {
+    const args = parseArgs(rest);
+    const entries = listMcpCatalog();
+    const data = {
+      catalog: {
+        count: entries.length,
+        entries
+      }
+    };
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.mcp.list, data));
+      return;
+    }
+    write(io, formatMcpCatalogList(entries));
+    return;
+  }
+  if (subcommand === "show") {
+    const args = parseArgs(rest);
+    const id = args.positionals[0];
+    const tool = showMcpCatalogEntry(id);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.mcp.show, { tool }));
+      return;
+    }
+    write(io, formatMcpCatalogEntry(tool));
+    return;
+  }
+  if (subcommand === "suggest") {
+    const args = parseArgs(rest);
+    const result = suggestMcp(cwd, {
+      quest: args.flags.quest,
+      query: args.flags.query || args.positionals.join(" ")
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.mcp.suggest, result));
+      return;
+    }
+    write(io, formatMcpAdvisorResult(result));
+    return;
+  }
+  throw new Error(`Unknown mcp command: ${subcommand}`);
 }
 
 async function identityCommand(cwd, io, argv) {
@@ -933,6 +996,114 @@ function formatHookValue(value) {
   return String(value);
 }
 
+/**
+ * @param {McpCatalogEntry[]} entries
+ */
+function formatMcpCatalogList(entries) {
+  const rows = entries.map((entry) => ({
+    id: entry.id,
+    name: entry.name,
+    category: entry.category,
+    token: entry.token_impact,
+    useCase: entry.use_cases[0] || ""
+  }));
+  const widths = {
+    id: Math.max(2, ...rows.map((row) => row.id.length)),
+    name: Math.max(4, ...rows.map((row) => row.name.length)),
+    category: Math.max(8, ...rows.map((row) => row.category.length)),
+    token: Math.max(12, ...rows.map((row) => row.token.length))
+  };
+  const header = `${"ID".padEnd(widths.id)}  ${"NAME".padEnd(widths.name)}  ${"CATEGORY".padEnd(widths.category)}  ${"TOKEN_IMPACT".padEnd(widths.token)}  USE CASE`;
+  const lines = rows.map((row) =>
+    `${row.id.padEnd(widths.id)}  ${row.name.padEnd(widths.name)}  ${row.category.padEnd(widths.category)}  ${row.token.padEnd(widths.token)}  ${row.useCase}`
+  );
+  return [
+    "Orange MCP catalog",
+    header,
+    ...lines,
+    "",
+    "Advisor only: Orange Hyper does not install, run, or configure MCP servers."
+  ].join("\n");
+}
+
+/**
+ * @param {McpCatalogEntry} entry
+ */
+function formatMcpCatalogEntry(entry) {
+  return [
+    `MCP: ${entry.id} (${entry.name})`,
+    `Category: ${entry.category}`,
+    `Token impact: ${entry.token_impact}`,
+    "",
+    "Use cases:",
+    ...entry.use_cases.map((item) => `  - ${item}`),
+    "",
+    "Useful when:",
+    ...entry.useful_when.map((item) => `  - ${item}`),
+    "",
+    "Risks:",
+    ...entry.risks.map((item) => `  - ${item}`),
+    "",
+    `Install hint: ${entry.install_hint}`,
+    `Persistent use policy: ${entry.persistent_use_policy}`,
+    "",
+    "Advisor only: requires explicit user approval before any install or use."
+  ].join("\n");
+}
+
+/**
+ * @param {McpAdvisorResult} result
+ */
+function formatMcpAdvisorResult(result) {
+  const lines = [
+    "Orange MCP Advisor",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Auto install: ${yesNo(result.autoInstall)}`,
+    `Auto run: ${yesNo(result.autoRun)}`,
+    `Config mutation: ${yesNo(result.configMutation)}`,
+    `Project memory mutation: ${yesNo(result.projectMemoryMutation)}`
+  ];
+  if (result.input.quest) {
+    lines.push(`Quest: ${result.input.quest.id} (${result.input.quest.title})`);
+  }
+  if (result.input.query) {
+    lines.push(`Query: ${result.input.query}`);
+  }
+  if (!result.proposal_cards.length) {
+    lines.push("");
+    lines.push("No MCP proposal matched this request.");
+    lines.push("No MCP was installed, run, or persisted.");
+    return lines.join("\n");
+  }
+  lines.push("");
+  result.proposal_cards.forEach((card, index) => {
+    if (index > 0) {
+      lines.push("");
+    }
+    lines.push(...formatMcpProposalCard(card).split("\n"));
+  });
+  lines.push("");
+  lines.push("No MCP was installed, run, configured, or saved to project memory.");
+  return lines.join("\n");
+}
+
+/**
+ * @param {McpProposalCard} card
+ */
+function formatMcpProposalCard(card) {
+  return [
+    `Tool: ${card.tool.id} (${card.tool.name})`,
+    `Why now: ${card.why_now}`,
+    `Expected benefit: ${card.expected_benefit}`,
+    `Scope: ${card.scope}`,
+    `Risk: ${card.risk}`,
+    `Token impact: ${card.token_impact}`,
+    `Install command: ${card.install_command}`,
+    `Use once or persist: ${card.use_once_or_persist}`,
+    `Requires user approval: ${String(card.requires_user_approval)}`
+  ].join("\n");
+}
+
 function yesNo(value) {
   return value ? "yes" : "no";
 }
@@ -1440,6 +1611,9 @@ function usage() {
     "  graph show <node-id> [--json]",
     "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
+    "  mcp list [--json]",
+    "  mcp show <mcp-id> [--json]",
+    "  mcp suggest [--quest <quest-id>] [--query <text>] [--json]",
     "  hook preview [--json] [--write-report]",
     "  hook status [--json] [--write-report]",
     "  hook run session-start [--json] [--write-report]",
@@ -1458,6 +1632,17 @@ function hookUsage() {
     "  status [--json] [--write-report]",
     "  run session-start [--json] [--write-report]",
     "  run stop [--json] [--write-report]"
+  ].join("\n");
+}
+
+function mcpUsage() {
+  return [
+    "orange mcp <command>",
+    "",
+    "Commands:",
+    "  list [--json]",
+    "  show <mcp-id> [--json]",
+    "  suggest [--quest <quest-id>] [--query <text>] [--json]"
   ].join("\n");
 }
 

@@ -1,5 +1,10 @@
 # MCP Advisor 설계
 
+> Historical design note. v0.5.0-alpha.0의 구현 계약은
+> [docs/18_MCP_ADVISOR.md](18_MCP_ADVISOR.md)를 기준으로 한다.
+> v0.5는 MCP 설치/실행/config 수정 없이 `orange mcp list/show/suggest`
+> read-only proposal card까지만 제공한다.
+
 ## 1. 결론
 
 `orange-hyper`는 MCP를 포기하지 않는다. 하지만 MCP를 기본 장착하지도 않는다. MCP는 항상 capability proposal이어야 한다.

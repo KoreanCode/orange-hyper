@@ -148,22 +148,41 @@ report는 --write-report를 명시했을 때만 .orange-hyper/hooks/reports/ 아
 v0.4 stable은 이 preview-only boundary를 고정하고, MCP는 v0.5로 넘긴다.
 ```
 
-## 6. v0.5 — MCP Advisor (next)
+## 6. v0.5 — MCP Advisor (current alpha)
 
-목표: MCP를 기본 장착이 아니라 역제안 체계로 제공한다.
+목표: MCP를 기본 장착이 아니라 read-only recommendation layer로 제공한다. v0.5는 MCP integration이 아니라 MCP Advisor다.
 
 포함:
 
 - MCP catalog
 - MCP proposal card
-- Codex adapter install command generation
+- `orange mcp list`
+- `orange mcp show <mcp-id>`
+- `orange mcp suggest [--quest <quest-id>] [--query <text>]`
+- Adapter JSON Contract를 따르는 `mcp.list`, `mcp.show`, `mcp.suggest`
+- install command/hint generation
 - use once / persistent 구분
 - risk/token impact 표시
+
+제외:
+
+- MCP 자동 설치
+- MCP 자동 실행
+- MCP config 자동 수정
+- API key 저장
+- 외부 네트워크 호출
+- hook에서 MCP 자동 제안/설치/실행
+- subagent 실행
+- role evolution
+- auto planner / auto execution loop
+- 사용자의 승인 없는 Quest/Proposal/Graph/config/project memory 변경
 
 완료 기준:
 
 ```text
 framework docs freshness 같은 상황에서 Context7 등 MCP를 제안하되, 설치/사용은 사용자 승인 뒤에만 진행한다.
+proposal card는 tool, why_now, expected_benefit, scope, risk, token_impact, install_command,
+use_once_or_persist, requires_user_approval를 제공한다.
 ```
 
 ## 7. v0.6 — Growth System

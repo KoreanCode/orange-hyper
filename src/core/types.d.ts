@@ -18,6 +18,9 @@ export type CommandId =
   | "hook.runSessionStart"
   | "hook.runStop"
   | "identity.build"
+  | "mcp.list"
+  | "mcp.show"
+  | "mcp.suggest"
   | "quest.done"
   | "quest.new"
   | "remember.accept"
@@ -403,6 +406,78 @@ export interface HookReportPayload extends OriginMetadata {
     capsule: HookFreshnessSummary;
   };
   recommended_commands: string[];
+}
+
+export type McpTokenImpact = "low" | "medium" | "high";
+
+export interface McpCatalogEntry {
+  id: string;
+  name: string;
+  category: string;
+  use_cases: string[];
+  useful_when: string[];
+  risks: string[];
+  token_impact: McpTokenImpact;
+  install_hint: string;
+  persistent_use_policy: string;
+}
+
+export interface McpProposalCard {
+  tool: {
+    id: string;
+    name: string;
+    category: string;
+  };
+  why_now: string;
+  expected_benefit: string;
+  scope: string;
+  risk: string;
+  token_impact: McpTokenImpact;
+  install_command: string;
+  use_once_or_persist: string;
+  requires_user_approval: true;
+}
+
+export interface McpSuggestion {
+  mcp_id: string;
+  score: number;
+  matched_signals: Array<{
+    signal: string;
+    why: string;
+  }>;
+  tool: McpCatalogEntry;
+  proposal: McpProposalCard;
+}
+
+export interface McpAdvisorResult {
+  readOnly: true;
+  autoInstall: false;
+  autoRun: false;
+  configMutation: false;
+  projectMemoryMutation: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  input: {
+    query: string;
+    quest: {
+      id: string;
+      title: string;
+      status: QuestStatus;
+      layer: RouteLayer;
+      output_contract: OutputContract;
+      verification_status: QuestVerificationStatus;
+    } | null;
+  };
+  state: {
+    doctor: JsonObject | null;
+    graph: JsonObject | null;
+    hook: JsonObject | null;
+    warnings: string[];
+  };
+  suggestions: McpSuggestion[];
+  proposal_cards: McpProposalCard[];
 }
 
 export interface IdentitySummary extends OriginMetadata {

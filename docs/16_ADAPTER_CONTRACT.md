@@ -1,8 +1,9 @@
 # Adapter Contract
 
-Orange Hyper v0.4.0 is still a Seed Kernel with Memory Graph Usability, a
-read-only Identity Graph Preview, and a stable Minimal Hook Preview. The
-`orange` CLI is the kernel control plane, not the final end-user UX.
+Orange Hyper v0.5.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+a read-only Identity Graph Preview, a stable Minimal Hook Preview, and a
+read-only MCP Advisor alpha. The `orange` CLI is the kernel control plane, not
+the final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -59,9 +60,9 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.4.0 keeps
-`"0.1"` as the stable Seed Kernel adapter contract and appears in both success
-and failure envelopes.
+`contract_version` is the adapter-facing JSON contract version. v0.5.0-alpha.0
+keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
+success and failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
@@ -84,6 +85,9 @@ and failure envelopes.
 - `hook.status`
 - `hook.runSessionStart`
 - `hook.runStop`
+- `mcp.list`
+- `mcp.show`
+- `mcp.suggest`
 - `doctor.run`
 - `identity.build`
 
@@ -132,7 +136,217 @@ the `HOOK_` prefix, such as `HOOK_PROJECT_ID_MISSING`,
 `HOOK_GRAPH_PROVENANCE_WARNING`. Adapters should branch on `code` and present
 `message` plus `hint`; hooks do not perform the hinted command automatically.
 
+MCP Advisor commands are read-only. `orange mcp suggest --json` may read Quest,
+Graph, Doctor, and Hook state, but it must return proposal cards only. It must
+not install MCP servers, run MCP tools, write MCP config, store API keys, create
+Quest/Proposal/Graph state, write hook reports, or persist project memory.
+
 ## Command Examples
+
+### `mcp list --json`
+
+```bash
+orange mcp list --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "mcp.list",
+  "data": {
+    "catalog": {
+      "count": 4,
+      "entries": [
+        {
+          "id": "context7",
+          "name": "Context7",
+          "category": "documentation",
+          "use_cases": ["version-specific library documentation lookup"],
+          "useful_when": ["framework/library freshness matters"],
+          "risks": ["external documentation context can increase prompt size"],
+          "token_impact": "medium",
+          "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
+          "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
+        },
+        {
+          "id": "github",
+          "name": "GitHub",
+          "category": "repository",
+          "use_cases": ["issue and pull request context"],
+          "useful_when": ["repo issue/PR context matters"],
+          "risks": ["repository metadata may include private discussion or user data"],
+          "token_impact": "medium",
+          "install_hint": "codex mcp add github -- <github-mcp-server-command>",
+          "persistent_use_policy": "Use once for a specific issue or PR. Persist only for repositories where the user explicitly approves ongoing access."
+        },
+        {
+          "id": "sentry",
+          "name": "Sentry",
+          "category": "observability",
+          "use_cases": ["runtime error and incident context"],
+          "useful_when": ["runtime incident/error context exists"],
+          "risks": ["incident data can include sensitive runtime details"],
+          "token_impact": "high",
+          "install_hint": "codex mcp add sentry -- <sentry-mcp-server-command>",
+          "persistent_use_policy": "Use once for a bounded incident. Persist only after explicit approval for a specific project and read-only scope."
+        },
+        {
+          "id": "linear",
+          "name": "Linear",
+          "category": "product",
+          "use_cases": ["product issue and work item context"],
+          "useful_when": ["product/task tracking context is needed"],
+          "risks": ["work items may include private roadmap or customer context"],
+          "token_impact": "medium",
+          "install_hint": "codex mcp add linear -- <linear-mcp-server-command>",
+          "persistent_use_policy": "Use once for a specific work item. Persist only after repeated product-tracking work and explicit user approval."
+        }
+      ]
+    }
+  }
+}
+```
+
+### `mcp show --json`
+
+```bash
+orange mcp show context7 --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "mcp.show",
+  "data": {
+    "tool": {
+      "id": "context7",
+      "name": "Context7",
+      "category": "documentation",
+      "use_cases": ["version-specific library documentation lookup"],
+      "useful_when": ["framework/library freshness matters"],
+      "risks": ["external documentation context can increase prompt size"],
+      "token_impact": "medium",
+      "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
+      "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
+    }
+  }
+}
+```
+
+### `mcp suggest --json`
+
+```bash
+orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "mcp.suggest",
+  "data": {
+    "readOnly": true,
+    "autoInstall": false,
+    "autoRun": false,
+    "configMutation": false,
+    "projectMemoryMutation": false,
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "input": {
+      "query": "Spring Security 최신 문서 확인이 필요해",
+      "quest": null
+    },
+    "state": {
+      "doctor": {
+        "ok": true,
+        "checkCount": 16,
+        "errorCount": 0,
+        "warningCount": 0,
+        "projectBoundaryErrorCount": 0,
+        "projectBoundaryWarningCount": 0,
+        "diagnosticCodes": []
+      },
+      "graph": {
+        "acceptedMemoryNodeCount": 0,
+        "warningCount": 0,
+        "warnings": []
+      },
+      "hook": {
+        "previewAvailable": true,
+        "installed": false,
+        "readOnly": true,
+        "autoMutation": false,
+        "supportedEvents": ["session-start", "stop"],
+        "warningCount": 0
+      },
+      "warnings": []
+    },
+    "suggestions": [
+      {
+        "mcp_id": "context7",
+        "score": 2,
+        "matched_signals": [
+          {
+            "signal": "known_framework_or_library",
+            "why": "The request names a framework, library, or platform where version-specific docs can matter."
+          },
+          {
+            "signal": "korean_docs_or_version_request",
+            "why": "The request asks for latest docs, versions, or API usage."
+          }
+        ],
+        "tool": {
+          "id": "context7",
+          "name": "Context7",
+          "category": "documentation",
+          "use_cases": ["version-specific library documentation lookup"],
+          "useful_when": ["framework/library freshness matters"],
+          "risks": ["external documentation context can increase prompt size"],
+          "token_impact": "medium",
+          "install_hint": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
+          "persistent_use_policy": "Use once by default. Persist only after repeated docs-freshness work and explicit user approval."
+        },
+        "proposal": {
+          "tool": {
+            "id": "context7",
+            "name": "Context7",
+            "category": "documentation"
+          },
+          "why_now": "The request names a framework, library, or platform where version-specific docs can matter.",
+          "expected_benefit": "Version-specific documentation can reduce stale API assumptions before code changes.",
+          "scope": "read-only documentation lookup for the named framework, library, or API",
+          "risk": "External docs context may add tokens and should be summarized before use.",
+          "token_impact": "medium",
+          "install_command": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
+          "use_once_or_persist": "use_once",
+          "requires_user_approval": true
+        }
+      }
+    ],
+    "proposal_cards": [
+      {
+        "tool": {
+          "id": "context7",
+          "name": "Context7",
+          "category": "documentation"
+        },
+        "why_now": "The request names a framework, library, or platform where version-specific docs can matter.",
+        "expected_benefit": "Version-specific documentation can reduce stale API assumptions before code changes.",
+        "scope": "read-only documentation lookup for the named framework, library, or API",
+        "risk": "External docs context may add tokens and should be summarized before use.",
+        "token_impact": "medium",
+        "install_command": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
+        "use_once_or_persist": "use_once",
+        "requires_user_approval": true
+      }
+    ]
+  }
+}
+```
 
 ### `quest new --json`
 

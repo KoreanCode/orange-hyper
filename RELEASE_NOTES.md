@@ -1,5 +1,41 @@
 # Release Notes
 
+## v0.5.0-alpha.0
+
+MCP Advisor alpha.
+
+- Package version is `0.5.0-alpha.0`.
+- README version is `0.5-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha adds a read-only MCP Advisor command surface:
+  `orange mcp list`, `orange mcp show <mcp-id>`, and
+  `orange mcp suggest [--quest <quest-id>] [--query <text>]`.
+- New JSON command ids are `mcp.list`, `mcp.show`, and `mcp.suggest`.
+- The built-in catalog starts with `context7`, `github`, `sentry`, and
+  `linear`, each with use cases, useful-when guidance, risks, token impact,
+  install hints, and persistent-use policy.
+- `mcp suggest` returns proposal cards with `tool`, `why_now`,
+  `expected_benefit`, `scope`, `risk`, `token_impact`, `install_command`,
+  `use_once_or_persist`, and `requires_user_approval: true`.
+- MCP suggestions read current project state only. They do not install MCPs,
+  run MCPs, write MCP config, create Quest/Proposal/Graph state, write hook
+  reports, or save project memory.
+- Hooks remain separate from MCP Advisor. Hook preview/status/run output does
+  not automatically include MCP advisor summaries.
+
+### Explicitly not included
+
+- MCP automatic installation
+- MCP automatic execution
+- MCP config automatic modification
+- API key storage
+- external network calls
+- hook-triggered MCP suggestion, installation, or execution
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+- automatic Quest, Proposal, Graph, config, or project memory mutation
+
 ## v0.4.0
 
 Minimal Hook Preview stable release.
