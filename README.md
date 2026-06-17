@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.6-doc.2`
+- README version: `0.7-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.6.0 stable 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable 기능을 제공합니다.
+v0.7.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract alpha 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -107,6 +107,8 @@ v0.6.0 stable 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, 
 - `growth status`, `growth suggest`, `growth explain`은 Quest, Route, accepted Memory Graph, Hook warning, MCP advisor signal을 읽어 보수적인 성장 상태와 score/source evidence가 있는 후보를 preview합니다.
 - Growth candidate는 제안일 뿐이며 `auto_unlock: false`, `requires_user_approval: true`를 유지합니다.
 - Growth Signal Preview의 `growthLevel`은 장식적 후보이며 role/tool/hook/MCP/subagent/workflow를 자동 unlock하지 않습니다.
+- `adapter list`, `adapter show <recipe-id>`, `adapter dry-run <recipe-id>`는 natural-language/skill layer가 Orange Kernel을 `--json`으로 호출하는 recipe 계약을 보여줍니다.
+- Adapter Layer는 `.orange-hyper` 직접 수정, human output parsing, 자동 Quest/Memory/MCP/Hook/Subagent 실행을 하지 않습니다.
 - Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
 
 ## Memory Lifecycle
@@ -168,6 +170,7 @@ npx -y --package orange-hyper@latest orange hook preview --json
 npx -y --package orange-hyper@latest orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
+npx -y --package orange-hyper@alpha orange adapter dry-run project-status --json
 ```
 
 v0.2.0 프로젝트를 v0.2.1 Project Boundary Guard로 올릴 때는 다음을 먼저 실행합니다.
@@ -190,7 +193,7 @@ orange doctor
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Layer
+- v0.7 Adapter Invocation Contract (current alpha)
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
 
@@ -222,4 +225,5 @@ Orange Hyper는 다음을 목표로 하지 않습니다.
 - [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
+- [Adapter Layer](docs/20_ADAPTER_LAYER.md)
 - [Release Notes](RELEASE_NOTES.md)

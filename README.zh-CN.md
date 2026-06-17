@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.6-doc.2`
+- README version: `0.7-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.6.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable 和 Growth Signal Preview stable 功能。
+以 v0.7.0-alpha.0 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract alpha 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -107,6 +107,8 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - `growth status`、`growth suggest`、`growth explain` 会读取 Quest、Route、accepted Memory Graph、Hook warning 和 MCP advisor signal，预览更保守的成长状态，以及带 score/source evidence 的候选项。
 - Growth candidate 只是建议，并保持 `auto_unlock: false` 和 `requires_user_approval: true`。
 - Growth Signal Preview 的 `growthLevel` 只是装饰性候选，不会自动 unlock role、tool、hook、MCP、subagent 或 workflow。
+- `adapter list`、`adapter show <recipe-id>`、`adapter dry-run <recipe-id>` 描述 natural-language/skill layer 如何通过 `--json` recipe 调用 Orange Kernel。
+- Adapter Layer 不直接修改 `.orange-hyper`，不解析 human output，也不会自动运行 Quest、Memory、MCP、Hook 或 Subagent 流程。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
 
 ## Memory Lifecycle
@@ -167,6 +169,7 @@ npx -y --package orange-hyper@latest orange doctor
 npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
+npx -y --package orange-hyper@alpha orange adapter dry-run project-status --json
 ```
 
 从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
@@ -189,7 +192,7 @@ orange doctor
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Layer
+- v0.7 Adapter Invocation Contract (current alpha)
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
 
@@ -221,4 +224,5 @@ Orange Hyper 不打算成为：
 - [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
+- [Adapter Layer](docs/20_ADAPTER_LAYER.md)
 - [Release Notes](RELEASE_NOTES.md)

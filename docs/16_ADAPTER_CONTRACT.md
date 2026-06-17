@@ -1,9 +1,10 @@
 # Adapter Contract
 
-Orange Hyper v0.6.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.7.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
-read-only MCP Advisor, and a read-only Growth Signal Preview. The `orange` CLI
-is the kernel control plane, not the final end-user UX.
+read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
+Invocation Contract alpha. The `orange` CLI is the kernel control plane, not the
+final end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -60,13 +61,16 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.6.0
+`contract_version` is the adapter-facing JSON contract version. v0.7.0-alpha.0
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
 - `quest.new`
+- `adapter.list`
+- `adapter.show`
+- `adapter.dryRun`
 - `route.show`
 - `capsule.build`
 - `quest.done`
@@ -154,7 +158,182 @@ candidates must keep `auto_unlock: false` and
 `requires_user_approval: true`. Candidate ranking is deterministic by
 descending `score`, then candidate id order for ties.
 
+Adapter recipe commands are contract-only. `orange adapter list --json`,
+`orange adapter show <recipe-id> --json`, and
+`orange adapter dry-run <recipe-id> --json` expose built-in command recipes for
+natural-language and skill layers. They do not execute the recipe commands and
+must not modify `.orange-hyper`. Every recipe declares safety flags:
+`direct_file_mutation: false`, `parses_human_output: false`,
+`requires_json_mode: true`, `auto_accept: false`, `auto_install: false`, and
+`auto_unlock: false`.
+
 ## Command Examples
+
+### `adapter list --json`
+
+```bash
+orange adapter list --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "adapter.list",
+  "data": {
+    "count": 5,
+    "recipes": [
+      {
+        "id": "quest-capture",
+        "title": "Quest Capture",
+        "purpose": "Record a user work request as an explicit Quest through the Orange Kernel.",
+        "when_to_use": [
+          "A task is large enough to benefit from a repo-local Quest record."
+        ],
+        "commands": [
+          {
+            "command": "orange quest new \"<user-request>\" --title \"<title>\" --layer <L0-L4> --json",
+            "why": "Let the kernel create Quest frontmatter, route contract metadata, and the next command hints.",
+            "required_input": ["user_request", "title", "layer"],
+            "expected_json_command_id": "quest.new",
+            "mutates_project_state": true,
+            "requires_user_approval": true
+          }
+        ],
+        "required_inputs": ["user_request", "title", "layer"],
+        "outputs": ["quest.id", "quest.file", "contract", "next.route", "next.capsule"],
+        "safety_rules": [
+          "Call `orange quest new ... --json`; do not create Quest markdown files directly."
+        ],
+        "forbidden_actions": [
+          "direct .orange-hyper file writes",
+          "human output parsing"
+        ],
+        "expected_contract_version": "0.1",
+        "safety_flags": {
+          "direct_file_mutation": false,
+          "parses_human_output": false,
+          "requires_json_mode": true,
+          "auto_accept": false,
+          "auto_install": false,
+          "auto_unlock": false
+        }
+      }
+    ]
+  }
+}
+```
+
+The actual `recipes` array contains all built-in recipes:
+`quest-capture`, `work-complete-to-memory`, `project-status`, `hook-check`, and
+`mcp-advice`.
+
+### `adapter show --json`
+
+```bash
+orange adapter show hook-check --json
+```
+
+The example below is abridged to highlight the command-step contract; actual
+output includes the full recipe fields listed in `docs/20_ADAPTER_LAYER.md`.
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "adapter.show",
+  "data": {
+    "recipe": {
+      "id": "hook-check",
+      "title": "Hook Check",
+      "commands": [
+        {
+          "command": "orange hook preview --json",
+          "why": "Read the planned hook checks and report policy.",
+          "required_input": [],
+          "expected_json_command_id": "hook.preview",
+          "mutates_project_state": false,
+          "requires_user_approval": false
+        },
+        {
+          "command": "orange hook run stop --json",
+          "why": "Observe stop-event warnings through the kernel without writing hook reports.",
+          "required_input": ["explicit_hook_observation_approval"],
+          "expected_json_command_id": "hook.runStop",
+          "mutates_project_state": false,
+          "requires_user_approval": true
+        }
+      ],
+      "expected_contract_version": "0.1",
+      "safety_flags": {
+        "direct_file_mutation": false,
+        "parses_human_output": false,
+        "requires_json_mode": true,
+        "auto_accept": false,
+        "auto_install": false,
+        "auto_unlock": false
+      }
+    }
+  }
+}
+```
+
+### `adapter dry-run --json`
+
+```bash
+orange adapter dry-run project-status --json
+```
+
+The example below is abridged; actual output includes the full project-status
+sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "adapter.dryRun",
+  "data": {
+    "dry_run": true,
+    "executed": false,
+    "recipe_id": "project-status",
+    "recipe_title": "Project Status",
+    "expected_contract_version": "0.1",
+    "safety_flags": {
+      "direct_file_mutation": false,
+      "parses_human_output": false,
+      "requires_json_mode": true,
+      "auto_accept": false,
+      "auto_install": false,
+      "auto_unlock": false
+    },
+    "commands": [
+      {
+        "command": "orange doctor --json",
+        "why": "Read kernel diagnostics and project boundary status.",
+        "required_input": [],
+        "expected_json_command_id": "doctor.run",
+        "mutates_project_state": false,
+        "requires_user_approval": false
+      },
+      {
+        "command": "orange identity build --json",
+        "why": "Refresh the kernel-owned identity summary only when the user wants that generated artifact.",
+        "required_input": ["explicit_identity_refresh_approval"],
+        "expected_json_command_id": "identity.build",
+        "mutates_project_state": true,
+        "requires_user_approval": true
+      }
+    ],
+    "mutation_policy": "Dry-run only describes Orange CLI --json invocations; it does not execute commands or modify .orange-hyper.",
+    "adapter_rules": [
+      "Natural-language layer calls the kernel.",
+      "Adapter must not duplicate kernel state logic.",
+      "Adapter must not mutate .orange-hyper directly.",
+      "Adapter parses only --json output."
+    ]
+  }
+}
+```
 
 ### `growth status --json`
 
@@ -1923,6 +2102,8 @@ and process exit code when they need more detail.
 - Call `orange` commands instead of editing `.orange-hyper` state directly.
 - Preserve kernel ownership of Quest completion, Route trace, Capsule writes,
   Memory Delta Proposal transitions, Doctor validation, and Identity generation.
+- Use `orange adapter dry-run <recipe-id> --json` to inspect invocation recipes
+  without executing state-changing commands.
 - Do not duplicate Seed Kernel state logic in natural-language workflows.
 - Do not add graph editing, MCP, hooks, subagents, role evolution, auto planner,
   or auto execution loop behavior in adapters for the Seed Kernel contract.

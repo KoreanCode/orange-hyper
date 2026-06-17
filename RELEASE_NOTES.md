@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.7.0-alpha.0
+
+Adapter Invocation Contract alpha.
+
+- Package version is `0.7.0-alpha.0`.
+- README version is `0.7-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha adds the Adapter Layer command surface:
+  `orange adapter list`, `orange adapter show <recipe-id>`, and
+  `orange adapter dry-run <recipe-id>`.
+- New JSON command ids are `adapter.list`, `adapter.show`, and
+  `adapter.dryRun`.
+- Built-in recipes are `quest-capture`, `work-complete-to-memory`,
+  `project-status`, `hook-check`, and `mcp-advice`.
+- Each recipe declares `id`, `title`, `purpose`, `when_to_use`, `commands`,
+  `required_inputs`, `outputs`, `safety_rules`, `forbidden_actions`,
+  `expected_contract_version`, and `safety_flags`.
+- Each recipe command step declares `command`, `why`, `required_input`,
+  `expected_json_command_id`, `mutates_project_state`, and
+  `requires_user_approval`.
+- Safety flags are fixed as `direct_file_mutation: false`,
+  `parses_human_output: false`, `requires_json_mode: true`,
+  `auto_accept: false`, `auto_install: false`, and `auto_unlock: false`.
+- `adapter dry-run` does not execute recipe commands and does not modify
+  `.orange-hyper`.
+- `docs/20_ADAPTER_LAYER.md` documents that natural-language and skill layers
+  must call the kernel through Orange CLI `--json` commands, must not parse
+  human output, and must not duplicate kernel state logic.
+
+### Explicitly not included
+
+- Codex/Claude-specific adapter automatic installation
+- actual adapter runtime
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic accept or reject
+- automatic graph rebuild
+- automatic hook execution
+- MCP automatic installation or execution
+- subagent orchestration
+- direct `.orange-hyper` file mutation
+- auto planner or auto execution loop
+
 ## v0.6.0
 
 Growth Signal Preview stable release.
@@ -31,8 +74,8 @@ Growth Signal Preview stable release.
 - `identity build` includes a Growth Signal Preview summary with growth level
   reason, candidate count, top candidates, growth confidence summary, and
   `No automatic unlocks`.
-- v0.7 Adapter Layer is the next roadmap step after this stable Growth Signal
-  Preview boundary.
+- At the v0.6.0 cut, v0.7 Adapter Layer was the next roadmap step after this
+  stable Growth Signal Preview boundary.
 
 ### Explicitly not included
 

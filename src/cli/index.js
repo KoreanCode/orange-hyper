@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../core/adapter.js";
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
@@ -43,6 +44,9 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").GrowthCandidate} GrowthCandidate
  * @typedef {import("../core/types.d.ts").GrowthSuggestionResult} GrowthSuggestionResult
  * @typedef {import("../core/types.d.ts").GrowthExplainResult} GrowthExplainResult
+ * @typedef {import("../core/types.d.ts").AdapterRecipe} AdapterRecipe
+ * @typedef {import("../core/types.d.ts").AdapterRecipeStep} AdapterRecipeStep
+ * @typedef {import("../core/types.d.ts").AdapterDryRunResult} AdapterDryRunResult
  *
  * @typedef {{
  *   id: string,
@@ -104,6 +108,11 @@ export const EXIT_CODES = {
 export const JSON_CONTRACT_VERSION = "0.1";
 
 const COMMAND_IDS = {
+  adapter: {
+    list: "adapter.list",
+    show: "adapter.show",
+    "dry-run": "adapter.dryRun"
+  },
   capsule: "capsule.build",
   doctor: "doctor.run",
   graph: {
@@ -169,6 +178,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
       projectName: args.flags.project
     });
     write(io, `Initialized ${path.relative(cwd, paths.root)}`);
+    return;
+  }
+
+  if (command === "adapter") {
+    await adapterCommand(cwd, io, rest);
     return;
   }
 
@@ -251,6 +265,51 @@ export async function main(argv = process.argv.slice(2), env = {}) {
   }
 
   throw new Error(`Unknown command: ${command}`);
+}
+
+async function adapterCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, adapterUsage());
+    return;
+  }
+  if (subcommand === "list") {
+    const args = parseArgs(rest);
+    const recipes = listAdapterRecipes();
+    const data = {
+      count: recipes.length,
+      recipes
+    };
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.adapter.list, data));
+      return;
+    }
+    write(io, formatAdapterRecipeList(recipes));
+    return;
+  }
+  if (subcommand === "show") {
+    const args = parseArgs(rest);
+    const recipeId = args.positionals[0];
+    const recipe = showAdapterRecipe(recipeId);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.adapter.show, { recipe }));
+      return;
+    }
+    write(io, formatAdapterRecipe(recipe));
+    return;
+  }
+  if (subcommand === "dry-run") {
+    const args = parseArgs(rest);
+    const recipeId = args.positionals[0];
+    const result = dryRunAdapterRecipe(recipeId);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.adapter["dry-run"], result));
+      return;
+    }
+    write(io, formatAdapterDryRun(result));
+    return;
+  }
+  throw new Error(`Unknown adapter command: ${subcommand}`);
 }
 
 async function questCommand(cwd, io, argv) {
@@ -964,6 +1023,114 @@ function writeGraphWarnings(io, warnings) {
   for (const warning of warnings || []) {
     write(io, `Warning: ${warning}`);
   }
+}
+
+/**
+ * @param {AdapterRecipe[]} recipes
+ */
+function formatAdapterRecipeList(recipes) {
+  const rows = recipes.map((recipe) => ({
+    id: recipe.id,
+    title: recipe.title,
+    steps: String(recipe.commands.length),
+    purpose: recipe.purpose
+  }));
+  const widths = {
+    id: Math.max(2, ...rows.map((row) => row.id.length)),
+    title: Math.max(5, ...rows.map((row) => row.title.length)),
+    steps: Math.max(5, ...rows.map((row) => row.steps.length))
+  };
+  const header = `${"ID".padEnd(widths.id)}  ${"TITLE".padEnd(widths.title)}  ${"STEPS".padEnd(widths.steps)}  PURPOSE`;
+  const lines = rows.map((row) =>
+    `${row.id.padEnd(widths.id)}  ${row.title.padEnd(widths.title)}  ${row.steps.padEnd(widths.steps)}  ${row.purpose}`
+  );
+  return [
+    "Orange adapter recipes",
+    header,
+    ...lines,
+    "",
+    "Adapter boundary: call Orange CLI --json only; do not mutate .orange-hyper directly."
+  ].join("\n");
+}
+
+/**
+ * @param {AdapterRecipe} recipe
+ */
+function formatAdapterRecipe(recipe) {
+  return [
+    `Adapter recipe: ${recipe.id}`,
+    `Title: ${recipe.title}`,
+    `Expected contract version: ${recipe.expected_contract_version}`,
+    `Direct file mutation: ${yesNo(recipe.safety_flags.direct_file_mutation)}`,
+    `Parses human output: ${yesNo(recipe.safety_flags.parses_human_output)}`,
+    `Requires JSON mode: ${yesNo(recipe.safety_flags.requires_json_mode)}`,
+    `Auto accept: ${yesNo(recipe.safety_flags.auto_accept)}`,
+    `Auto install: ${yesNo(recipe.safety_flags.auto_install)}`,
+    `Auto unlock: ${yesNo(recipe.safety_flags.auto_unlock)}`,
+    "",
+    "Purpose:",
+    `  ${recipe.purpose}`,
+    "",
+    "When to use:",
+    ...recipe.when_to_use.map((item) => `  - ${item}`),
+    "",
+    "Required inputs:",
+    ...formatAdapterListItems(recipe.required_inputs),
+    "",
+    "Outputs:",
+    ...formatAdapterListItems(recipe.outputs),
+    "",
+    "Commands:",
+    ...recipe.commands.flatMap((command, index) => formatAdapterStep(command, index)),
+    "",
+    "Safety rules:",
+    ...recipe.safety_rules.map((item) => `  - ${item}`),
+    "",
+    "Forbidden actions:",
+    ...recipe.forbidden_actions.map((item) => `  - ${item}`)
+  ].join("\n");
+}
+
+/**
+ * @param {AdapterDryRunResult} result
+ */
+function formatAdapterDryRun(result) {
+  return [
+    `Adapter dry-run: ${result.recipe_id}`,
+    `Title: ${result.recipe_title}`,
+    `Dry run: ${yesNo(result.dry_run)}`,
+    `Executed commands: ${yesNo(result.executed)}`,
+    `Expected contract version: ${result.expected_contract_version}`,
+    `Direct file mutation: ${yesNo(result.safety_flags.direct_file_mutation)}`,
+    `Parses human output: ${yesNo(result.safety_flags.parses_human_output)}`,
+    `Requires JSON mode: ${yesNo(result.safety_flags.requires_json_mode)}`,
+    "",
+    result.mutation_policy,
+    "",
+    "Command sequence:",
+    ...result.commands.flatMap((command, index) => formatAdapterStep(command, index)),
+    "",
+    "Adapter rules:",
+    ...result.adapter_rules.map((item) => `  - ${item}`)
+  ].join("\n");
+}
+
+/**
+ * @param {AdapterRecipeStep} command
+ */
+function formatAdapterStep(command, index) {
+  return [
+    `  ${index + 1}. ${command.command}`,
+    `     Why: ${command.why}`,
+    `     Required input: ${command.required_input.length ? command.required_input.join(", ") : "none"}`,
+    `     Expected JSON command id: ${command.expected_json_command_id}`,
+    `     Mutates project state: ${yesNo(command.mutates_project_state)}`,
+    `     Requires user approval: ${yesNo(command.requires_user_approval)}`
+  ];
+}
+
+function formatAdapterListItems(items) {
+  return items.length ? items.map((item) => `  - ${item}`) : ["  - none"];
 }
 
 /**
@@ -1810,6 +1977,9 @@ function usage() {
     "",
     "Commands:",
     "  init [--project <name>] [--force]",
+    "  adapter list [--json]",
+    "  adapter show <recipe-id> [--json]",
+    "  adapter dry-run <recipe-id> [--json]",
     "  quest new <request> [--title <title>] [--layer L2] [--verify <check>] [--json]",
     "  quest list [--completed|--all]",
     "  quest show <id-or-file>",
@@ -1839,6 +2009,17 @@ function usage() {
     "  hook run stop [--json] [--write-report]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
+  ].join("\n");
+}
+
+function adapterUsage() {
+  return [
+    "orange adapter <command>",
+    "",
+    "Commands:",
+    "  list [--json]",
+    "  show <recipe-id> [--json]",
+    "  dry-run <recipe-id> [--json]"
   ].join("\n");
 }
 

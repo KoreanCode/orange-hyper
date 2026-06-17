@@ -230,22 +230,50 @@ auto_unlock: false 및 requires_user_approval: true를 유지한다.
 growthLevel은 장식적 preview label이며 자동 unlock을 의미하지 않는다.
 ```
 
-## 8. v0.7 — Adapter Layer (next)
+## 8. v0.7 — Adapter Invocation Contract (current alpha)
 
-목표: Codex 외 client도 지원 가능한 구조로 확장한다.
+목표: 실제 adapter runtime을 만들기 전에 natural-language layer, skill layer,
+agent adapter가 Orange Kernel을 안전하게 호출하는 command recipe와 JSON
+contract를 고정한다.
 
 포함:
 
-- Adapter interface 안정화
-- Codex adapter
-- generic CLI adapter
-- Claude Code adapter 초안
-- model capability profile
+- `orange adapter list`
+- `orange adapter show <recipe-id>`
+- `orange adapter dry-run <recipe-id>`
+- Adapter JSON Contract를 따르는 `adapter.list`, `adapter.show`, `adapter.dryRun`
+- built-in recipe: `quest-capture`, `work-complete-to-memory`, `project-status`,
+  `hook-check`, `mcp-advice`
+- recipe command sequence와 required input/output metadata
+- no-direct-file-mutation guard
+- `--json` only parsing guard
+- human output parsing 금지
+- kernel state logic duplication 금지
+- safety flags: `direct_file_mutation: false`, `parses_human_output: false`,
+  `requires_json_mode: true`, `auto_accept: false`, `auto_install: false`,
+  `auto_unlock: false`
+
+제외:
+
+- Codex/Claude 전용 adapter 자동 설치
+- 실제 adapter runtime 구현
+- 자동 Quest 생성
+- 자동 memory proposal 생성
+- 자동 accept/reject
+- 자동 graph rebuild
+- 자동 hook 실행
+- MCP 자동 설치/실행
+- subagent orchestration
+- `.orange-hyper` 직접 파일 수정
+- auto planner / auto execution loop
 
 완료 기준:
 
 ```text
-core는 그대로 두고 adapter만 바꿔 context capsule과 proposal을 다른 agent client에 전달할 수 있다.
+adapter는 Orange CLI --json command만 호출한다.
+adapter는 .orange-hyper를 직접 수정하지 않고 human output을 파싱하지 않는다.
+dry-run은 command sequence만 보여주며 실제 state mutation command를 실행하지 않는다.
+v0.7 alpha는 runtime이 아니라 invocation contract까지만 제공한다.
 ```
 
 ## 9. v0.8 — Eval and Reports
@@ -268,13 +296,14 @@ raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 
 
 ## 10. 다음 구현 순서
 
-1. v0.7 Adapter Layer
-2. Adapter interface stabilization
-3. Codex adapter and generic CLI adapter proof
-4. Claude Code adapter draft
-5. model capability profile
-6. future growth profile design only after preview evidence remains stable
-7. future role proposal boundary only after explicit user approval
+1. v0.7 Adapter Invocation Contract alpha
+2. Adapter recipe validation from real user workflows
+3. Adapter interface stabilization after the invocation contract holds
+4. Codex adapter and generic CLI adapter proof
+5. Claude Code adapter draft
+6. model capability profile
+7. future growth profile design only after preview evidence remains stable
+8. future role proposal boundary only after explicit user approval
 
 ## 11. 다음 개발 목표
 
@@ -284,7 +313,8 @@ Step 2: keep user approval before MCP install/use and growth candidate action
 Step 3: preserve no automatic role, hook, subagent, planner, workflow, config, graph, or project-memory mutation
 Step 4: keep reports local/generated and opt-in
 Step 5: preserve the v0.3 read-only graph and identity surface
-Step 6: move next to the real v0.7 Adapter Layer
+Step 6: keep v0.7 alpha as Adapter Invocation Contract only
+Step 7: defer real adapter runtime until the command recipe contract is stable
 ```
 
 ## 12. 품질 기준

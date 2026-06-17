@@ -7,6 +7,9 @@ export interface JsonObject {
 export type AdapterContractVersion = "0.1";
 
 export type CommandId =
+  | "adapter.list"
+  | "adapter.show"
+  | "adapter.dryRun"
   | "capsule.build"
   | "doctor.run"
   | "graph.list"
@@ -54,6 +57,50 @@ export interface JsonErrorEnvelope<TData = JsonValue> {
     hint: string;
   };
   data?: TData;
+}
+
+export interface AdapterSafetyFlags {
+  direct_file_mutation: false;
+  parses_human_output: false;
+  requires_json_mode: true;
+  auto_accept: false;
+  auto_install: false;
+  auto_unlock: false;
+}
+
+export interface AdapterRecipeStep {
+  command: string;
+  why: string;
+  required_input: string[];
+  expected_json_command_id: CommandId;
+  mutates_project_state: boolean;
+  requires_user_approval: boolean;
+}
+
+export interface AdapterRecipe {
+  id: string;
+  title: string;
+  purpose: string;
+  when_to_use: string[];
+  commands: AdapterRecipeStep[];
+  required_inputs: string[];
+  outputs: string[];
+  safety_rules: string[];
+  forbidden_actions: string[];
+  expected_contract_version: AdapterContractVersion;
+  safety_flags: AdapterSafetyFlags;
+}
+
+export interface AdapterDryRunResult {
+  dry_run: true;
+  executed: false;
+  recipe_id: string;
+  recipe_title: string;
+  expected_contract_version: AdapterContractVersion;
+  safety_flags: AdapterSafetyFlags;
+  commands: AdapterRecipeStep[];
+  mutation_policy: string;
+  adapter_rules: string[];
 }
 
 export interface ProjectIdentity {

@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.6-doc.2`
+- README version: `0.7-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.6.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, and Growth Signal Preview stable features.
+As of v0.7.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, and Adapter Invocation Contract alpha features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -107,6 +107,8 @@ As of v0.6.0 stable, Orange Hyper provides the Seed Kernel, Memory Graph Usabili
 - `growth status`, `growth suggest`, and `growth explain` read Quest, Route, accepted Memory Graph, Hook warning, and MCP advisor signals to preview conservative growth state and candidates with score/source evidence.
 - Growth candidates are suggestions only and keep `auto_unlock: false` and `requires_user_approval: true`.
 - Growth Signal Preview `growthLevel` is a decorative candidate only; it does not automatically unlock roles, tools, hooks, MCPs, subagents, or workflows.
+- `adapter list`, `adapter show <recipe-id>`, and `adapter dry-run <recipe-id>` describe how natural-language and skill layers should call the Orange Kernel through `--json` recipes.
+- The Adapter Layer does not directly modify `.orange-hyper`, parse human output, or automatically run Quest, Memory, MCP, Hook, or Subagent flows.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
 
 ## Memory Lifecycle
@@ -167,6 +169,7 @@ npx -y --package orange-hyper@latest orange doctor
 npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
+npx -y --package orange-hyper@alpha orange adapter dry-run project-status --json
 ```
 
 When upgrading a v0.2.0 project to the v0.2.1 Project Boundary Guard, run:
@@ -189,7 +192,7 @@ See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
 - v0.4 Minimal Hook Preview (stable)
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Layer
+- v0.7 Adapter Invocation Contract (current alpha)
 - v0.8 Eval and Reports
 - v1.0 Stable product boundary
 
@@ -221,4 +224,5 @@ Orange Hyper is not trying to be:
 - [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
+- [Adapter Layer](docs/20_ADAPTER_LAYER.md)
 - [Release Notes](RELEASE_NOTES.md)
