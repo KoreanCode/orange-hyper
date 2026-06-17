@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "index_version": "0.3.0-alpha.1",
+  "index_version": "0.3.0",
   "project_id": "project_921341cf-feb0-4009-8da6-e1d0c8131e6f",
   "project_name": "orange-hyper",
-  "updated_at": "2026-06-16T15:16:28.373Z",
-  "generated_at": "2026-06-16T15:16:37.080Z",
+  "updated_at": "2026-06-17T05:47:31.129Z",
+  "generated_at": "2026-06-17T05:47:31.129Z",
   "source": "graph-node-markdown",
   "nodes": [
     {
@@ -57,6 +57,40 @@
       ]
     },
     {
+      "id": "decision.mem_delta_quest_20260617_054532Z_orange-hyper-v040-alpha1-hook-preview-hardening_decision",
+      "file": ".orange-hyper/graph/nodes/decision/decision.mem_delta_quest_20260617_054532Z_orange-hyper-v040-alpha1-hook-preview-hardening_decision.md",
+      "project_id": "project_921341cf-feb0-4009-8da6-e1d0c8131e6f",
+      "project_name": "orange-hyper",
+      "title": "orange-hyper v0.4.0-alpha.1 Hook Preview Hardening",
+      "source_proposal": "mem_delta_quest_20260617_054532Z_orange-hyper-v040-alpha1-hook-preview-hardening_decision",
+      "source_quest": "quest_20260617_054532Z_orange-hyper-v040-alpha1-hook-preview-hardening",
+      "accepted_at": "2026-06-17T05:47:31.129Z",
+      "node_type": "decision",
+      "candidate_memory": "orange-hyper v0.4.0-alpha.1 Hook Preview Hardening",
+      "summary": "orange-hyper v0.4.0-alpha.1 Hook Preview Hardening",
+      "tags": [
+        "decision",
+        "decision.mem_delta_quest_20260617_054532z_orange-hyper-v040-alpha1-hook-preview-hardening_decision",
+        "hardening",
+        "hook",
+        "orange-hyper",
+        "preview",
+        "quest_20260617_054532z_orange-hyper-v040-alpha1-hook-preview-hardening",
+        "v0.4.0-alpha.1"
+      ],
+      "keywords": [
+        "decision.mem_delta_quest_20260617_054532z_orange-hyper-v040-alpha1-hook-preview-hardening_decision",
+        "decision",
+        "orange-hyper",
+        "v0.4.0-alpha.1",
+        "hook",
+        "preview",
+        "hardening",
+        "quest_20260617_054532z_orange-hyper-v040-alpha1-hook-preview-hardening",
+        "mem_delta_quest_20260617_054532z_orange-hyper-v040-alpha1-hook-preview-hardening_decision"
+      ]
+    },
+    {
       "id": "verification.mem_delta_quest_20260616_080529Z_alpha1-public-surface-consistency-patch_verification",
       "file": ".orange-hyper/graph/nodes/verification/verification.mem_delta_quest_20260616_080529Z_alpha1-public-surface-consistency-patch_verification.md",
       "project_id": "project_921341cf-feb0-4009-8da6-e1d0c8131e6f",
@@ -105,5 +139,11 @@
         "while"
       ]
     }
-  ]
+  ],
+  "generated_by": "Orange Hyper",
+  "generator_package": "orange-hyper",
+  "generator_version": "0.4.0-alpha.1",
+  "source_repository": "https://github.com/KoreanCode/orange-hyper",
+  "official_package": "https://www.npmjs.com/package/orange-hyper",
+  "license": "MIT"
 }

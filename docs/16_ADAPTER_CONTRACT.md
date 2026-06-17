@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v0.4.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.4.0-alpha.1 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, and a Minimal Hook Preview. The `orange`
 CLI is the kernel control plane, not the final end-user UX.
 
@@ -59,7 +59,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.4.0-alpha.0
+`contract_version` is the adapter-facing JSON contract version. v0.4.0-alpha.1
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -124,6 +124,13 @@ observes missing project state, stale reports, or doctor diagnostics, it still
 returns a success envelope unless the hook command itself is invalid. Adapters
 should inspect `data.warnings` and `data.hints` instead of treating warning
 observations as state-changing failures.
+
+Hook warnings are stable `{ code, message, hint }` objects. `code` values use
+the `HOOK_` prefix, such as `HOOK_PROJECT_ID_MISSING`,
+`HOOK_IDENTITY_SUMMARY_MISSING`, `HOOK_CAPSULE_STALE`,
+`HOOK_PENDING_PROPOSALS`, `HOOK_DOCTOR_NOT_OK`, and
+`HOOK_GRAPH_PROVENANCE_WARNING`. Adapters should branch on `code` and present
+`message` plus `hint`; hooks do not perform the hinted command automatically.
 
 ## Command Examples
 
@@ -706,13 +713,19 @@ orange hook run stop --json
         "path": "capsules/current.md",
         "exists": true,
         "mtimeMs": 1780000000000,
-        "stale": false
+        "latestSourceMtimeMs": 1780000000000,
+        "latestSourcePath": "graph/index.json",
+        "stale": false,
+        "staleReason": null
       },
       "identity": {
         "path": "identity/summary.json",
         "exists": true,
         "mtimeMs": 1780000000000,
-        "stale": false
+        "latestSourceMtimeMs": 1780000000000,
+        "latestSourcePath": "graph/index.json",
+        "stale": false,
+        "staleReason": null
       },
       "graphIndexExists": true,
       "projectBoundaryActive": true,
@@ -729,6 +742,102 @@ orange hook run stop --json
 or runs doctor repair. If `--write-report` is passed, the report is created
 only under `.orange-hyper/hooks/reports/`; `--write-report` does not accept a
 path or filename.
+
+### `hook run stop --write-report --json`
+
+```bash
+orange hook run stop --write-report --json
+```
+
+The command still returns the normal `hook.runStop` JSON envelope. The only
+write is the local report file named in `data.report.file`.
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "hook.runStop",
+  "data": {
+    "event": "stop",
+    "installed": false,
+    "readOnly": true,
+    "autoMutation": false,
+    "report": {
+      "directory": ".orange-hyper/hooks/reports",
+      "defaultWrite": false,
+      "written": true,
+      "file": ".orange-hyper/hooks/reports/hook-run-stop-20260617T000000000Z.json"
+    },
+    "observations": {},
+    "warnings": [],
+    "hints": []
+  }
+}
+```
+
+The report file payload has its own stable schema:
+
+```json
+{
+  "schema_version": 1,
+  "generated_at": "2026-06-17T00:00:00.000Z",
+  "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+  "project_name": "orange-hyper",
+  "event": "stop",
+  "readOnly": true,
+  "autoMutation": false,
+  "warnings": [
+    {
+      "code": "HOOK_PENDING_PROPOSALS",
+      "message": "1 pending memory proposal needs manual review.",
+      "hint": "Run `orange remember list --status pending --json`; hook preview will not accept or reject proposals."
+    }
+  ],
+  "summaries": {
+    "doctor": {
+      "ok": true,
+      "checkCount": 25,
+      "errorCount": 0,
+      "warningCount": 0,
+      "repairCount": 0,
+      "diagnosticCodes": []
+    },
+    "graph": {
+      "acceptedMemoryNodeCount": 2,
+      "warningCount": 0,
+      "warnings": []
+    },
+    "identity": {
+      "path": "identity/summary.json",
+      "exists": true,
+      "mtimeMs": 1780000000000,
+      "latestSourceMtimeMs": 1780000000000,
+      "latestSourcePath": "graph/index.json",
+      "stale": false,
+      "staleReason": null,
+      "generatedAt": "2026-06-17T00:00:00.000Z",
+      "acceptedMemoryNodes": 2,
+      "projectBoundaryActive": true
+    },
+    "capsule": {
+      "path": "capsules/current.md",
+      "exists": true,
+      "mtimeMs": 1780000000000,
+      "latestSourceMtimeMs": 1780000000000,
+      "latestSourcePath": "graph/index.json",
+      "stale": false,
+      "staleReason": null
+    }
+  },
+  "recommended_commands": [
+    "orange remember list --status pending --json"
+  ]
+}
+```
+
+Adapters must treat `.orange-hyper/hooks/reports/` as local diagnostic output,
+not as project memory. Hook report generation does not create Quest, Proposal,
+Graph, Capsule, Identity, config, doctor repair, or graph rebuild writes.
 
 ### `graph list --json`
 

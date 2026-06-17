@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.4.0-alpha.1
+
+Minimal Hook Preview hardening alpha.
+
+- Package version is `0.4.0-alpha.1`.
+- README version is `0.4-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Hook warnings now use stable adapter-facing `{ code, message, hint }`
+  objects with `HOOK_*` codes such as `HOOK_PROJECT_ID_MISSING`,
+  `HOOK_IDENTITY_SUMMARY_MISSING`, `HOOK_CAPSULE_STALE`,
+  `HOOK_PENDING_PROPOSALS`, `HOOK_DOCTOR_NOT_OK`, and
+  `HOOK_GRAPH_PROVENANCE_WARNING`.
+- `--write-report` now writes a stable hook report schema with
+  `schema_version`, `generated_at`, `project_id`, `project_name`, `event`,
+  `readOnly: true`, `autoMutation: false`, `warnings`, `summaries` for
+  doctor/graph/identity/capsule, and `recommended_commands`.
+- Hook reports remain off by default and write only under
+  `.orange-hyper/hooks/reports/`; reports are local diagnostics, not project
+  memory.
+- Hook preview/status/run no-mutation coverage now verifies that default hook
+  execution does not modify Quest, Proposal, Graph, Capsule, Identity, or config
+  state.
+- Capsule and identity stale warnings now use a documented mtime comparison
+  against config, Quest, proposal, graph node, and graph index source files,
+  with no graph rebuild, capsule generation, or identity build.
+- Tests cover warning code shape, report schema, report-only writes, stale
+  capsule/identity warnings, doctor-not-ok warnings, pending proposal warnings,
+  and the existing v0.4.0-alpha.0 hook command surface.
+
+### Explicitly not included
+
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic proposal accept/reject
+- automatic graph rebuild
+- automatic doctor repair
+- hook installation
+- Codex-specific or Claude-specific adapter implementation
+- MCP implementation or installation
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+
 ## v0.4.0-alpha.0
 
 Minimal Hook Preview alpha.

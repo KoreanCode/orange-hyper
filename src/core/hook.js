@@ -19,6 +19,7 @@ export const HOOK_UNSUPPORTED_EVENTS = [
 ];
 
 const REPORT_DIR_RELATIVE = ".orange-hyper/hooks/reports";
+const HOOK_REPORT_SCHEMA_VERSION = 1;
 
 /**
  * @returns {import("./types.d.ts").HookPreviewResult}
@@ -133,6 +134,7 @@ function buildSessionStartResult(cwd) {
   const warnings = [
     ...(project.warning ? [project.warning] : []),
     ...doctorToWarnings(doctor.result),
+    ...doctorProjectBoundaryWarnings(doctor.result),
     ...graph.warnings
   ];
   const observations = {
@@ -208,7 +210,7 @@ function readProjectSnapshot(cwd) {
       project_id: null,
       project_name: path.basename(cwd),
       warning: warning(
-        "CONFIG_MISSING",
+        "HOOK_PROJECT_ID_MISSING",
         ".orange-hyper/config.json is missing.",
         "Run `orange init` explicitly if this repository should use Orange Hyper."
       )
@@ -223,7 +225,7 @@ function readProjectSnapshot(cwd) {
       warning: identity.project_id
         ? null
         : warning(
-            "CONFIG_PROJECT_ID_MISSING",
+            "HOOK_PROJECT_ID_MISSING",
             "config.project_id is missing.",
             "Run `orange doctor --repair-project-id` only after explicit user approval."
           )
@@ -233,7 +235,7 @@ function readProjectSnapshot(cwd) {
       project_id: null,
       project_name: path.basename(cwd),
       warning: warning(
-        "CONFIG_PARSE_ERROR",
+        "HOOK_CONFIG_UNREADABLE",
         `config.json is not valid JSON: ${error.message}`,
         "Fix .orange-hyper/config.json manually; hook preview will not repair it."
       )
@@ -267,7 +269,7 @@ function safeGraphSummary(cwd) {
     return {
       acceptedMemoryNodeCount: graph.nodes.length,
       warnings: graph.warnings.map((message) => warning(
-        "GRAPH_WARNING",
+        "HOOK_GRAPH_WARNING",
         message,
         "Inspect graph nodes manually; hook preview does not rebuild the graph."
       ))
@@ -276,7 +278,7 @@ function safeGraphSummary(cwd) {
     return {
       acceptedMemoryNodeCount: 0,
       warnings: [warning(
-        "GRAPH_READ_FAILED",
+        "HOOK_GRAPH_WARNING",
         `Accepted graph node count could not be read: ${error.message}`,
         "Run `orange graph list --json` manually after resolving project boundary or graph diagnostics."
       )]
@@ -289,15 +291,22 @@ function safePendingProposalCount(cwd) {
     if (!isInitialized(cwd)) {
       return { count: 0, warnings: [] };
     }
+    const count = listMemoryDeltaProposals(cwd, "pending").length;
     return {
-      count: listMemoryDeltaProposals(cwd, "pending").length,
-      warnings: []
+      count,
+      warnings: count > 0
+        ? [warning(
+            "HOOK_PENDING_PROPOSALS",
+            `${count} pending memory proposal${count === 1 ? "" : "s"} ${count === 1 ? "needs" : "need"} manual review.`,
+            "Run `orange remember list --status pending --json`; hook preview will not accept or reject proposals."
+          )]
+        : []
     };
   } catch (error) {
     return {
       count: 0,
       warnings: [warning(
-        "PENDING_PROPOSALS_READ_FAILED",
+        "HOOK_PENDING_PROPOSALS",
         `Pending memory proposal count could not be read: ${error.message}`,
         "Run `orange remember list --status pending --json` manually after resolving diagnostics."
       )]
@@ -323,7 +332,7 @@ function inspectCompletedQuestVerification(cwd) {
   }
   for (const anomaly of anomalies) {
     warnings.push(warning(
-      "COMPLETED_QUEST_VERIFICATION_ANOMALY",
+      "HOOK_COMPLETED_QUEST_VERIFICATION_ANOMALY",
       anomaly,
       "Inspect the completed Quest; hook preview does not edit Quest verification state."
     ));
@@ -333,7 +342,7 @@ function inspectCompletedQuestVerification(cwd) {
 
 function inspectFreshness(cwd) {
   const paths = workspacePaths(cwd);
-  const latestQuestOrMemory = latestMtime([
+  const latestQuestOrMemory = latestSourceSnapshot([
     paths.config,
     ...filesUnder(paths.activeQuests),
     ...filesUnder(paths.completedQuests),
@@ -343,31 +352,31 @@ function inspectFreshness(cwd) {
     ...filesUnder(paths.graphNodes),
     paths.graphIndex
   ]);
-  const capsule = freshnessFor(paths.currentCapsule, latestQuestOrMemory);
-  const identity = freshnessFor(paths.identitySummaryJson, latestQuestOrMemory);
+  const capsule = freshnessFor(paths.currentCapsule, latestQuestOrMemory, paths.root);
+  const identity = freshnessFor(paths.identitySummaryJson, latestQuestOrMemory, paths.root);
   const warnings = [];
   if (!capsule.exists) {
     warnings.push(warning(
-      "CAPSULE_MISSING",
+      "HOOK_CAPSULE_MISSING",
       "Current capsule is missing.",
       "Run `orange capsule` explicitly if a refreshed capsule is needed."
     ));
   } else if (capsule.stale) {
     warnings.push(warning(
-      "CAPSULE_STALE",
+      "HOOK_CAPSULE_STALE",
       "Current capsule may be stale relative to Quest, proposal, or graph state.",
       "Run `orange capsule` explicitly if a refreshed capsule is needed."
     ));
   }
   if (!identity.exists) {
     warnings.push(warning(
-      "IDENTITY_SUMMARY_MISSING",
+      "HOOK_IDENTITY_SUMMARY_MISSING",
       "Identity summary is missing.",
       "Run `orange identity build` explicitly if a refreshed identity summary is needed."
     ));
   } else if (identity.stale) {
     warnings.push(warning(
-      "IDENTITY_SUMMARY_STALE",
+      "HOOK_IDENTITY_SUMMARY_STALE",
       "Identity summary may be stale relative to Quest, proposal, or graph state.",
       "Run `orange identity build` explicitly if a refreshed identity summary is needed."
     ));
@@ -375,14 +384,24 @@ function inspectFreshness(cwd) {
   return { capsule, identity, warnings };
 }
 
-function freshnessFor(filePath, latestSourceMtime) {
+function freshnessFor(filePath, latestSource, root) {
   const exists = existsFile(filePath);
   const mtimeMs = exists ? fs.statSync(filePath).mtimeMs : null;
+  const latestSourceMtimeMs = latestSource?.mtimeMs ?? null;
+  const latestSourcePath = latestSource?.filePath
+    ? normalizeRelative(latestSource.filePath, root)
+    : null;
+  const stale = Boolean(exists && latestSourceMtimeMs && mtimeMs + 1 < latestSourceMtimeMs);
   return {
-    path: normalizeRelative(filePath, path.dirname(path.dirname(filePath))),
+    path: normalizeRelative(filePath, root),
     exists,
     mtimeMs,
-    stale: Boolean(exists && latestSourceMtime && mtimeMs + 1 < latestSourceMtime)
+    latestSourceMtimeMs,
+    latestSourcePath,
+    stale,
+    staleReason: stale
+      ? `${normalizeRelative(filePath, root)} is older than ${latestSourcePath}`
+      : null
   };
 }
 
@@ -390,10 +409,22 @@ function doctorToWarnings(result) {
   if (!result) {
     return [];
   }
-  return [
-    ...result.diagnostics.errors,
-    ...result.diagnostics.warnings
-  ].map((item) => warning(item.code, item.message, item.hint));
+  const warnings = [];
+  if (!result.ok) {
+    warnings.push(warning(
+      "HOOK_DOCTOR_NOT_OK",
+      `orange doctor reports ${result.errors.length} error${result.errors.length === 1 ? "" : "s"}.`,
+      "Run `orange doctor --json`; hook preview will not repair doctor findings."
+    ));
+  }
+  if (result.warnings.length) {
+    warnings.push(warning(
+      "HOOK_DOCTOR_WARNINGS",
+      `orange doctor reports ${result.warnings.length} warning${result.warnings.length === 1 ? "" : "s"}.`,
+      "Run `orange doctor --json` to inspect warnings before making manual changes."
+    ));
+  }
+  return warnings;
 }
 
 function doctorProjectBoundaryWarnings(result) {
@@ -403,7 +434,11 @@ function doctorProjectBoundaryWarnings(result) {
   return [
     ...result.project_boundary.diagnostics.errors,
     ...result.project_boundary.diagnostics.warnings
-  ].map((item) => warning(item.code, item.message, item.hint));
+  ].map((item) => warning(
+    /PROJECT_ID_MISSING/.test(item.code) ? "HOOK_PROJECT_ID_MISSING" : "HOOK_PROJECT_BOUNDARY_WARNING",
+    item.message,
+    item.hint
+  ));
 }
 
 function doctorGraphProvenanceWarnings(result) {
@@ -411,29 +446,36 @@ function doctorGraphProvenanceWarnings(result) {
     return [];
   }
   const graphCodes = /^(ACCEPTED_|GRAPH_NODE_|GRAPH_INDEX_)/;
-  return result.diagnostics.errors
+  return [
+    ...result.diagnostics.errors,
+    ...result.diagnostics.warnings
+  ]
     .filter((item) => graphCodes.test(item.code))
-    .map((item) => warning(item.code, item.message, item.hint));
+    .map((item) => warning(
+      "HOOK_GRAPH_PROVENANCE_WARNING",
+      item.message,
+      "Run `orange doctor --json` and inspect accepted graph node provenance; hook preview will not rebuild or repair the graph."
+    ));
 }
 
 function pushMissingObservationWarnings(warnings, observations) {
   if (!observations.orangeRootExists) {
     warnings.push(warning(
-      "ORANGE_ROOT_MISSING",
+      "HOOK_ORANGE_ROOT_MISSING",
       ".orange-hyper directory is missing.",
       "Run `orange init` explicitly if this repository should use Orange Hyper."
     ));
   }
   if (!observations.projectIdExists) {
     warnings.push(warning(
-      "CONFIG_PROJECT_ID_MISSING",
+      "HOOK_PROJECT_ID_MISSING",
       "config.project_id is missing.",
       "Run `orange doctor --repair-project-id` only after explicit user approval."
     ));
   }
   if (!observations.identitySummaryExists) {
     warnings.push(warning(
-      "IDENTITY_SUMMARY_MISSING",
+      "HOOK_IDENTITY_SUMMARY_MISSING",
       "Identity summary is missing.",
       "Run `orange identity build` explicitly if a refreshed identity summary is needed."
     ));
@@ -444,7 +486,7 @@ function maybeWriteReport(cwd, reportKind, data, options) {
   if (!options.writeReport) {
     return data;
   }
-  const report = writeHookReport(cwd, reportKind, buildReportPayload(cwd, reportKind));
+  const report = writeHookReport(cwd, reportKind, buildReportPayload(cwd, reportKind, data));
   if (data.report) {
     return {
       ...data,
@@ -476,49 +518,96 @@ function writeHookReport(cwd, reportKind, payload) {
   };
 }
 
-function buildReportPayload(cwd, reportKind) {
+function buildReportPayload(cwd, reportKind, data) {
   const paths = workspacePaths(cwd);
+  const project = readProjectSnapshot(cwd);
   const doctor = runDoctor(cwd);
   const freshness = inspectFreshness(cwd);
   const identitySummary = readIdentitySummary(paths.identitySummaryJson);
+  const graph = safeGraphSummary(cwd);
+  const event = hookReportEvent(reportKind, data);
+  const warnings = uniqueWarnings(data?.warnings || []);
+  const projectId = project.project_id || doctor.project_boundary.project_id || null;
+  const projectName = project.project_name || doctor.project_boundary.project_name || path.basename(cwd);
   return {
     ...originMetadata(),
+    schema_version: HOOK_REPORT_SCHEMA_VERSION,
     report_kind: reportKind,
     generated_at: nowIso(),
+    project_id: projectId,
+    project_name: projectName,
+    event,
     readOnly: true,
     autoMutation: false,
-    doctor: {
-      ok: doctor.ok,
-      checkCount: doctor.checks.length,
-      errorCount: doctor.errors.length,
-      warningCount: doctor.warnings.length,
-      repairCount: doctor.repairs.length,
-      diagnosticCodes: [
-        ...doctor.diagnostics.errors,
-        ...doctor.diagnostics.warnings,
-        ...doctor.diagnostics.repairs
-      ].map((item) => item.code)
+    warnings,
+    summaries: {
+      doctor: {
+        ok: doctor.ok,
+        checkCount: doctor.checks.length,
+        errorCount: doctor.errors.length,
+        warningCount: doctor.warnings.length,
+        repairCount: doctor.repairs.length,
+        diagnosticCodes: [
+          ...doctor.diagnostics.errors,
+          ...doctor.diagnostics.warnings,
+          ...doctor.diagnostics.repairs
+        ].map((item) => item.code)
+      },
+      graph: {
+        acceptedMemoryNodeCount: graph.acceptedMemoryNodeCount,
+        warningCount: graph.warnings.length,
+        warnings: graph.warnings
+      },
+      identity: {
+        ...freshness.identity,
+        generatedAt: identitySummary?.generatedAt || null,
+        acceptedMemoryNodes: identitySummary?.acceptedMemoryNodes ?? null,
+        projectBoundaryActive: identitySummary?.projectBoundaryActive ?? null
+      },
+      capsule: freshness.capsule
     },
-    project_boundary: {
-      project_id: doctor.project_boundary.project_id,
-      project_name: doctor.project_boundary.project_name,
-      errorCount: doctor.project_boundary.errors.length,
-      warningCount: doctor.project_boundary.warnings.length,
-      repairCount: doctor.project_boundary.repairs.length,
-      diagnosticCodes: [
-        ...doctor.project_boundary.diagnostics.errors,
-        ...doctor.project_boundary.diagnostics.warnings,
-        ...doctor.project_boundary.diagnostics.repairs
-      ].map((item) => item.code)
-    },
-    capsule: freshness.capsule,
-    identity: {
-      ...freshness.identity,
-      generatedAt: identitySummary?.generatedAt || null,
-      acceptedMemoryNodes: identitySummary?.acceptedMemoryNodes ?? null,
-      projectBoundaryActive: identitySummary?.projectBoundaryActive ?? null
+    recommended_commands: recommendedCommandsForWarnings(warnings)
+  };
+}
+
+function hookReportEvent(reportKind, data) {
+  if (data?.event) {
+    return data.event;
+  }
+  if (reportKind === "hook-preview") {
+    return "preview";
+  }
+  if (reportKind === "hook-status") {
+    return "status";
+  }
+  return reportKind.replace(/^hook-run-/, "");
+}
+
+function recommendedCommandsForWarnings(warnings) {
+  const commands = [];
+  const add = (command) => {
+    if (!commands.includes(command)) {
+      commands.push(command);
     }
   };
+  for (const item of warnings) {
+    if (item.code === "HOOK_DOCTOR_NOT_OK" || item.code === "HOOK_DOCTOR_WARNINGS" || item.code === "HOOK_PROJECT_ID_MISSING") {
+      add("orange doctor --json");
+    }
+    if (item.code === "HOOK_CAPSULE_MISSING" || item.code === "HOOK_CAPSULE_STALE") {
+      add("orange capsule");
+    }
+    if (item.code === "HOOK_IDENTITY_SUMMARY_MISSING" || item.code === "HOOK_IDENTITY_SUMMARY_STALE") {
+      add("orange identity build");
+    }
+    if (item.code === "HOOK_PENDING_PROPOSALS") {
+      add("orange remember list --status pending --json");
+    }
+    if (item.code === "HOOK_GRAPH_PROVENANCE_WARNING" || item.code === "HOOK_GRAPH_WARNING") {
+      add("orange graph list --json");
+    }
+  }
+  return commands;
 }
 
 function readIdentitySummary(filePath) {
@@ -533,7 +622,7 @@ function readIdentitySummary(filePath) {
 }
 
 function warning(code, message, hint) {
-  return { code, message, hint };
+  return { code: String(code), message: String(message), hint: String(hint) };
 }
 
 function uniqueWarnings(warnings) {
@@ -564,11 +653,18 @@ function filesUnder(dir) {
   });
 }
 
-function latestMtime(filePaths) {
-  const mtimes = filePaths
-    .filter((filePath) => fs.existsSync(filePath) && fs.statSync(filePath).isFile())
-    .map((filePath) => fs.statSync(filePath).mtimeMs);
-  return mtimes.length ? Math.max(...mtimes) : null;
+function latestSourceSnapshot(filePaths) {
+  let latest = null;
+  for (const filePath of filePaths) {
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      continue;
+    }
+    const mtimeMs = fs.statSync(filePath).mtimeMs;
+    if (!latest || mtimeMs > latest.mtimeMs) {
+      latest = { filePath, mtimeMs };
+    }
+  }
+  return latest;
 }
 
 function existsFile(filePath) {

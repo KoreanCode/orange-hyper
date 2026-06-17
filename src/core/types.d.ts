@@ -282,9 +282,25 @@ export interface DoctorResult {
 }
 
 export type HookEvent = "session-start" | "stop";
+export type HookReportEvent = HookEvent | "preview" | "status";
+export type HookWarningCode =
+  | "HOOK_CAPSULE_MISSING"
+  | "HOOK_CAPSULE_STALE"
+  | "HOOK_COMPLETED_QUEST_VERIFICATION_ANOMALY"
+  | "HOOK_CONFIG_UNREADABLE"
+  | "HOOK_DOCTOR_NOT_OK"
+  | "HOOK_DOCTOR_WARNINGS"
+  | "HOOK_GRAPH_PROVENANCE_WARNING"
+  | "HOOK_GRAPH_WARNING"
+  | "HOOK_IDENTITY_SUMMARY_MISSING"
+  | "HOOK_IDENTITY_SUMMARY_STALE"
+  | "HOOK_ORANGE_ROOT_MISSING"
+  | "HOOK_PENDING_PROPOSALS"
+  | "HOOK_PROJECT_BOUNDARY_WARNING"
+  | "HOOK_PROJECT_ID_MISSING";
 
 export interface HookWarning {
-  code: string;
+  code: HookWarningCode | `HOOK_${string}`;
   message: string;
   hint: string;
 }
@@ -334,6 +350,16 @@ export interface HookStatusResult {
   warnings: HookWarning[];
 }
 
+export interface HookFreshnessSummary {
+  path: string;
+  exists: boolean;
+  mtimeMs: number | null;
+  latestSourceMtimeMs: number | null;
+  latestSourcePath: string | null;
+  stale: boolean;
+  staleReason: string | null;
+}
+
 export interface HookRunResult {
   event: HookEvent;
   installed: false;
@@ -343,6 +369,40 @@ export interface HookRunResult {
   observations: JsonObject;
   warnings: HookWarning[];
   hints: string[];
+}
+
+export interface HookReportPayload extends OriginMetadata {
+  schema_version: 1;
+  report_kind: string;
+  generated_at: string;
+  project_id: string | null;
+  project_name: string;
+  event: HookReportEvent;
+  readOnly: true;
+  autoMutation: false;
+  warnings: HookWarning[];
+  summaries: {
+    doctor: {
+      ok: boolean;
+      checkCount: number;
+      errorCount: number;
+      warningCount: number;
+      repairCount: number;
+      diagnosticCodes: string[];
+    };
+    graph: {
+      acceptedMemoryNodeCount: number;
+      warningCount: number;
+      warnings: HookWarning[];
+    };
+    identity: HookFreshnessSummary & {
+      generatedAt: string | null;
+      acceptedMemoryNodes: number | null;
+      projectBoundaryActive: boolean | null;
+    };
+    capsule: HookFreshnessSummary;
+  };
+  recommended_commands: string[];
 }
 
 export interface IdentitySummary extends OriginMetadata {

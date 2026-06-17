@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.4-doc.0`
+- README version: `0.4-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.4.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, and Minimal Hook Preview features.
+As of v0.4.0-alpha.1, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, and Minimal Hook Preview features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -100,6 +100,7 @@ As of v0.4.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usabil
 - `hook preview`, `hook status`, `hook run session-start`, and `hook run stop` provide a read-only, warning-first hook preview.
 - The hook preview does not automatically modify Quest, Proposal, Graph, Identity, or Project Boundary state.
 - `--write-report` creates a local report only under `.orange-hyper/hooks/reports/`.
+- Hook warnings and local reports keep a stable JSON shape that adapters can interpret.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
 
 ## Memory Lifecycle
