@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.5-doc.0`
+- README version: `0.5-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.4.0 stable 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview 和 Minimal Hook Preview 功能。
+以 v0.5.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview 和 MCP Advisor alpha 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -101,6 +101,8 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - hook preview 不会自动修改 Quest、Proposal、Graph、Identity 或 Project Boundary。
 - 只有显式传入 `--write-report` 时，才会在 `.orange-hyper/hooks/reports/` 下生成 local report。
 - hook warning 和 local report 会保持 adapter 可解析的稳定 JSON shape。
+- `mcp list`、`mcp show`、`mcp suggest` 只提供带 score 和 no-suggestion 状态的 read-only MCP proposal card。
+- MCP Advisor 不会安装或运行 MCP，不会修改 config，也不会写入 project memory。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
 
 ## Memory Lifecycle

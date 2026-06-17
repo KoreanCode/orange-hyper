@@ -252,6 +252,7 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
     "autoRun": false,
     "configMutation": false,
     "projectMemoryMutation": false,
+    "source_quest_id": null,
     "project": {
       "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
       "project_name": "orange-hyper"
@@ -285,10 +286,13 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
       },
       "warnings": []
     },
+    "no_suggestion_reason": null,
+    "suggested_next_step": null,
     "suggestions": [
       {
         "mcp_id": "context7",
-        "score": 2,
+        "score": 50,
+        "confidence": "medium",
         "matched_signals": [
           {
             "signal": "known_framework_or_library",
@@ -299,6 +303,8 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
             "why": "The request asks for latest docs, versions, or API usage."
           }
         ],
+        "why_now": "The request names a framework, library, or platform where version-specific docs can matter.",
+        "requires_user_approval": true,
         "tool": {
           "id": "context7",
           "name": "Context7",
@@ -323,7 +329,9 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
           "token_impact": "medium",
           "install_command": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
           "use_once_or_persist": "use_once",
-          "requires_user_approval": true
+          "requires_user_approval": true,
+          "not_executed": true,
+          "config_mutation": false
         }
       }
     ],
@@ -341,9 +349,38 @@ orange mcp suggest --query "Spring Security 최신 문서 확인이 필요해" -
         "token_impact": "medium",
         "install_command": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
         "use_once_or_persist": "use_once",
-        "requires_user_approval": true
+        "requires_user_approval": true,
+        "not_executed": true,
+        "config_mutation": false
       }
     ]
+  }
+}
+```
+
+When no catalog signal is strong enough, `mcp.suggest` still succeeds and
+returns an explicit no-suggestion state. Abbreviated example:
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "mcp.suggest",
+  "data": {
+    "readOnly": true,
+    "autoInstall": false,
+    "autoRun": false,
+    "configMutation": false,
+    "projectMemoryMutation": false,
+    "source_quest_id": null,
+    "input": {
+      "query": "No tool needed, just explain this concept",
+      "quest": null
+    },
+    "no_suggestion_reason": "No deterministic MCP catalog signal matched the query or Quest context strongly enough for a proposal.",
+    "suggested_next_step": "Continue without MCP, or rerun with a specific documentation, repository, incident, or product-tracker need.",
+    "suggestions": [],
+    "proposal_cards": []
   }
 }
 ```

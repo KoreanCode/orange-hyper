@@ -1,5 +1,40 @@
 # Release Notes
 
+## v0.5.0-alpha.1
+
+MCP Advisor recommendation-quality hardening.
+
+- Package version is `0.5.0-alpha.1`.
+- README version is `0.5-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `mcp suggest` suggestions now include deterministic `score`,
+  `confidence`, `matched_signals`, `why_now`, and
+  `requires_user_approval: true`.
+- Weak or unrelated requests now return an explicit no-suggestion state with
+  `suggestions: []`, `no_suggestion_reason`, and `suggested_next_step`.
+- Multiple matching MCPs are ranked by score, with deterministic catalog-order
+  tie-breaking.
+- Korean and English catalog signals were expanded for docs/version/API,
+  repository issue/PR, runtime incident/error, and product ticket/task contexts.
+- Quest-based suggestions include `source_quest_id`, support active and
+  completed Quests, and read Quest request/title/constraints/notes without
+  mutating Quest or project memory.
+- Proposal cards now make the execution boundary explicit with
+  `not_executed: true` and `config_mutation: false`.
+
+### Explicitly still not included
+
+- MCP automatic installation
+- MCP automatic execution
+- MCP config automatic modification
+- API key storage
+- external network calls
+- hook-triggered MCP suggestion, installation, or execution
+- subagent execution
+- role evolution
+- auto planner or auto execution loop
+- automatic Quest, Proposal, Graph, config, or project memory mutation
+
 ## v0.5.0-alpha.0
 
 MCP Advisor alpha.

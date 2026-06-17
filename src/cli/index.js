@@ -37,6 +37,7 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").McpAdvisorResult} McpAdvisorResult
  * @typedef {import("../core/types.d.ts").McpCatalogEntry} McpCatalogEntry
  * @typedef {import("../core/types.d.ts").McpProposalCard} McpProposalCard
+ * @typedef {import("../core/types.d.ts").McpSuggestion} McpSuggestion
  *
  * @typedef {{
  *   id: string,
@@ -1071,20 +1072,34 @@ function formatMcpAdvisorResult(result) {
   }
   if (!result.proposal_cards.length) {
     lines.push("");
-    lines.push("No MCP proposal matched this request.");
+    lines.push("현재 MCP 제안 없음");
+    lines.push(`Reason: ${result.no_suggestion_reason}`);
+    lines.push(`Suggested next step: ${result.suggested_next_step}`);
     lines.push("No MCP was installed, run, or persisted.");
     return lines.join("\n");
   }
   lines.push("");
-  result.proposal_cards.forEach((card, index) => {
+  result.suggestions.forEach((suggestion, index) => {
     if (index > 0) {
       lines.push("");
     }
-    lines.push(...formatMcpProposalCard(card).split("\n"));
+    lines.push(...formatMcpSuggestion(suggestion).split("\n"));
   });
   lines.push("");
   lines.push("No MCP was installed, run, configured, or saved to project memory.");
   return lines.join("\n");
+}
+
+/**
+ * @param {McpSuggestion} suggestion
+ */
+function formatMcpSuggestion(suggestion) {
+  return [
+    `Score: ${suggestion.score}`,
+    `Confidence: ${suggestion.confidence}`,
+    `Matched signals: ${suggestion.matched_signals.map((item) => item.signal).join(", ")}`,
+    ...formatMcpProposalCard(suggestion.proposal).split("\n")
+  ].join("\n");
 }
 
 /**
@@ -1100,7 +1115,9 @@ function formatMcpProposalCard(card) {
     `Token impact: ${card.token_impact}`,
     `Install command: ${card.install_command}`,
     `Use once or persist: ${card.use_once_or_persist}`,
-    `Requires user approval: ${String(card.requires_user_approval)}`
+    `Requires user approval: ${String(card.requires_user_approval)}`,
+    `Not executed: ${String(card.not_executed)}`,
+    `Config mutation: ${String(card.config_mutation)}`
   ].join("\n");
 }
 

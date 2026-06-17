@@ -103,58 +103,70 @@ const CATALOG_BY_ID = new Map(MCP_CATALOG.map((entry) => [entry.id, entry]));
 const MATCHERS = {
   context7: [
     {
-      pattern: /\b(api|breaking|deprecat|docs?|documentation|framework|fresh|latest|librar|migration|version)\b/i,
+      pattern: /\b(api|breaking|deprecat(?:e|ed|ion)?|docs?|documentation|framework|fresh|latest|librar(?:y|ies)?|migration|version)\b/i,
       signal: "framework_or_library_freshness",
-      why: "Framework or library freshness appears important."
+      why: "Framework or library freshness appears important.",
+      weight: 25
     },
     {
       pattern: /Spring(?:\s+Security)?|React|Next\.?js|Vue|Svelte|Django|Rails|FastAPI|Kubernetes|Terraform/i,
       signal: "known_framework_or_library",
-      why: "The request names a framework, library, or platform where version-specific docs can matter."
+      why: "The request names a framework, library, or platform where version-specific docs can matter.",
+      weight: 25
     },
     {
-      pattern: /최신|문서|버전|라이브러리|프레임워크|마이그레이션|사용법|API/i,
+      pattern: /최신|문서|버전|라이브러리|프레임워크|framework|마이그레이션|사용법|API/i,
       signal: "korean_docs_or_version_request",
-      why: "The request asks for latest docs, versions, or API usage."
+      why: "The request asks for latest docs, versions, or API usage.",
+      weight: 25
     }
   ],
   github: [
     {
       pattern: /\b(github|issue|pr|pull request|repo|repository|review comment|commit|branch)\b/i,
       signal: "repo_issue_or_pr_context",
-      why: "Repository issue, PR, commit, or review context appears relevant."
+      why: "Repository issue, PR, commit, or review context appears relevant.",
+      weight: 25
     },
     {
       pattern: /이슈|풀리퀘스트|리뷰\s*코멘트|레포|저장소|브랜치|커밋/i,
       signal: "korean_repo_context",
-      why: "The request mentions issue, PR, repository, branch, or commit context."
+      why: "The request mentions issue, PR, repository, branch, or commit context.",
+      weight: 25
     }
   ],
   sentry: [
     {
       pattern: /\b(crash|error|exception|incident|production|runtime|sentry|stack ?trace|traceback)\b/i,
       signal: "runtime_incident_or_error",
-      why: "Runtime error or incident context appears relevant."
+      why: "Runtime error or incident context appears relevant.",
+      weight: 25
     },
     {
       pattern: /장애|인시던트|런타임|프로덕션|스택\s*트레이스|예외|에러|오류/i,
       signal: "korean_runtime_incident",
-      why: "The request mentions runtime errors, incidents, or stack traces."
+      why: "The request mentions runtime errors, incidents, or stack traces.",
+      weight: 25
     }
   ],
   linear: [
     {
-      pattern: /\b(acceptance criteria|backlog|linear|product|roadmap|task tracking|ticket|work item)\b/i,
+      pattern: /\b(acceptance criteria|backlog|linear|product|roadmap|task|task tracking|ticket|work item)\b/i,
       signal: "product_task_tracking",
-      why: "Product work item or task tracking context appears relevant."
+      why: "Product work item or task tracking context appears relevant.",
+      weight: 25
     },
     {
       pattern: /리니어|티켓|작업\s*항목|프로덕트|제품|기획|로드맵|백로그|요구사항|인수\s*조건/i,
       signal: "korean_product_tracking",
-      why: "The request mentions product, ticket, roadmap, or acceptance-criteria context."
+      why: "The request mentions product, ticket, roadmap, or acceptance-criteria context.",
+      weight: 25
     }
   ]
 };
+
+const NO_SUGGESTION_REASON = "No deterministic MCP catalog signal matched the query or Quest context strongly enough for a proposal.";
+const NO_SUGGESTION_NEXT_STEP = "Continue without MCP, or rerun with a specific documentation, repository, incident, or product-tracker need.";
 
 const PROPOSAL_DEFAULTS = {
   context7: {
@@ -215,13 +227,15 @@ export function suggestMcp(cwd = process.cwd(), options = {}) {
   const state = readAdvisorState(cwd);
   const inputText = [query, questText].filter(Boolean).join("\n");
   const ranked = MCP_CATALOG
-    .map((entry) => scoreEntry(entry, inputText))
+    .map((entry, index) => scoreEntry(entry, inputText, index))
     .filter((item) => item.score > 0)
     .sort((left, right) =>
       right.score - left.score ||
+      left.catalog_index - right.catalog_index ||
       left.entry.id.localeCompare(right.entry.id)
     );
-  const suggestions = ranked.map((item) => suggestionFromScore(item.entry, item.score, item.matched_signals));
+  const suggestions = ranked.map((item) => suggestionFromScore(item.entry, item.score, item.confidence, item.matched_signals));
+  const noSuggestion = suggestions.length === 0;
 
   return {
     readOnly: true,
@@ -229,6 +243,7 @@ export function suggestMcp(cwd = process.cwd(), options = {}) {
     autoRun: false,
     configMutation: false,
     projectMemoryMutation: false,
+    source_quest_id: quest ? quest.data.id : null,
     project,
     input: {
       query,
@@ -242,6 +257,8 @@ export function suggestMcp(cwd = process.cwd(), options = {}) {
       } : null
     },
     state,
+    no_suggestion_reason: noSuggestion ? NO_SUGGESTION_REASON : null,
+    suggested_next_step: noSuggestion ? NO_SUGGESTION_NEXT_STEP : null,
     suggestions,
     proposal_cards: suggestions.map((suggestion) => suggestion.proposal)
   };
@@ -276,17 +293,34 @@ function cloneEntry(entry) {
 
 function textFromQuest(quest) {
   const data = quest.data || {};
+  const request = extractMarkdownSection(quest.body || "", "Request");
+  const notes = extractMarkdownSection(quest.body || "", "Notes");
   return [
     data.title,
-    data.layer,
-    data.output_contract,
-    data.quest_policy,
-    ...(Array.isArray(data.scope_paths) ? data.scope_paths : []),
+    request,
     ...(Array.isArray(data.constraints) ? data.constraints : []),
-    ...(Array.isArray(data.unknowns) ? data.unknowns : []),
-    ...(Array.isArray(data.expected_verification) ? data.expected_verification : []),
-    quest.body
+    notes
   ].filter(Boolean).join("\n");
+}
+
+function extractMarkdownSection(body, heading) {
+  const lines = String(body || "").split(/\r?\n/);
+  const normalized = String(heading || "").trim().toLowerCase();
+  const start = lines.findIndex((line) => {
+    const match = line.match(/^##\s+(.+?)\s*$/);
+    return match && match[1].trim().toLowerCase() === normalized;
+  });
+  if (start === -1) {
+    return "";
+  }
+  const collected = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^##\s+/.test(line)) {
+      break;
+    }
+    collected.push(line);
+  }
+  return collected.join("\n").trim();
 }
 
 function safeProject(cwd) {
@@ -357,7 +391,7 @@ function safeRead(label, warnings, read) {
   }
 }
 
-function scoreEntry(entry, text) {
+function scoreEntry(entry, text, catalogIndex) {
   const matchers = MATCHERS[entry.id] || [];
   const matched = [];
   for (const matcher of matchers) {
@@ -368,9 +402,15 @@ function scoreEntry(entry, text) {
       });
     }
   }
+  const score = matched.reduce((total, match) => {
+    const matcher = matchers.find((item) => item.signal === match.signal);
+    return total + (matcher?.weight || 0);
+  }, 0);
   return {
     entry,
-    score: matched.length,
+    catalog_index: catalogIndex,
+    score,
+    confidence: confidenceForScore(score),
     matched_signals: matched
   };
 }
@@ -379,21 +419,35 @@ function scoreEntry(entry, text) {
  * @param {import("./types.d.ts").McpCatalogEntry} entry
  * @returns {import("./types.d.ts").McpSuggestion}
  */
-function suggestionFromScore(entry, score, matchedSignals) {
+function suggestionFromScore(entry, score, confidence, matchedSignals) {
+  const whyNow = matchedSignals[0]?.why || entry.useful_when[0];
   return {
     mcp_id: entry.id,
     score,
+    confidence,
     matched_signals: matchedSignals,
+    why_now: whyNow,
+    requires_user_approval: true,
     tool: cloneEntry(entry),
-    proposal: proposalCardFor(entry, matchedSignals)
+    proposal: proposalCardFor(entry, whyNow)
   };
+}
+
+function confidenceForScore(score) {
+  if (score >= 75) {
+    return "high";
+  }
+  if (score >= 50) {
+    return "medium";
+  }
+  return "low";
 }
 
 /**
  * @param {import("./types.d.ts").McpCatalogEntry} entry
  * @returns {import("./types.d.ts").McpProposalCard}
  */
-function proposalCardFor(entry, matchedSignals) {
+function proposalCardFor(entry, whyNow) {
   const defaults = PROPOSAL_DEFAULTS[entry.id];
   return {
     tool: {
@@ -401,13 +455,15 @@ function proposalCardFor(entry, matchedSignals) {
       name: entry.name,
       category: entry.category
     },
-    why_now: matchedSignals[0]?.why || entry.useful_when[0],
+    why_now: whyNow,
     expected_benefit: defaults.expected_benefit,
     scope: defaults.scope,
     risk: defaults.risk,
     token_impact: entry.token_impact,
     install_command: entry.install_hint,
     use_once_or_persist: defaults.use_once_or_persist,
-    requires_user_approval: true
+    requires_user_approval: true,
+    not_executed: true,
+    config_mutation: false
   };
 }

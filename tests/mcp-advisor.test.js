@@ -8,7 +8,7 @@ import path from "node:path";
 import { JSON_CONTRACT_VERSION, main } from "../src/cli/index.js";
 import { initWorkspace, readConfig } from "../src/core/config.js";
 import { workspacePaths } from "../src/core/paths.js";
-import { createQuest } from "../src/core/quest.js";
+import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 
@@ -71,8 +71,13 @@ test("mcp suggest --query returns a read-only proposal card without installing",
   assert.equal(payload.data.autoRun, false);
   assert.equal(payload.data.configMutation, false);
   assert.equal(payload.data.projectMemoryMutation, false);
+  assert.equal(payload.data.source_quest_id, null);
   assert.equal(payload.data.project.project_id, readConfig(cwd).project_id);
   assert.equal(payload.data.input.query, "Spring Security 최신 문서 확인이 필요해");
+  assert.equal(payload.data.no_suggestion_reason, null);
+  assert.equal(payload.data.suggested_next_step, null);
+  assert.equal(payload.data.suggestions[0].mcp_id, "context7");
+  assertSuggestion(payload.data.suggestions[0]);
   assert.equal(payload.data.proposal_cards[0].tool.id, "context7");
   assertProposalCard(payload.data.proposal_cards[0]);
   assert.equal(payload.data.proposal_cards[0].requires_user_approval, true);
@@ -83,24 +88,89 @@ test("mcp suggest --query returns a read-only proposal card without installing",
   assert.equal(fs.existsSync(path.join(paths.root, "mcp")), false);
 });
 
-test("mcp suggest --quest reads quest context without writing project memory", () => {
+test("mcp suggest --query matches context7 English documentation signals", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+
+  const payload = assertJsonCommand(
+    runOrange(["mcp", "suggest", "--query", "Need latest React API documentation before migration", "--json"], cwd),
+    "mcp.suggest"
+  );
+
+  assert.equal(payload.data.suggestions[0].mcp_id, "context7");
+  assertSuggestion(payload.data.suggestions[0]);
+  assert.ok(payload.data.suggestions[0].matched_signals.length >= 2);
+});
+
+test("mcp suggest returns no suggestion when signal is insufficient", async () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+
+  const payload = assertJsonCommand(
+    runOrange(["mcp", "suggest", "--query", "No tool needed, just explain this concept", "--json"], cwd),
+    "mcp.suggest"
+  );
+
+  assert.deepEqual(payload.data.suggestions, []);
+  assert.deepEqual(payload.data.proposal_cards, []);
+  assert.equal(typeof payload.data.no_suggestion_reason, "string");
+  assert.match(payload.data.no_suggestion_reason, /No deterministic MCP catalog signal/);
+  assert.equal(typeof payload.data.suggested_next_step, "string");
+
+  const { output, io } = captureIo();
+  await main(["mcp", "suggest", "--query", "No tool needed, just explain this concept"], { cwd, io });
+  const human = output.join("");
+  assert.match(human, /현재 MCP 제안 없음/);
+  assert.match(human, /Suggested next step:/);
+});
+
+test("mcp suggest ranks multiple suggestions deterministically", () => {
+  const cwd = tempWorkspace();
+  initWorkspace(cwd);
+  const args = ["mcp", "suggest", "--query", "GitHub PR 이슈와 Sentry 에러를 같이 보고 싶어", "--json"];
+
+  const first = assertJsonCommand(runOrange(args, cwd), "mcp.suggest");
+  const second = assertJsonCommand(runOrange(args, cwd), "mcp.suggest");
+
+  assert.deepEqual(
+    first.data.suggestions.map((suggestion) => suggestion.mcp_id),
+    second.data.suggestions.map((suggestion) => suggestion.mcp_id)
+  );
+  assert.deepEqual(
+    first.data.suggestions.map((suggestion) => suggestion.mcp_id),
+    ["github", "sentry"]
+  );
+  assert.ok(first.data.suggestions[0].score >= first.data.suggestions[1].score);
+  for (const suggestion of first.data.suggestions) {
+    assertSuggestion(suggestion);
+  }
+});
+
+test("mcp suggest --quest reads completed quest context without writing project memory", () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd);
   const quest = createQuest(cwd, "Review GitHub PR issue context before changing the repository", {
     layer: "L2",
     expectedVerification: ["confirm linked PR discussion"]
   });
+  const completed = completeQuest(cwd, quest.id, {
+    evidence: ["test setup completed quest for MCP Advisor source id"]
+  });
   const beforeConfig = fs.readFileSync(paths.config, "utf8");
   const beforeMemory = snapshotOrangeFiles(cwd);
 
   const payload = assertJsonCommand(
-    runOrange(["mcp", "suggest", "--quest", quest.id, "--json"], cwd),
+    runOrange(["mcp", "suggest", "--quest", completed.data.id, "--json"], cwd),
     "mcp.suggest"
   );
 
   assert.equal(payload.data.input.quest.id, quest.id);
   assert.equal(payload.data.input.quest.title, quest.data.title);
+  assert.equal(payload.data.input.quest.status, "completed");
+  assert.equal(payload.data.source_quest_id, quest.id);
   assert.equal(payload.data.proposal_cards[0].tool.id, "github");
+  assert.equal(payload.data.suggestions[0].mcp_id, "github");
+  assertSuggestion(payload.data.suggestions[0]);
   assertProposalCard(payload.data.proposal_cards[0]);
   assert.equal(payload.data.proposal_cards[0].requires_user_approval, true);
 
@@ -133,8 +203,10 @@ function assertCatalogEntry(entry) {
 
 function assertProposalCard(card) {
   assert.deepEqual(Object.keys(card).sort(), [
+    "config_mutation",
     "expected_benefit",
     "install_command",
+    "not_executed",
     "requires_user_approval",
     "risk",
     "scope",
@@ -152,6 +224,25 @@ function assertProposalCard(card) {
   assert.equal(typeof card.install_command, "string");
   assert.equal(typeof card.use_once_or_persist, "string");
   assert.equal(card.requires_user_approval, true);
+  assert.equal(card.not_executed, true);
+  assert.equal(card.config_mutation, false);
+}
+
+function assertSuggestion(suggestion) {
+  assert.equal(typeof suggestion.mcp_id, "string");
+  assert.equal(typeof suggestion.score, "number");
+  assert.ok(suggestion.score > 0);
+  assert.match(suggestion.confidence, /^(low|medium|high)$/);
+  assert.ok(Array.isArray(suggestion.matched_signals));
+  assert.ok(suggestion.matched_signals.length > 0);
+  for (const signal of suggestion.matched_signals) {
+    assert.equal(typeof signal.signal, "string");
+    assert.equal(typeof signal.why, "string");
+  }
+  assert.equal(typeof suggestion.why_now, "string");
+  assert.equal(suggestion.requires_user_approval, true);
+  assertCatalogEntry(suggestion.tool);
+  assertProposalCard(suggestion.proposal);
 }
 
 function snapshotOrangeFiles(cwd) {

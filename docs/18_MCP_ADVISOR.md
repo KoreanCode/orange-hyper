@@ -1,6 +1,6 @@
 # MCP Advisor
 
-Orange Hyper v0.5.0-alpha.0 adds MCP Advisor as a read-only recommendation
+Orange Hyper v0.5.0-alpha.1 keeps MCP Advisor as a read-only recommendation
 layer. It is not MCP integration.
 
 The advisor can explain when an MCP may help, but it does not install, run,
@@ -69,6 +69,59 @@ The advisor then returns zero or more proposal cards:
 
 No suggestion is a command to act. It is only a card the user can evaluate.
 
+Scoring is deterministic and local-only. Orange Hyper does not call an LLM,
+network service, MCP server, installer, or config writer while scoring. Each
+matched catalog signal contributes a fixed score. Suggestions include:
+
+- `score`
+- `confidence`: `low`, `medium`, or `high`
+- `matched_signals`
+- `why_now`
+- `requires_user_approval: true`
+
+Current signal coverage is intentionally small and multilingual:
+
+| signal family | examples | recommendation |
+| --- | --- | --- |
+| docs/version/API/library/framework | latest docs, version, API, library, framework, 최신 문서, 버전, 라이브러리, 프레임워크 | `context7` |
+| repository work | issue, PR, repository, pull request, 이슈, 저장소, 커밋 | `github` |
+| runtime incident | error, incident, stacktrace, exception, 에러, 장애, 예외 | `sentry` |
+| product work | product, ticket, task, roadmap, work item, 제품, 티켓, 로드맵 | `linear` |
+
+## No Suggestion
+
+If the query or Quest context does not contain enough catalog signal, the
+advisor returns no recommendation instead of forcing a weak match.
+
+JSON output uses:
+
+- `suggestions: []`
+- `proposal_cards: []`
+- `no_suggestion_reason`
+- `suggested_next_step`
+
+Human output prints `현재 MCP 제안 없음` with the reason and next step. This is
+the expected state for ordinary explanation or implementation requests that do
+not need an external MCP.
+
+## Ranking
+
+When multiple MCPs match, suggestions are sorted by descending `score`.
+Ties are resolved by built-in catalog order, then by MCP id. The same input
+must return the same order across runs.
+
+## Quest-Based Suggestions
+
+`--quest` accepts both active and completed Quest ids or paths. Completed
+Quests are allowed because they can contain useful request and notes context
+for follow-up work. The advisor reads the Quest title, Request section,
+frontmatter constraints, and Notes section. It avoids treating route metadata,
+verification plans, completion evidence, or project memory as broad semantic
+signals.
+
+Quest-based JSON includes `source_quest_id`. The advisor does not modify the
+Quest file.
+
 ## Proposal Card
 
 Human and JSON output include:
@@ -82,6 +135,8 @@ Human and JSON output include:
 - `install_command`
 - `use_once_or_persist`
 - `requires_user_approval: true`
+- `not_executed: true`
+- `config_mutation: false`
 
 Example:
 
@@ -99,7 +154,9 @@ Example:
   "token_impact": "medium",
   "install_command": "codex mcp add context7 -- npx -y @upstash/context7-mcp",
   "use_once_or_persist": "use_once",
-  "requires_user_approval": true
+  "requires_user_approval": true,
+  "not_executed": true,
+  "config_mutation": false
 }
 ```
 

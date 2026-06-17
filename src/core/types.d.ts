@@ -409,6 +409,7 @@ export interface HookReportPayload extends OriginMetadata {
 }
 
 export type McpTokenImpact = "low" | "medium" | "high";
+export type McpSuggestionConfidence = "low" | "medium" | "high";
 
 export interface McpCatalogEntry {
   id: string;
@@ -436,15 +437,20 @@ export interface McpProposalCard {
   install_command: string;
   use_once_or_persist: string;
   requires_user_approval: true;
+  not_executed: true;
+  config_mutation: false;
 }
 
 export interface McpSuggestion {
   mcp_id: string;
   score: number;
+  confidence: McpSuggestionConfidence;
   matched_signals: Array<{
     signal: string;
     why: string;
   }>;
+  why_now: string;
+  requires_user_approval: true;
   tool: McpCatalogEntry;
   proposal: McpProposalCard;
 }
@@ -455,6 +461,7 @@ export interface McpAdvisorResult {
   autoRun: false;
   configMutation: false;
   projectMemoryMutation: false;
+  source_quest_id: string | null;
   project: {
     project_id: string | null;
     project_name: string;
@@ -476,6 +483,8 @@ export interface McpAdvisorResult {
     hook: JsonObject | null;
     warnings: string[];
   };
+  no_suggestion_reason: string | null;
+  suggested_next_step: string | null;
   suggestions: McpSuggestion[];
   proposal_cards: McpProposalCard[];
 }
