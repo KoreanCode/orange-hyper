@@ -1,5 +1,50 @@
 # Release Notes
 
+## v0.8.0-alpha.1
+
+Eval Report Quality Hardening alpha.
+
+- Package version is `0.8.0-alpha.1`.
+- README version is `0.8-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `eval report` now includes a top summary with project identity,
+  `generated_at`, local-only report mode, total section count,
+  `needs-attention` count, `insufficient-data` count, and explicit no
+  telemetry / no network / no LLM judge flags.
+- `eval report --json` now exposes `report_id`, `schema_version: 2`,
+  `project_id`, `project_name`, `local_only: true`, `telemetry: false`,
+  `network_upload: false`, `llm_judge: false`, `sections`, `known_gaps`,
+  and `unavailable_metrics`.
+- Report sections now include `status`, `reason`, and `evidence_count`.
+  Allowed statuses remain only `good`, `needs-attention`, and
+  `insufficient-data`; no score or grade is produced.
+- `eval explain` now includes a `limitation` for each metric and documents
+  `token.savings`, `success_rate.improvement`,
+  `hook.warning.usefulness`, and `memory.acceptance_rate` without estimating
+  missing data.
+- `--write-report` remains the only eval write path. It writes Markdown only
+  under `.orange-hyper/evals/reports/` with an `eval-report-` timestamped
+  filename and still rejects path/value arguments.
+- `identity build` does not automatically include eval summaries in this
+  alpha; eval reports remain separate explicit commands.
+- Tests cover report summary, section status metadata, unavailable token and
+  success metrics, JSON report schema, local-only report writing,
+  explain limitations, and identity/eval separation.
+
+### Explicitly not included
+
+- external telemetry
+- network upload or API calls
+- LLM judge calls
+- token savings estimation
+- success-rate improvement claims
+- project memory or config automatic mutation
+- automatic Quest, Proposal, Graph, or Identity creation
+- MCP automatic execution
+- hook automatic execution
+- subagent execution
+- auto planner or auto execution loop
+
 ## v0.8.0-alpha.0
 
 Eval and Reports Preview alpha.

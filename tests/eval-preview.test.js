@@ -68,6 +68,12 @@ test("eval report supports human and JSON output without writing by default", as
   await main(["eval", "report"], { cwd, io });
   const human = output.join("");
   assert.match(human, /^# Orange Eval Report/);
+  assert.match(human, /## Summary/);
+  assert.match(human, /Report mode: local-only/);
+  assert.match(human, /Total sections: 11/);
+  assert.match(human, /Needs attention: \d+/);
+  assert.match(human, /Insufficient data: \d+/);
+  assert.match(human, /No telemetry: yes; no network: yes; no LLM judge: yes/);
   assert.match(human, /## Project Summary/);
   assert.match(human, /## Quest Completion/);
   assert.match(human, /## Verification Honesty/);
@@ -79,13 +85,31 @@ test("eval report supports human and JSON output without writing by default", as
   assert.match(human, /## Growth Signal Preview/);
   assert.match(human, /## Adapter Invocation Readiness/);
   assert.match(human, /## Known Gaps/);
+  assert.match(human, /Status: (good|needs-attention|insufficient-data)/);
+  assert.match(human, /Reason: /);
+  assert.match(human, /Evidence count: \d+/);
   assert.match(human, /stdout only/);
   assert.doesNotMatch(human, /90%|success rate improved|tokens saved/i);
 
   const payload = assertJsonCommand(runOrange(["eval", "report", "--json"], cwd), "eval.report");
+  assert.match(payload.data.report_id, /^eval-report-/);
+  assert.equal(payload.data.schema_version, 2);
   assert.equal(payload.data.format, "markdown");
   assert.equal(payload.data.localOnly, true);
+  assert.equal(payload.data.local_only, true);
   assert.equal(payload.data.localReport.written, false);
+  assert.equal(payload.data.telemetry, false);
+  assert.equal(payload.data.network_upload, false);
+  assert.equal(payload.data.llm_judge, false);
+  assert.equal(payload.data.project_id, fixture.config.project_id);
+  assert.equal(payload.data.project_name, "eval-preview-demo");
+  assert.equal(payload.data.summary.project_id, fixture.config.project_id);
+  assert.equal(payload.data.summary.project_name, "eval-preview-demo");
+  assert.equal(payload.data.summary.report_mode, "local-only");
+  assert.equal(payload.data.summary.total_sections, 11);
+  assert.equal(payload.data.summary.no_telemetry, true);
+  assert.equal(payload.data.summary.no_network, true);
+  assert.equal(payload.data.summary.no_llm_judge, true);
   assert.equal(payload.data.sections.length, 11);
   assert.deepEqual(payload.data.sections.map((section) => section.title), [
     "Project Summary",
@@ -100,7 +124,26 @@ test("eval report supports human and JSON output without writing by default", as
     "Adapter Invocation Readiness",
     "Known Gaps"
   ]);
+  for (const section of payload.data.sections) {
+    assert.ok(["good", "needs-attention", "insufficient-data"].includes(section.status));
+    assert.equal(typeof section.reason, "string");
+    assert.ok(section.reason.length > 0);
+    assert.equal(typeof section.evidence_count, "number");
+    assert.ok(section.evidence_count >= 0);
+    assert.equal(Object.hasOwn(section, "score"), false);
+    assert.equal(Object.hasOwn(section, "grade"), false);
+  }
+  assert.equal(payload.data.known_gaps.length, 3);
+  assert.deepEqual(
+    payload.data.unavailable_metrics.map((metric) => [metric.id, metric.value, metric.unavailable]),
+    [
+      ["token.savings", null, true],
+      ["success_rate.improvement", null, true]
+    ]
+  );
+  assert.match(payload.data.unavailable_metrics[0].limitation, /No token usage collection/);
   assert.match(payload.data.markdown, /Token savings are unavailable/);
+  assert.doesNotMatch(JSON.stringify(payload.data), /tokens saved|success rate improved/i);
   assert.equal(fs.existsSync(fixture.paths.evalReports), false);
 });
 
@@ -115,7 +158,10 @@ test("eval explain supports human and JSON output with metric sources", async ()
   assert.match(human, /quest\.count/);
   assert.match(human, /source=\.orange-hyper\/quests\//);
   assert.match(human, /hook\.warnings/);
+  assert.match(human, /hook\.warning\.usefulness/);
+  assert.match(human, /memory\.acceptance_rate/);
   assert.match(human, /token\.savings/);
+  assert.match(human, /limitation=/);
 
   const payload = assertJsonCommand(runOrange(["eval", "explain", "--json"], cwd), "eval.explain");
   assert.equal(payload.data.localOnly, true);
@@ -123,12 +169,17 @@ test("eval explain supports human and JSON output with metric sources", async ()
   assert.equal(payload.data.hookRun, false);
   const metrics = new Map(payload.data.metrics.map((metric) => [metric.id, metric]));
   assert.equal(metrics.get("quest.count").source, ".orange-hyper/quests/");
+  assert.match(metrics.get("quest.count").limitation, /does not judge task quality/);
   assert.match(metrics.get("memory.proposals").source, /proposals\/memory-delta/);
+  assert.match(metrics.get("memory.acceptance_rate").limitation, /not a success-rate improvement claim/);
   assert.match(metrics.get("hook.warnings").explanation, /does not run hook events automatically/);
+  assert.match(metrics.get("hook.warning.usefulness").limitation, /without a local hook report/);
   assert.equal(metrics.get("token.savings").value, null);
   assert.equal(metrics.get("token.savings").status, "insufficient-data");
   assert.equal(metrics.get("token.savings").unavailable, true);
+  assert.match(metrics.get("token.savings").limitation, /No token usage collection/);
   assert.match(metrics.get("success_rate.improvement").unavailable_reason, /task-pack outcomes/);
+  assert.match(metrics.get("success_rate.improvement").limitation, /No comparison group/);
 });
 
 test("eval commands do not modify project memory or config without --write-report", () => {
@@ -155,6 +206,10 @@ test("--write-report creates only a local eval report under evals/reports", () =
   assert.equal(payload.data.localReport.written, true);
   assert.equal(payload.data.localReport.format, "markdown");
   assert.match(payload.data.localReport.file, /^\.orange-hyper\/evals\/reports\/eval-report-/);
+  assert.equal(payload.data.localReport.file, `.orange-hyper/evals/reports/${payload.data.report_id}.md`);
+  assert.equal(payload.data.local_only, true);
+  assert.equal(payload.data.network_upload, false);
+  assert.equal(payload.data.llm_judge, false);
   const reportPath = path.join(cwd, payload.data.localReport.file);
   assert.equal(fs.existsSync(reportPath), true);
   assert.equal(path.dirname(reportPath), paths.evalReports);
@@ -186,6 +241,15 @@ test("eval report options reject path traversal and unsupported report paths", (
 
   assert.equal(fs.existsSync(paths.evalReports), false);
   assert.equal(fs.existsSync(path.join(cwd, "..", "evil.md")), false);
+});
+
+test("identity build does not auto-generate or embed eval reports", () => {
+  const cwd = tempWorkspace();
+  const paths = initWorkspace(cwd, { projectName: "identity-eval-boundary-demo" });
+
+  const payload = assertJsonCommand(runOrange(["identity", "build", "--json"], cwd), "identity.build");
+  assert.equal(fs.existsSync(paths.evalReports), false);
+  assert.doesNotMatch(JSON.stringify(payload.data), /eval-report|Eval Report|eval summary/i);
 });
 
 function createEvalFixture(cwd) {

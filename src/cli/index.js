@@ -1309,6 +1309,7 @@ function formatEvalExplainResult(result) {
     const suffix = metric.unavailable ? ` unavailable=${metric.unavailable_reason}` : "";
     lines.push(`  - ${metric.id}: ${metric.status}; source=${metric.source}; value=${formatEvalMetricValue(metric.value)}${suffix}`);
     lines.push(`    ${metric.explanation}`);
+    lines.push(`    limitation=${metric.limitation}`);
   }
   lines.push("");
   lines.push("No token savings, success-rate improvement, telemetry upload, LLM judge, MCP call, hook auto-run, or project memory/config mutation is inferred.");

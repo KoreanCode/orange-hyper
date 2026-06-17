@@ -1,6 +1,7 @@
 # Eval and Reports Preview
 
-Orange Hyper v0.8.0-alpha.0 adds a local-only Eval and Reports Preview.
+Orange Hyper v0.8.0-alpha.1 hardens the local-only Eval and Reports Preview
+introduced in v0.8.0-alpha.0.
 
 This is not telemetry. It does not upload data, call external APIs, call an LLM
 judge, run MCP servers, run hooks automatically, start subagents, or mutate
@@ -91,8 +92,97 @@ The Markdown report includes:
 - Adapter Invocation Readiness
 - Known Gaps
 
-Sections use signal summaries such as `good`, `needs-attention`, and
-`insufficient-data`. v0.8 does not produce an overall grade.
+Sections use only these status values:
+
+- `good`: local evidence exists and the section has no current warning,
+  unverified item, pending review item, or diagnostic error.
+- `needs-attention`: local evidence exists and shows a warning, error,
+  pending review item, unverified completed Quest, or other explicit follow-up.
+- `insufficient-data`: the required local source is missing, no relevant local
+  evidence exists yet, or the metric is intentionally unavailable.
+
+Every section includes:
+
+- `status`
+- `reason`
+- `evidence_count`
+
+`evidence_count` counts referenced metrics with available local evidence and a
+status other than `insufficient-data`. Unavailable metrics do not increase the
+count. v0.8 does not produce a score, rank, or grade.
+
+The top of the Markdown report includes a short summary:
+
+- project name / project id
+- `generated_at`
+- report mode: `local-only`
+- total section count
+- `needs-attention` section count
+- `insufficient-data` section count
+- no telemetry / no network / no LLM judge
+
+## JSON Report Schema
+
+`orange eval report --json` returns an adapter-friendly JSON payload. Existing
+camelCase boundary fields remain available, and v0.8.0-alpha.1 adds the fixed
+snake_case fields shown below.
+
+```json
+{
+  "report_id": "eval-report-20260618T010203000Z",
+  "schema_version": 2,
+  "generated_at": "2026-06-18T01:02:03.000Z",
+  "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+  "project_name": "orange-hyper",
+  "local_only": true,
+  "telemetry": false,
+  "network_upload": false,
+  "llm_judge": false,
+  "summary": {
+    "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+    "project_name": "orange-hyper",
+    "generated_at": "2026-06-18T01:02:03.000Z",
+    "report_mode": "local-only",
+    "total_sections": 11,
+    "needs_attention_count": 1,
+    "insufficient_data_count": 2,
+    "no_telemetry": true,
+    "no_network": true,
+    "no_llm_judge": true
+  },
+  "sections": [
+    {
+      "title": "Project Summary",
+      "status": "good",
+      "reason": "Project identity exists and local project signals can be summarized.",
+      "evidence_count": 4,
+      "metrics": ["project.identity", "quest.count"]
+    }
+  ],
+  "known_gaps": [
+    {
+      "id": "token.savings",
+      "status": "insufficient-data",
+      "reason": "Token counts are not collected by the local-only Eval and Reports Preview.",
+      "source": "unavailable",
+      "limitation": "Do not estimate token savings without explicit token usage collection.",
+      "future_target": "An opt-in usage dataset would be required before reporting token savings."
+    }
+  ],
+  "unavailable_metrics": [
+    {
+      "id": "token.savings",
+      "label": "Token savings",
+      "status": "insufficient-data",
+      "source": "unavailable",
+      "value": null,
+      "unavailable": true,
+      "unavailable_reason": "token counts are not collected",
+      "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable."
+    }
+  ]
+}
+```
 
 ## `orange eval explain`
 
@@ -111,6 +201,11 @@ Examples:
   without repair.
 - `hook.warnings` comes from existing local hook report files when present.
   Eval does not run hook events automatically.
+- `hook.warning.usefulness` comes from the same existing local hook report. If
+  there is no hook report, the status is `insufficient-data`.
+- `memory.acceptance_rate` is calculated from proposal state:
+  accepted proposals divided by total proposals. It is not a success-rate
+  improvement claim.
 - `mcp.advisor.availability` comes from the built-in read-only MCP Advisor
   catalog and local MCP-shaped growth signals. It does not call MCP servers.
 - `growth.candidates` comes from deterministic local Growth Signal Preview.
@@ -138,6 +233,14 @@ Unavailable metrics stay unavailable. v0.8 does not estimate:
 The preview must not claim improvements such as "90% success-rate increase" or
 "tokens saved" without collected evidence.
 
+Current unavailable metric policy:
+
+- `token.savings`: unavailable because token counts are not collected.
+- `success_rate.improvement`: unavailable because there is no comparison group
+  or comparative task-pack outcome dataset.
+- unavailable metrics use `value: null`, `status: "insufficient-data"`, and an
+  explicit `limitation`.
+
 ## Local-Only Boundary
 
 Eval commands must not:
@@ -156,3 +259,14 @@ Eval commands must not:
 
 The only eval write path is `orange eval report --write-report`, and that path
 is limited to `.orange-hyper/evals/reports/`.
+
+`--write-report` does not accept a path, filename, or value. Report filenames
+use a deterministic `eval-report-` prefix plus the report timestamp. The report
+is a local generated artifact, not project memory.
+
+## Identity Integration
+
+`identity build` does not automatically include eval summaries in
+v0.8.0-alpha.1. Eval reports remain available only through explicit
+`orange eval report` commands. A user-approved identity summary integration may
+be considered as a future target, but it is not part of this alpha.

@@ -736,6 +736,7 @@ export interface EvalMetric {
   status: EvalMetricStatus;
   source: string;
   explanation: string;
+  limitation: string;
   unavailable: boolean;
   unavailable_reason: string | null;
 }
@@ -743,9 +744,44 @@ export interface EvalMetric {
 export interface EvalReportSection {
   title: string;
   status: EvalMetricStatus;
+  reason: string;
+  evidence_count: number;
   summary: string;
   items: string[];
   metrics: string[];
+}
+
+export interface EvalReportSummary {
+  project_id: string | null;
+  project_name: string;
+  generated_at: string;
+  report_mode: "local-only";
+  total_sections: number;
+  needs_attention_count: number;
+  insufficient_data_count: number;
+  no_telemetry: true;
+  no_network: true;
+  no_llm_judge: true;
+}
+
+export interface EvalUnavailableMetric {
+  id: string;
+  label: string;
+  status: EvalMetricStatus;
+  source: string;
+  value: JsonValue;
+  unavailable: true;
+  unavailable_reason: string | null;
+  limitation: string;
+}
+
+export interface EvalKnownGap {
+  id: string;
+  status: EvalMetricStatus;
+  reason: string;
+  source: string;
+  limitation: string;
+  future_target: string;
 }
 
 export interface EvalBoundaryFlags {
@@ -776,7 +812,7 @@ export interface EvalLocalReportStatus {
 }
 
 export interface EvalSnapshot extends OriginMetadata {
-  schema_version: 1;
+  schema_version: 2;
   generated_at: string;
   readOnly: true;
   deterministic: true;
@@ -891,15 +927,19 @@ export interface EvalSnapshot extends OriginMetadata {
 }
 
 export interface EvalReport extends OriginMetadata {
-  schema_version: 1;
+  report_id: string;
+  schema_version: 2;
   report_kind: "eval-report";
   generated_at: string;
   format: "markdown";
   readOnly: true;
   localOnly: true;
+  local_only: true;
   telemetry: false;
   networkCall: false;
+  network_upload: false;
   llmJudge: false;
+  llm_judge: false;
   mcpCall: false;
   hookRun: false;
   autoMutation: false;
@@ -908,15 +948,18 @@ export interface EvalReport extends OriginMetadata {
   project: EvalSnapshot["project"];
   project_id: string | null;
   project_name: string;
+  summary: EvalReportSummary;
   snapshot: EvalSnapshot;
   sections: EvalReportSection[];
+  known_gaps: EvalKnownGap[];
+  unavailable_metrics: EvalUnavailableMetric[];
   localReport: EvalLocalReportStatus;
   boundaries: EvalBoundaryFlags;
   markdown: string;
 }
 
 export interface EvalExplainResult extends OriginMetadata {
-  schema_version: 1;
+  schema_version: 2;
   generated_at: string;
   readOnly: true;
   deterministic: true;
@@ -939,6 +982,7 @@ export interface EvalExplainResult extends OriginMetadata {
     value: JsonValue;
     source: string;
     explanation: string;
+    limitation: string;
     unavailable: boolean;
     unavailable_reason: string | null;
   }>;

@@ -512,15 +512,35 @@ orange eval report --json
   "contract_version": "0.1",
   "command": "eval.report",
   "data": {
+    "report_id": "eval-report-20260618T010203000Z",
+    "schema_version": 2,
     "report_kind": "eval-report",
+    "generated_at": "2026-06-18T01:02:03.000Z",
     "format": "markdown",
+    "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+    "project_name": "orange-hyper",
     "localOnly": true,
+    "local_only": true,
     "telemetry": false,
     "networkCall": false,
+    "network_upload": false,
     "llmJudge": false,
+    "llm_judge": false,
     "hookRun": false,
     "projectMemoryMutation": false,
     "configMutation": false,
+    "summary": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper",
+      "generated_at": "2026-06-18T01:02:03.000Z",
+      "report_mode": "local-only",
+      "total_sections": 11,
+      "needs_attention_count": 1,
+      "insufficient_data_count": 2,
+      "no_telemetry": true,
+      "no_network": true,
+      "no_llm_judge": true
+    },
     "localReport": {
       "directory": ".orange-hyper/evals/reports",
       "defaultWrite": false,
@@ -532,12 +552,38 @@ orange eval report --json
       {
         "title": "Project Summary",
         "status": "good",
+        "reason": "Project identity exists and local project signals can be summarized.",
+        "evidence_count": 4,
         "metrics": ["project.identity", "quest.count"]
       },
       {
         "title": "Known Gaps",
         "status": "insufficient-data",
+        "reason": "These metrics and integrations are intentionally unavailable rather than estimated or auto-generated.",
+        "evidence_count": 0,
         "metrics": ["token.savings", "success_rate.improvement"]
+      }
+    ],
+    "known_gaps": [
+      {
+        "id": "token.savings",
+        "status": "insufficient-data",
+        "reason": "Token counts are not collected by the local-only Eval and Reports Preview.",
+        "source": "unavailable",
+        "limitation": "Do not estimate token savings without explicit token usage collection.",
+        "future_target": "An opt-in usage dataset would be required before reporting token savings."
+      }
+    ],
+    "unavailable_metrics": [
+      {
+        "id": "token.savings",
+        "label": "Token savings",
+        "status": "insufficient-data",
+        "source": "unavailable",
+        "value": null,
+        "unavailable": true,
+        "unavailable_reason": "token counts are not collected",
+        "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable."
       }
     ],
     "markdown": "# Orange Eval Report\n..."
@@ -552,7 +598,8 @@ orange eval report --write-report --json
 ```
 
 `data.localReport.written` is `true`, and `data.localReport.file` points under
-`.orange-hyper/evals/reports/`.
+`.orange-hyper/evals/reports/`. `--write-report` does not accept a path or
+value; eval reports are local/generated artifacts, not project memory.
 
 ### `eval explain --json`
 
@@ -579,6 +626,7 @@ orange eval explain --json
         "value": 4,
         "source": ".orange-hyper/quests/",
         "explanation": "Counts active and completed Quest markdown files.",
+        "limitation": "Counts files only; it does not judge task quality or outcome quality.",
         "unavailable": false,
         "unavailable_reason": null
       },
@@ -589,8 +637,20 @@ orange eval explain --json
         "value": null,
         "source": "unavailable",
         "explanation": "Orange Hyper v0.8 does not collect token counts, so token savings are unavailable and not estimated.",
+        "limitation": "No token usage collection exists in this local-only preview, so savings must remain unavailable.",
         "unavailable": true,
         "unavailable_reason": "token counts are not collected"
+      },
+      {
+        "id": "success_rate.improvement",
+        "label": "Success-rate improvement",
+        "status": "insufficient-data",
+        "value": null,
+        "source": "unavailable",
+        "explanation": "Orange Hyper v0.8 does not compare raw-agent and Orange-assisted outcomes, so success-rate improvement is unavailable.",
+        "limitation": "No comparison group or task-pack outcome dataset exists, so improvement claims must remain unavailable.",
+        "unavailable": true,
+        "unavailable_reason": "comparative task-pack outcomes are not collected"
       }
     ]
   }
