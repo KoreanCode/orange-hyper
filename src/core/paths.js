@@ -33,6 +33,8 @@ export function workspacePaths(cwd = process.cwd()) {
     identitySummaryJson: path.join(root, "identity", "summary.json"),
     hooks: path.join(root, "hooks"),
     hookReports: path.join(root, "hooks", "reports"),
+    evals: path.join(root, "evals"),
+    evalReports: path.join(root, "evals", "reports"),
     traces: path.join(root, "traces"),
     routeTrace: path.join(root, "traces", "route.jsonl")
   };

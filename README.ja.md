@@ -13,11 +13,11 @@
 <summary>Version metadata の詳細</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.2`
+- README version: `0.8-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
-- Synced translations: `en` / `zh-CN` / `ja`
+- Translation source of truth: `README.md` (`ko`)
 
 この翻訳が遅れている場合は、韓国語 README を基準にしてください。README version、package version、Adapter JSON contract version は別々のバージョン軸です。
 

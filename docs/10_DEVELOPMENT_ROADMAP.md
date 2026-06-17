@@ -276,27 +276,44 @@ dry-run은 command sequence만 보여주며 실제 state mutation command를 실
 v0.7 stable은 runtime이 아니라 invocation contract까지만 제공한다.
 ```
 
-## 9. v0.8 — Eval and Reports (next)
+## 9. v0.8 — Eval and Reports Preview (current alpha)
 
-목표: 오픈소스 신뢰성을 위한 평가 체계를 제공한다.
+목표: 외부 telemetry 없이 `.orange-hyper` local project state를 읽어
+Orange Hyper가 남긴 Quest, verification, proposal, graph, doctor, hook,
+MCP Advisor, growth, adapter, identity 신호를 보수적으로 요약한다.
 
 포함:
 
-- eval runner
-- synthetic task pack
-- token report
-- memory precision report
-- failure mode dashboard markdown
+- `orange eval snapshot`
+- `orange eval report`
+- `orange eval explain`
+- Adapter JSON Contract를 따르는 `eval.snapshot`, `eval.report`,
+  `eval.explain`
+- Quest count, completed Quest count, verified/unverified count
+- Memory proposal accepted/rejected/pending flow
+- accepted graph node count
+- doctor errors/warnings count
+- latest local hook report warning summary when available
+- MCP Advisor availability and local MCP-shaped signal summary
+- growth candidate count
+- adapter recipe count
+- identity report existence
+- `--write-report` 명시 옵션에서만 `.orange-hyper/evals/reports/` local
+  Markdown report 생성
+- unavailable metric을 추정하지 않는 explain surface
 
 완료 기준:
 
 ```text
-raw agent vs orange-hyper 적용 결과를 동일 task pack에서 비교할 수 있다.
+사용자는 local-only eval snapshot/report/explain으로 현재 프로젝트의 신호를 확인할 수 있다.
+report는 --write-report를 명시하지 않으면 파일을 만들지 않는다.
+token savings, success-rate improvement, model capability improvement는 수집 근거가 없으면 unavailable로 남긴다.
+외부 telemetry, network upload, LLM judge, MCP 실행, hook 자동 실행, project memory/config 자동 수정은 없다.
 ```
 
 ## 10. 다음 구현 순서
 
-1. v0.8 Eval and Reports
+1. v0.8 Eval and Reports Preview hardening
 2. Adapter recipe validation from real user workflows
 3. Adapter interface stabilization only after the stable invocation contract
    keeps holding

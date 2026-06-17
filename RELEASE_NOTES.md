@@ -1,5 +1,52 @@
 # Release Notes
 
+## v0.8.0-alpha.0
+
+Eval and Reports Preview alpha.
+
+- Package version is `0.8.0-alpha.0`.
+- README version is `0.8-doc.0`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha adds the local-only Eval and Reports Preview command surface:
+  `orange eval snapshot`, `orange eval report`, and `orange eval explain`.
+- New JSON command ids are `eval.snapshot`, `eval.report`, and
+  `eval.explain`.
+- `eval snapshot` reads current local `.orange-hyper` project state and
+  summarizes project identity, Quest counts, completed/verified/unverified
+  Quest counts, Memory Delta Proposal flow, accepted graph node count, doctor
+  errors/warnings, latest local hook report warnings when available, MCP
+  Advisor availability, growth candidate count, adapter recipe count, and
+  identity report existence.
+- `eval report` emits a Markdown local report to stdout by default. It writes
+  only when `--write-report` is explicit, and the write path is limited to
+  `.orange-hyper/evals/reports/`.
+- `eval explain` shows where each metric came from and keeps unavailable
+  metrics such as token savings and success-rate improvement unestimated.
+- Eval sections use conservative signal summaries: `good`,
+  `needs-attention`, and `insufficient-data`. v0.8 does not create an overall
+  grade.
+- `.orange-hyper/evals/reports/` is now treated as local/generated ignored
+  state.
+- Tests cover eval human/JSON output, no default file creation, opt-in report
+  writes, path traversal rejection, no project memory/config mutation,
+  unavailable metrics, and JSON envelope stability.
+
+### Explicitly not included
+
+- external telemetry
+- network upload or API calls
+- LLM judge calls
+- token savings estimation
+- success-rate improvement claims
+- model capability improvement claims
+- project memory or config automatic mutation
+- automatic Quest, Proposal, Graph, or Identity creation
+- MCP automatic execution
+- hook automatic execution
+- subagent execution
+- auto planner or auto execution loop
+- HTML dashboard
+
 ## v0.7.0
 
 Adapter Invocation Contract stable release.

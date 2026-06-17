@@ -12,6 +12,9 @@ export type CommandId =
   | "adapter.dryRun"
   | "capsule.build"
   | "doctor.run"
+  | "eval.snapshot"
+  | "eval.report"
+  | "eval.explain"
   | "graph.list"
   | "graph.show"
   | "graph.search"
@@ -722,6 +725,225 @@ export interface GrowthExplainResult {
   }>;
   no_candidate_reason: string | null;
   boundaries: GrowthBoundaryFlags;
+}
+
+export type EvalMetricStatus = "good" | "needs-attention" | "insufficient-data";
+
+export interface EvalMetric {
+  id: string;
+  label: string;
+  value: JsonValue;
+  status: EvalMetricStatus;
+  source: string;
+  explanation: string;
+  unavailable: boolean;
+  unavailable_reason: string | null;
+}
+
+export interface EvalReportSection {
+  title: string;
+  status: EvalMetricStatus;
+  summary: string;
+  items: string[];
+  metrics: string[];
+}
+
+export interface EvalBoundaryFlags {
+  local_only: true;
+  external_telemetry: false;
+  network_upload: false;
+  api_call: false;
+  llm_judge_call: false;
+  mcp_call: false;
+  hook_auto_run: false;
+  subagent_run: false;
+  auto_planner_loop: false;
+  project_memory_auto_mutation: false;
+  config_auto_mutation: false;
+  quest_auto_creation: false;
+  proposal_auto_creation: false;
+  graph_auto_creation: false;
+  token_savings_estimation: false;
+  success_rate_improvement_claim: false;
+}
+
+export interface EvalLocalReportStatus {
+  directory: string;
+  defaultWrite: false;
+  written: boolean;
+  file: string | null;
+  format?: "markdown";
+}
+
+export interface EvalSnapshot extends OriginMetadata {
+  schema_version: 1;
+  generated_at: string;
+  readOnly: true;
+  deterministic: true;
+  localOnly: true;
+  telemetry: false;
+  networkCall: false;
+  llmJudge: false;
+  mcpCall: false;
+  hookRun: false;
+  autoMutation: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  project_id: string | null;
+  project_name: string;
+  quests: {
+    total: number;
+    active: number;
+    completed: number;
+    verified: number;
+    unverified: number;
+    pendingVerification: number;
+    status: EvalMetricStatus;
+  };
+  memoryProposals: {
+    total: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    status: EvalMetricStatus;
+  };
+  graph: {
+    acceptedNodeCount: number;
+    warningCount: number;
+    warnings: string[];
+    status: EvalMetricStatus;
+  };
+  doctor: {
+    ok: boolean;
+    checkCount: number;
+    errorCount: number;
+    warningCount: number;
+    repairCount: number;
+    projectBoundaryErrorCount: number;
+    projectBoundaryWarningCount: number;
+    diagnosticCodes: string[];
+    status: EvalMetricStatus;
+  };
+  hookWarnings: {
+    status: EvalMetricStatus;
+    source: string;
+    sourceFile: string | null;
+    latestReportGeneratedAt: string | null;
+    hookRun: false;
+    warningCount: number;
+    warnings: HookWarning[];
+    summary: string;
+  };
+  mcpAdvisor: {
+    status: EvalMetricStatus;
+    available: boolean;
+    catalogCount: number;
+    signalCount: number;
+    signals: string[];
+    summary: string;
+    readOnly: true;
+    mcpCall: false;
+    networkCall: false;
+    autoInstall: false;
+    autoRun: false;
+    configMutation: false;
+    projectMemoryMutation: false;
+  };
+  growth: {
+    status: EvalMetricStatus;
+    candidateCount: number;
+    growthLevel: GrowthLevel;
+    noCandidateReason: string | null;
+    autoUnlock: false;
+    projectMemoryMutation: false;
+    configMutation: false;
+    mcpCall: false;
+    networkCall: false;
+    llmCall: false;
+    summary: string | null;
+  };
+  adapter: {
+    status: EvalMetricStatus;
+    recipeCount: number;
+    recipeIds: string[];
+    expectedContractVersion: AdapterContractVersion;
+    dryRunOnly: true;
+    summary: string;
+  };
+  identity: {
+    status: EvalMetricStatus;
+    summaryExists: boolean;
+    htmlExists: boolean;
+    summaryFile: string;
+    htmlFile: string;
+    generatedAt: string | null;
+    acceptedMemoryNodes: number | null;
+    projectBoundaryActive: boolean | null;
+  };
+  reportPolicy: EvalLocalReportStatus;
+  boundaries: EvalBoundaryFlags;
+  metrics: EvalMetric[];
+  unavailableMetrics: EvalMetric[];
+}
+
+export interface EvalReport extends OriginMetadata {
+  schema_version: 1;
+  report_kind: "eval-report";
+  generated_at: string;
+  format: "markdown";
+  readOnly: true;
+  localOnly: true;
+  telemetry: false;
+  networkCall: false;
+  llmJudge: false;
+  mcpCall: false;
+  hookRun: false;
+  autoMutation: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: EvalSnapshot["project"];
+  project_id: string | null;
+  project_name: string;
+  snapshot: EvalSnapshot;
+  sections: EvalReportSection[];
+  localReport: EvalLocalReportStatus;
+  boundaries: EvalBoundaryFlags;
+  markdown: string;
+}
+
+export interface EvalExplainResult extends OriginMetadata {
+  schema_version: 1;
+  generated_at: string;
+  readOnly: true;
+  deterministic: true;
+  localOnly: true;
+  telemetry: false;
+  networkCall: false;
+  llmJudge: false;
+  mcpCall: false;
+  hookRun: false;
+  autoMutation: false;
+  projectMemoryMutation: false;
+  configMutation: false;
+  project: EvalSnapshot["project"];
+  project_id: string | null;
+  project_name: string;
+  metrics: Array<{
+    id: string;
+    label: string;
+    status: EvalMetricStatus;
+    value: JsonValue;
+    source: string;
+    explanation: string;
+    unavailable: boolean;
+    unavailable_reason: string | null;
+  }>;
+  boundaries: EvalBoundaryFlags;
+  notes: string[];
 }
 
 export interface IdentitySummary extends OriginMetadata {

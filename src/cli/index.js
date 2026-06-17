@@ -4,6 +4,7 @@ import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../c
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
+import { buildEvalExplainResult, buildEvalReport, buildEvalSnapshot } from "../core/eval.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
 import { buildGrowthExplainResult, buildGrowthStatus, buildGrowthSuggestionResult } from "../core/growth.js";
 import { hookStatus, previewHook, runHookEvent } from "../core/hook.js";
@@ -47,6 +48,9 @@ import { asArray } from "../core/text.js";
  * @typedef {import("../core/types.d.ts").AdapterRecipe} AdapterRecipe
  * @typedef {import("../core/types.d.ts").AdapterRecipeStep} AdapterRecipeStep
  * @typedef {import("../core/types.d.ts").AdapterDryRunResult} AdapterDryRunResult
+ * @typedef {import("../core/types.d.ts").EvalSnapshot} EvalSnapshot
+ * @typedef {import("../core/types.d.ts").EvalReport} EvalReport
+ * @typedef {import("../core/types.d.ts").EvalExplainResult} EvalExplainResult
  *
  * @typedef {{
  *   id: string,
@@ -115,6 +119,11 @@ const COMMAND_IDS = {
   },
   capsule: "capsule.build",
   doctor: "doctor.run",
+  eval: {
+    snapshot: "eval.snapshot",
+    report: "eval.report",
+    explain: "eval.explain"
+  },
   graph: {
     list: "graph.list",
     show: "graph.show",
@@ -229,6 +238,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     return;
   }
 
+  if (command === "eval") {
+    await evalCommand(cwd, io, rest);
+    return;
+  }
+
   if (command === "identity") {
     await identityCommand(cwd, io, rest);
     return;
@@ -310,6 +324,47 @@ async function adapterCommand(cwd, io, argv) {
     return;
   }
   throw new Error(`Unknown adapter command: ${subcommand}`);
+}
+
+async function evalCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, evalUsage());
+    return;
+  }
+  if (subcommand === "snapshot") {
+    const args = parseEvalArgs(rest, { allowWriteReport: false });
+    const result = buildEvalSnapshot(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.eval.snapshot, result));
+      return;
+    }
+    write(io, formatEvalSnapshot(result));
+    return;
+  }
+  if (subcommand === "report") {
+    const args = parseEvalArgs(rest, { allowWriteReport: true });
+    const result = buildEvalReport(cwd, {
+      writeReport: Boolean(args.flags["write-report"])
+    });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.eval.report, result));
+      return;
+    }
+    write(io, formatEvalReport(result));
+    return;
+  }
+  if (subcommand === "explain") {
+    const args = parseEvalArgs(rest, { allowWriteReport: false });
+    const result = buildEvalExplainResult(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.eval.explain, result));
+      return;
+    }
+    write(io, formatEvalExplainResult(result));
+    return;
+  }
+  throw new Error(`Unknown eval command: ${subcommand}`);
 }
 
 async function questCommand(cwd, io, argv) {
@@ -862,10 +917,29 @@ function parseHookArgs(argv) {
   return args;
 }
 
+function parseEvalArgs(argv, options = {}) {
+  const args = parseArgs(argv);
+  const allowed = new Set(options.allowWriteReport ? ["json", "write-report"] : ["json"]);
+  assertOnlyEvalFlags(args.flags, allowed);
+  assertNoEvalPositionals(args.positionals);
+  if (options.allowWriteReport) {
+    assertEvalWriteReportFlag(args.flags);
+  }
+  return args;
+}
+
 function assertOnlyFlags(flags, allowed) {
   for (const key of Object.keys(flags)) {
     if (!allowed.has(key)) {
       throw new Error(`Unsupported hook flag: --${key}`);
+    }
+  }
+}
+
+function assertOnlyEvalFlags(flags, allowed) {
+  for (const key of Object.keys(flags)) {
+    if (!allowed.has(key)) {
+      throw new Error(`Unsupported eval flag: --${key}`);
     }
   }
 }
@@ -876,12 +950,27 @@ function assertNoHookPositionals(positionals) {
   }
 }
 
+function assertNoEvalPositionals(positionals) {
+  if (positionals.length) {
+    throw new Error(`Unexpected eval argument: ${positionals[0]}`);
+  }
+}
+
 function assertHookWriteReportFlag(flags) {
   if (!Object.hasOwn(flags, "write-report")) {
     return;
   }
   if (flags["write-report"] !== true) {
     throw new Error("--write-report does not accept a path or value; hook reports are written to .orange-hyper/hooks/reports/.");
+  }
+}
+
+function assertEvalWriteReportFlag(flags) {
+  if (!Object.hasOwn(flags, "write-report")) {
+    return;
+  }
+  if (flags["write-report"] !== true) {
+    throw new Error("--write-report does not accept a path or value; eval reports are written to .orange-hyper/evals/reports/.");
   }
 }
 
@@ -1164,6 +1253,76 @@ function formatAdapterInputRequirements(items) {
 
 function formatAdapterListItems(items) {
   return items.length ? items.map((item) => `  - ${item}`) : ["  - none"];
+}
+
+/**
+ * @param {EvalSnapshot} result
+ */
+function formatEvalSnapshot(result) {
+  return [
+    "Orange eval snapshot",
+    `Local-only: ${yesNo(result.localOnly)}`,
+    `Telemetry: ${yesNo(result.telemetry)}`,
+    `Network call: ${yesNo(result.networkCall)}`,
+    `LLM judge: ${yesNo(result.llmJudge)}`,
+    `Hook auto-run: ${yesNo(result.hookRun)}`,
+    `Project memory mutation: ${yesNo(result.projectMemoryMutation)}`,
+    `Config mutation: ${yesNo(result.configMutation)}`,
+    `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    `Quests: ${result.quests.total} total, ${result.quests.completed} completed, ${result.quests.verified} verified, ${result.quests.unverified} unverified`,
+    `Memory proposals: ${result.memoryProposals.total} total, ${result.memoryProposals.accepted} accepted, ${result.memoryProposals.rejected} rejected, ${result.memoryProposals.pending} pending`,
+    `Accepted graph nodes: ${result.graph.acceptedNodeCount}`,
+    `Doctor: ${result.doctor.errorCount} error(s), ${result.doctor.warningCount} warning(s)`,
+    `Hook warnings: ${result.hookWarnings.warningCount} (${result.hookWarnings.sourceFile || result.hookWarnings.source})`,
+    `MCP Advisor: ${result.mcpAdvisor.catalogCount} catalog tool(s), ${result.mcpAdvisor.signalCount} local signal(s), MCP call: ${yesNo(result.mcpAdvisor.mcpCall)}`,
+    `Growth candidates: ${result.growth.candidateCount}`,
+    `Adapter recipes: ${result.adapter.recipeCount}`,
+    `Identity report: summary=${yesNo(result.identity.summaryExists)}, html=${yesNo(result.identity.htmlExists)}`,
+    `Report writes by default: ${yesNo(result.reportPolicy.defaultWrite)}`,
+    "Unavailable metrics: token.savings, success_rate.improvement"
+  ].join("\n");
+}
+
+/**
+ * @param {EvalReport} result
+ */
+function formatEvalReport(result) {
+  return result.markdown.trimEnd();
+}
+
+/**
+ * @param {EvalExplainResult} result
+ */
+function formatEvalExplainResult(result) {
+  const lines = [
+    "Orange eval explain",
+    `Local-only: ${yesNo(result.localOnly)}`,
+    `Telemetry: ${yesNo(result.telemetry)}`,
+    `Network call: ${yesNo(result.networkCall)}`,
+    `LLM judge: ${yesNo(result.llmJudge)}`,
+    `Hook auto-run: ${yesNo(result.hookRun)}`,
+    `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    "",
+    "Metrics:"
+  ];
+  for (const metric of result.metrics) {
+    const suffix = metric.unavailable ? ` unavailable=${metric.unavailable_reason}` : "";
+    lines.push(`  - ${metric.id}: ${metric.status}; source=${metric.source}; value=${formatEvalMetricValue(metric.value)}${suffix}`);
+    lines.push(`    ${metric.explanation}`);
+  }
+  lines.push("");
+  lines.push("No token savings, success-rate improvement, telemetry upload, LLM judge, MCP call, hook auto-run, or project memory/config mutation is inferred.");
+  return lines.join("\n");
+}
+
+function formatEvalMetricValue(value) {
+  if (value === null || value === undefined) {
+    return "unavailable";
+  }
+  if (typeof value === "boolean") {
+    return yesNo(value);
+  }
+  return String(value);
 }
 
 /**
@@ -2030,6 +2189,9 @@ function usage() {
     "  graph show <node-id> [--json]",
     "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
+    "  eval snapshot [--json]",
+    "  eval report [--json] [--write-report]",
+    "  eval explain [--json]",
     "  growth status [--json]",
     "  growth suggest [--json]",
     "  growth explain [--json]",
@@ -2053,6 +2215,17 @@ function adapterUsage() {
     "  list [--json]",
     "  show <recipe-id> [--json]",
     "  dry-run <recipe-id> [--json]"
+  ].join("\n");
+}
+
+function evalUsage() {
+  return [
+    "orange eval <command>",
+    "",
+    "Commands:",
+    "  snapshot [--json]",
+    "  report [--json] [--write-report]",
+    "  explain [--json]"
   ].join("\n");
 }
 

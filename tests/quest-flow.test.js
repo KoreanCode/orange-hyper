@@ -131,6 +131,7 @@ test("init policy keeps accepted proposals shareable while local state stays ign
     "identity/",
     "local/",
     "hooks/reports/",
+    "evals/reports/",
     "proposals/memory-delta/pending/",
     "proposals/memory-delta/rejected/"
   ]) {
@@ -161,6 +162,7 @@ test("gitignore policy ignores local state while accepted memory and graph stay 
     ".orange-hyper/identity/orange-hyper.html",
     ".orange-hyper/local/state.json",
     ".orange-hyper/hooks/reports/hook-run-stop.json",
+    ".orange-hyper/evals/reports/eval-report.md",
     ".orange-hyper/proposals/memory-delta/pending/example.md",
     ".orange-hyper/proposals/memory-delta/rejected/example.md"
   ]) {

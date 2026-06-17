@@ -13,11 +13,11 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.2`
+- README version: `0.8-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
-- Synced translations: `en` / `zh-CN` / `ja`
+- Translation source of truth: `README.md` (`ko`)
 
 如果本译文落后，请以韩文 README 为准。README version、package version 和 Adapter JSON contract version 是彼此独立的版本轴。
 

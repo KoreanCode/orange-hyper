@@ -13,11 +13,11 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.2`
+- README version: `0.8-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
-- Synced translations: `en` / `zh-CN` / `ja`
+- Translation source of truth: `README.md` (`ko`)
 
 If this translation falls behind, use the Korean README as the source of truth. README version, package version, and Adapter JSON contract version are separate version axes.
 

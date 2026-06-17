@@ -13,11 +13,11 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.2`
+- README version: `0.8-doc.0`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
-- Synced translations: `en` / `zh-CN` / `ja`
+- Translation source of truth: `README.md` (`ko`)
 
 번역이 뒤처진 경우 한국어 README를 기준으로 합니다. README version, package version, Adapter JSON contract version은 서로 다른 축입니다.
 
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.7.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable 기능을 제공합니다.
+v0.8.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract stable, Eval and Reports Preview 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -111,6 +111,9 @@ v0.7.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-on
 - adapter dry-run은 `missing_inputs`, `input_source`, `step_index`, `next_user_decision`으로 안전한 호출 순서를 설명합니다.
 - Adapter Layer는 `.orange-hyper` 직접 수정, human output parsing, 자동 Quest/Memory/MCP/Hook/Subagent 실행을 하지 않습니다.
 - Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
+- `eval snapshot`, `eval report`, `eval explain`은 `.orange-hyper` local project state만 읽어 Quest, verification, proposal, graph, doctor, hook report, MCP Advisor, growth, adapter, identity 신호를 보수적으로 요약합니다.
+- eval report는 기본적으로 stdout만 사용하며, `--write-report`를 명시했을 때만 `.orange-hyper/evals/reports/` 아래 Markdown report를 생성합니다.
+- Eval and Reports Preview는 외부 telemetry, 네트워크 업로드, LLM judge, MCP 실행, hook 자동 실행, project memory/config 자동 수정을 하지 않습니다.
 
 ## Memory Lifecycle
 
@@ -172,6 +175,8 @@ npx -y --package orange-hyper@latest orange mcp suggest --query "Spring Security
 npx -y --package orange-hyper@latest orange growth status --json
 npx -y --package orange-hyper@latest orange growth suggest --json
 npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
+npx -y --package orange-hyper@latest orange eval snapshot --json
+npx -y --package orange-hyper@latest orange eval report --json
 ```
 
 v0.2.0 프로젝트를 v0.2.1 Project Boundary Guard로 올릴 때는 다음을 먼저 실행합니다.
@@ -195,7 +200,7 @@ orange doctor
 - v0.5 MCP Advisor (stable)
 - v0.6 Growth Signal Preview (stable)
 - v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports
+- v0.8 Eval and Reports Preview (current alpha)
 - v1.0 Stable product boundary
 
 ## Non-goals
@@ -227,4 +232,5 @@ Orange Hyper는 다음을 목표로 하지 않습니다.
 - [MCP Advisor](docs/18_MCP_ADVISOR.md)
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Adapter Layer](docs/20_ADAPTER_LAYER.md)
+- [Eval and Reports Preview](docs/21_EVAL_AND_REPORTS.md)
 - [Release Notes](RELEASE_NOTES.md)

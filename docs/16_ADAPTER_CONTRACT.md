@@ -1,10 +1,11 @@
 # Adapter Contract
 
-Orange Hyper v0.7.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.8.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
 read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
-Invocation Contract stable surface. The `orange` CLI is the kernel control
-plane, not the final end-user UX.
+Invocation Contract stable surface. It also includes the local-only Eval and
+Reports Preview. The `orange` CLI is the kernel control plane, not the final
+end-user UX.
 
 Human-readable output exists for people who run commands directly. Skills,
 agents, natural-language adapters, and other integration layers must parse only
@@ -61,7 +62,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.7.0 keeps
+`contract_version` is the adapter-facing JSON contract version. v0.8.0-alpha.0 keeps
 `"0.1"` as the stable Seed Kernel adapter contract and appears in both success
 and failure envelopes.
 
@@ -71,6 +72,9 @@ and failure envelopes.
 - `adapter.list`
 - `adapter.show`
 - `adapter.dryRun`
+- `eval.snapshot`
+- `eval.report`
+- `eval.explain`
 - `route.show`
 - `capsule.build`
 - `quest.done`
@@ -171,6 +175,17 @@ Dry-run output is the adapter-facing execution plan. It includes `steps`,
 structured `required_inputs`, `missing_inputs`, and `next_user_decision` so an
 adapter can distinguish user placeholders from previous-step outputs and
 project-state values before it considers running any real command.
+
+Eval and Reports Preview commands are local-only. `orange eval snapshot --json`,
+`orange eval report --json`, and `orange eval explain --json` read existing
+`.orange-hyper` project state and return conservative count/warning signals.
+They must not upload telemetry, call APIs, call LLM judges, run MCP tools, run
+hook events automatically, start subagents, create Quest/Proposal/Graph state,
+repair doctor findings, or mutate project memory/config.
+
+`orange eval report --write-report` is the only eval write path. It writes a
+Markdown report only under `.orange-hyper/evals/reports/`. `--write-report`
+does not accept a path or value.
 
 ## Command Examples
 
@@ -401,6 +416,186 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
 
 Actual dry-run output also includes a `commands` alias with the same entries as
 `steps` for v0.7 dry-run compatibility.
+
+### `eval snapshot --json`
+
+```bash
+orange eval snapshot --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "eval.snapshot",
+  "data": {
+    "readOnly": true,
+    "deterministic": true,
+    "localOnly": true,
+    "telemetry": false,
+    "networkCall": false,
+    "llmJudge": false,
+    "mcpCall": false,
+    "hookRun": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
+    "project": {
+      "project_id": "project_550e8400-e29b-41d4-a716-446655440000",
+      "project_name": "orange-hyper"
+    },
+    "quests": {
+      "total": 4,
+      "completed": 4,
+      "verified": 4,
+      "unverified": 0
+    },
+    "memoryProposals": {
+      "total": 3,
+      "accepted": 2,
+      "rejected": 0,
+      "pending": 1
+    },
+    "graph": {
+      "acceptedNodeCount": 2,
+      "warningCount": 0
+    },
+    "doctor": {
+      "ok": true,
+      "errorCount": 0,
+      "warningCount": 0
+    },
+    "hookWarnings": {
+      "source": "local-hook-report",
+      "hookRun": false,
+      "warningCount": 1
+    },
+    "mcpAdvisor": {
+      "available": true,
+      "catalogCount": 4,
+      "signalCount": 0,
+      "mcpCall": false
+    },
+    "growth": {
+      "candidateCount": 1,
+      "growthLevel": "sprout",
+      "autoUnlock": false
+    },
+    "adapter": {
+      "recipeCount": 5,
+      "expectedContractVersion": "0.1"
+    },
+    "identity": {
+      "summaryExists": true,
+      "htmlExists": true
+    },
+    "unavailableMetrics": [
+      {
+        "id": "token.savings",
+        "status": "insufficient-data",
+        "value": null,
+        "unavailable": true
+      }
+    ]
+  }
+}
+```
+
+### `eval report --json`
+
+```bash
+orange eval report --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "eval.report",
+  "data": {
+    "report_kind": "eval-report",
+    "format": "markdown",
+    "localOnly": true,
+    "telemetry": false,
+    "networkCall": false,
+    "llmJudge": false,
+    "hookRun": false,
+    "projectMemoryMutation": false,
+    "configMutation": false,
+    "localReport": {
+      "directory": ".orange-hyper/evals/reports",
+      "defaultWrite": false,
+      "written": false,
+      "file": null,
+      "format": "markdown"
+    },
+    "sections": [
+      {
+        "title": "Project Summary",
+        "status": "good",
+        "metrics": ["project.identity", "quest.count"]
+      },
+      {
+        "title": "Known Gaps",
+        "status": "insufficient-data",
+        "metrics": ["token.savings", "success_rate.improvement"]
+      }
+    ],
+    "markdown": "# Orange Eval Report\n..."
+  }
+}
+```
+
+With explicit report writing:
+
+```bash
+orange eval report --write-report --json
+```
+
+`data.localReport.written` is `true`, and `data.localReport.file` points under
+`.orange-hyper/evals/reports/`.
+
+### `eval explain --json`
+
+```bash
+orange eval explain --json
+```
+
+```json
+{
+  "ok": true,
+  "contract_version": "0.1",
+  "command": "eval.explain",
+  "data": {
+    "localOnly": true,
+    "telemetry": false,
+    "networkCall": false,
+    "llmJudge": false,
+    "hookRun": false,
+    "metrics": [
+      {
+        "id": "quest.count",
+        "label": "Quest count",
+        "status": "good",
+        "value": 4,
+        "source": ".orange-hyper/quests/",
+        "explanation": "Counts active and completed Quest markdown files.",
+        "unavailable": false,
+        "unavailable_reason": null
+      },
+      {
+        "id": "token.savings",
+        "label": "Token savings",
+        "status": "insufficient-data",
+        "value": null,
+        "source": "unavailable",
+        "explanation": "Orange Hyper v0.8 does not collect token counts, so token savings are unavailable and not estimated.",
+        "unavailable": true,
+        "unavailable_reason": "token counts are not collected"
+      }
+    ]
+  }
+}
+```
 
 ### `growth status --json`
 

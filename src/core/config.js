@@ -11,6 +11,7 @@ export const ORANGE_GITIGNORE = [
   "identity/",
   "local/",
   "hooks/reports/",
+  "evals/reports/",
   "proposals/memory-delta/pending/",
   "proposals/memory-delta/rejected/",
   ""
@@ -29,6 +30,7 @@ export const ROOT_GITIGNORE_REQUIRED_LINES = [
   ".orange-hyper/identity/",
   ".orange-hyper/local/",
   ".orange-hyper/hooks/reports/",
+  ".orange-hyper/evals/reports/",
   ".orange-hyper/proposals/memory-delta/pending/",
   ".orange-hyper/proposals/memory-delta/rejected/"
 ];
