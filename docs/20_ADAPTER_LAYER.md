@@ -1,6 +1,7 @@
 # Adapter Layer
 
-Orange Hyper v0.7.0-alpha.0 adds the Adapter Invocation Contract.
+Orange Hyper v0.7.0-alpha.1 hardens the Adapter Invocation Contract recipe
+quality surface.
 
 This is not a Codex adapter runtime, Claude adapter runtime, MCP bridge,
 subagent orchestrator, or auto planner. It is the first contract that tells a
@@ -21,7 +22,7 @@ The Adapter Layer documents command recipes that an adapter can follow when it
 needs to capture a Quest, complete work into memory, summarize project status,
 check hook warnings, or ask for MCP advice.
 
-The recipes do not execute automatically. The v0.7 alpha only exposes:
+The recipes do not execute automatically. The v0.7 alpha exposes:
 
 ```bash
 orange adapter list
@@ -89,15 +90,47 @@ Each recipe includes:
 
 Each command step includes:
 
+- `step_index`
 - `command`
 - `why`
 - `required_input`
+- `input_requirements`
 - `expected_json_command_id`
 - `mutates_project_state`
 - `requires_user_approval`
 
+Each `input_requirements` entry includes:
+
+- `name`
+- `placeholder`
+- `input_source`: `user`, `previous_step`, or `project_state`
+- `required`
+- `step_index`
+- `source_step_index` and `source_output` when the value comes from an earlier
+  recipe step
+
+## Recipe Quality Standard
+
+Built-in recipes must stay aligned with the actual Orange CLI JSON command
+contract:
+
+- every command string must use a real CLI invocation and include `--json`;
+- every step must declare the JSON command id that the CLI returns;
+- placeholders such as `<request>`, `<quest-id>`, `<proposal-id>`, and
+  `<query>` must appear in `input_requirements`;
+- placeholders must say whether the value comes from the user, a previous step,
+  or project state;
+- mutating commands must set `mutates_project_state: true` and
+  `requires_user_approval: true`;
+- non-mutating read commands must keep both flags false;
+- recipe safety flags must keep direct `.orange-hyper` mutation and human
+  output parsing disabled.
+
 `orange adapter dry-run <recipe-id>` prints this sequence without executing any
-state command. Dry-run does not modify `.orange-hyper`.
+state command. Dry-run does not modify `.orange-hyper`. Dry-run JSON includes
+`recipe_id`, `dry_run: true`, `executed: false`, `steps`, `required_inputs`,
+`missing_inputs`, `safety_flags`, `expected_contract_version`, and
+`next_user_decision`.
 
 ## Built-in Recipes
 
@@ -109,7 +142,7 @@ Command sequence:
 
 | Command | JSON command id | Mutates state | User approval |
 | --- | --- | --- | --- |
-| `orange quest new "<user-request>" --title "<title>" --layer <L0-L4> --json` | `quest.new` | yes | yes |
+| `orange quest new "<request>" --title "<title>" --layer <L0-L4> --json` | `quest.new` | yes | yes |
 
 Safety notes:
 
@@ -174,8 +207,8 @@ Command sequence:
 | --- | --- | --- | --- |
 | `orange hook preview --json` | `hook.preview` | no | no |
 | `orange hook status --json` | `hook.status` | no | no |
-| `orange hook run session-start --json` | `hook.runSessionStart` | no | yes |
-| `orange hook run stop --json` | `hook.runStop` | no | yes |
+| `orange hook run session-start --json` | `hook.runSessionStart` | no | no |
+| `orange hook run stop --json` | `hook.runStop` | no | no |
 
 Safety notes:
 
@@ -193,7 +226,7 @@ Command sequence:
 
 | Command | JSON command id | Mutates state | User approval |
 | --- | --- | --- | --- |
-| `orange mcp suggest --query "<need>" --json` | `mcp.suggest` | no | no |
+| `orange mcp suggest --query "<query>" --json` | `mcp.suggest` | no | no |
 | `orange mcp suggest --quest <quest-id> --json` | `mcp.suggest` | no | no |
 
 Safety notes:
@@ -205,7 +238,7 @@ Safety notes:
 
 ## Not Included In v0.7 Alpha
 
-v0.7.0-alpha.0 intentionally does not include:
+v0.7.0-alpha.1 intentionally does not include:
 
 - Codex-specific adapter automatic installation
 - Claude-specific adapter automatic installation
@@ -221,4 +254,5 @@ v0.7.0-alpha.0 intentionally does not include:
 - auto planner or auto execution loop
 
 The alpha is complete when adapters can inspect recipes, read the JSON contract,
-and dry-run the command sequence they would call later.
+dry-run the command sequence they would call later, and see which inputs are
+missing before any state-changing command is considered.

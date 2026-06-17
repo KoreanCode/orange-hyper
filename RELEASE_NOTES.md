@@ -1,5 +1,47 @@
 # Release Notes
 
+## v0.7.0-alpha.1
+
+Adapter Recipe Quality Hardening.
+
+- Package version is `0.7.0-alpha.1`.
+- README version is `0.7-doc.1`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Recipe steps now carry `step_index` and structured `input_requirements`.
+- Placeholder inputs such as `<request>`, `<quest-id>`, `<proposal-id>`, and
+  `<query>` now declare `input_source`: `user`, `previous_step`, or
+  `project_state`.
+- `adapter dry-run` now returns `recipe_id`, `dry_run: true`,
+  `executed: false`, `steps`, `required_inputs`, `missing_inputs`,
+  `safety_flags`, `expected_contract_version`, and `next_user_decision`.
+- Dry-run keeps a `commands` alias for compatibility with the initial v0.7
+  alpha while making `steps` the clearer execution-plan field.
+- Recipe metadata now pins mutating commands to `requires_user_approval: true`
+  and non-mutating read commands to `requires_user_approval: false`.
+- `hook run session-start` and `hook run stop` remain read-only when
+  `--write-report` is omitted, so their recipe steps are
+  `mutates_project_state: false` and `requires_user_approval: false`.
+- Tests now verify command ids, placeholder input sources, missing dry-run
+  inputs, mutation approval flags, read-only approval flags, no dry-run
+  `.orange-hyper` mutation, unknown recipe failures, and the no-human-output
+  parsing guard.
+- `docs/20_ADAPTER_LAYER.md` documents the recipe quality standard.
+- `docs/16_ADAPTER_CONTRACT.md` includes a richer dry-run JSON example.
+
+### Explicitly still not included
+
+- Codex/Claude-specific adapter automatic installation
+- actual adapter runtime
+- automatic Quest creation
+- automatic memory proposal creation
+- automatic accept or reject
+- automatic graph rebuild
+- automatic hook execution
+- MCP automatic installation or execution
+- subagent orchestration
+- direct `.orange-hyper` file mutation
+- auto planner or auto execution loop
+
 ## v0.7.0-alpha.0
 
 Adapter Invocation Contract alpha.

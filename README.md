@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.0`
+- README version: `0.7-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 현재 제공 기능
 
-v0.7.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract alpha 기능을 제공합니다.
+v0.7.0-alpha.1 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, Adapter Invocation Contract alpha 기능을 제공합니다.
 
 - `orange init`으로 repo-local `.orange-hyper/` 구조를 만듭니다.
 - Quest markdown과 YAML frontmatter로 작업 의도를 기록합니다.
@@ -108,6 +108,7 @@ v0.7.0-alpha.0 기준으로 Orange Hyper는 Seed Kernel, Memory Graph Usability,
 - Growth candidate는 제안일 뿐이며 `auto_unlock: false`, `requires_user_approval: true`를 유지합니다.
 - Growth Signal Preview의 `growthLevel`은 장식적 후보이며 role/tool/hook/MCP/subagent/workflow를 자동 unlock하지 않습니다.
 - `adapter list`, `adapter show <recipe-id>`, `adapter dry-run <recipe-id>`는 natural-language/skill layer가 Orange Kernel을 `--json`으로 호출하는 recipe 계약을 보여줍니다.
+- adapter dry-run은 `missing_inputs`, `input_source`, `step_index`, `next_user_decision`으로 안전한 호출 순서를 설명합니다.
 - Adapter Layer는 `.orange-hyper` 직접 수정, human output parsing, 자동 Quest/Memory/MCP/Hook/Subagent 실행을 하지 않습니다.
 - Adapter JSON Contract는 `--json` 출력의 envelope, command id, stdout/stderr, exit-code 규칙을 정의합니다.
 

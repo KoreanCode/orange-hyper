@@ -9,6 +9,12 @@ export const ADAPTER_SAFETY_FLAGS = Object.freeze({
 
 const EXPECTED_CONTRACT_VERSION = "0.1";
 
+const INPUT_SOURCE = Object.freeze({
+  USER: "user",
+  PREVIOUS_STEP: "previous_step",
+  PROJECT_STATE: "project_state"
+});
+
 /**
  * @type {import("./types.d.ts").AdapterRecipe[]}
  */
@@ -23,16 +29,21 @@ const ADAPTER_RECIPES = [
     ],
     commands: [
       step({
-        command: "orange quest new \"<user-request>\" --title \"<title>\" --layer <L0-L4> --json",
+        command: "orange quest new \"<request>\" --title \"<title>\" --layer <L0-L4> --json",
         why: "Let the kernel create Quest frontmatter, route contract metadata, and the next command hints.",
-        required_input: ["user_request", "title", "layer"],
+        required_input: ["request", "title", "layer"],
+        input_requirements: [
+          input({ name: "request", placeholder: "<request>", input_source: INPUT_SOURCE.USER }),
+          input({ name: "title", placeholder: "<title>", input_source: INPUT_SOURCE.USER }),
+          input({ name: "layer", placeholder: "<L0-L4>", input_source: INPUT_SOURCE.USER })
+        ],
         expected_json_command_id: "quest.new",
         mutates_project_state: true,
         requires_user_approval: true
       })
     ],
     required_inputs: [
-      "user_request",
+      "request",
       "title",
       "layer"
     ],
@@ -70,6 +81,10 @@ const ADAPTER_RECIPES = [
         command: "orange quest done <quest-id> --evidence \"<evidence>\" --json",
         why: "Let the kernel move the Quest to completed state with explicit verification evidence.",
         required_input: ["quest_id", "evidence"],
+        input_requirements: [
+          input({ name: "quest_id", placeholder: "<quest-id>", input_source: INPUT_SOURCE.USER }),
+          input({ name: "evidence", placeholder: "<evidence>", input_source: INPUT_SOURCE.USER })
+        ],
         expected_json_command_id: "quest.done",
         mutates_project_state: true,
         requires_user_approval: true
@@ -78,6 +93,15 @@ const ADAPTER_RECIPES = [
         command: "orange remember propose --quest <quest-id> --json",
         why: "Create a pending Memory Delta Proposal from the completed Quest instead of writing memory directly.",
         required_input: ["quest_id"],
+        input_requirements: [
+          input({
+            name: "quest_id",
+            placeholder: "<quest-id>",
+            input_source: INPUT_SOURCE.PREVIOUS_STEP,
+            source_step_index: 1,
+            source_output: "quest.id"
+          })
+        ],
         expected_json_command_id: "remember.propose",
         mutates_project_state: true,
         requires_user_approval: true
@@ -86,6 +110,15 @@ const ADAPTER_RECIPES = [
         command: "orange remember show <proposal-id> --json",
         why: "Read the proposal content for human review through the JSON contract.",
         required_input: ["proposal_id"],
+        input_requirements: [
+          input({
+            name: "proposal_id",
+            placeholder: "<proposal-id>",
+            input_source: INPUT_SOURCE.PREVIOUS_STEP,
+            source_step_index: 2,
+            source_output: "proposal.id"
+          })
+        ],
         expected_json_command_id: "remember.show",
         mutates_project_state: false,
         requires_user_approval: false
@@ -94,6 +127,15 @@ const ADAPTER_RECIPES = [
         command: "orange remember validate <proposal-id> --json",
         why: "Ask the kernel to validate proposal shape and project boundary before any decision.",
         required_input: ["proposal_id"],
+        input_requirements: [
+          input({
+            name: "proposal_id",
+            placeholder: "<proposal-id>",
+            input_source: INPUT_SOURCE.PREVIOUS_STEP,
+            source_step_index: 2,
+            source_output: "proposal.id"
+          })
+        ],
         expected_json_command_id: "remember.validate",
         mutates_project_state: false,
         requires_user_approval: false
@@ -102,6 +144,16 @@ const ADAPTER_RECIPES = [
         command: "orange remember accept <proposal-id> --json",
         why: "Accept only after explicit human approval; accepted proposals create graph node candidates through the kernel.",
         required_input: ["proposal_id", "explicit_accept_approval"],
+        input_requirements: [
+          input({
+            name: "proposal_id",
+            placeholder: "<proposal-id>",
+            input_source: INPUT_SOURCE.PREVIOUS_STEP,
+            source_step_index: 2,
+            source_output: "proposal.id"
+          }),
+          input({ name: "explicit_accept_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+        ],
         expected_json_command_id: "remember.accept",
         mutates_project_state: true,
         requires_user_approval: true
@@ -170,6 +222,9 @@ const ADAPTER_RECIPES = [
         command: "orange identity build --json",
         why: "Refresh the kernel-owned identity summary only when the user wants that generated artifact.",
         required_input: ["explicit_identity_refresh_approval"],
+        input_requirements: [
+          input({ name: "explicit_identity_refresh_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+        ],
         expected_json_command_id: "identity.build",
         mutates_project_state: true,
         requires_user_approval: true
@@ -226,23 +281,23 @@ const ADAPTER_RECIPES = [
       step({
         command: "orange hook run session-start --json",
         why: "Observe session-start warnings through the kernel without writing hook reports.",
-        required_input: ["explicit_hook_observation_approval"],
+        required_input: [],
+        input_requirements: [],
         expected_json_command_id: "hook.runSessionStart",
         mutates_project_state: false,
-        requires_user_approval: true
+        requires_user_approval: false
       }),
       step({
         command: "orange hook run stop --json",
         why: "Observe stop-event warnings through the kernel without writing hook reports.",
-        required_input: ["explicit_hook_observation_approval"],
+        required_input: [],
+        input_requirements: [],
         expected_json_command_id: "hook.runStop",
         mutates_project_state: false,
-        requires_user_approval: true
+        requires_user_approval: false
       })
     ],
-    required_inputs: [
-      "explicit_hook_observation_approval for hook run commands"
-    ],
+    required_inputs: [],
     outputs: [
       "hook preview checks",
       "hook status",
@@ -274,9 +329,12 @@ const ADAPTER_RECIPES = [
     ],
     commands: [
       step({
-        command: "orange mcp suggest --query \"<need>\" --json",
+        command: "orange mcp suggest --query \"<query>\" --json",
         why: "Get a deterministic proposal card from the built-in MCP catalog for an explicit need.",
-        required_input: ["need"],
+        required_input: ["query"],
+        input_requirements: [
+          input({ name: "query", placeholder: "<query>", input_source: INPUT_SOURCE.USER })
+        ],
         expected_json_command_id: "mcp.suggest",
         mutates_project_state: false,
         requires_user_approval: false
@@ -285,13 +343,16 @@ const ADAPTER_RECIPES = [
         command: "orange mcp suggest --quest <quest-id> --json",
         why: "Get a deterministic proposal card grounded in an existing Quest.",
         required_input: ["quest_id"],
+        input_requirements: [
+          input({ name: "quest_id", placeholder: "<quest-id>", input_source: INPUT_SOURCE.PROJECT_STATE })
+        ],
         expected_json_command_id: "mcp.suggest",
         mutates_project_state: false,
         requires_user_approval: false
       })
     ],
     required_inputs: [
-      "need or quest_id"
+      "query or quest_id"
     ],
     outputs: [
       "proposal_cards",
@@ -315,7 +376,7 @@ const ADAPTER_RECIPES = [
     expected_contract_version: EXPECTED_CONTRACT_VERSION,
     safety_flags: ADAPTER_SAFETY_FLAGS
   }
-];
+].map(withStepIndexes);
 
 const RECIPES_BY_ID = new Map(ADAPTER_RECIPES.map((recipe) => [recipe.id, recipe]));
 
@@ -340,14 +401,21 @@ export function showAdapterRecipe(id) {
  */
 export function dryRunAdapterRecipe(id) {
   const recipe = showAdapterRecipe(id);
+  const steps = recipe.commands.map(cloneStep);
+  const requiredInputs = collectRequiredInputs(steps);
+  const missingInputs = collectMissingInputs(requiredInputs);
   return {
-    dry_run: true,
-    executed: false,
     recipe_id: recipe.id,
     recipe_title: recipe.title,
-    expected_contract_version: recipe.expected_contract_version,
+    dry_run: true,
+    executed: false,
+    steps,
+    commands: steps.map(cloneStep),
+    required_inputs: requiredInputs,
+    missing_inputs: missingInputs,
     safety_flags: cloneSafetyFlags(recipe.safety_flags),
-    commands: recipe.commands.map((command) => ({ ...command })),
+    expected_contract_version: recipe.expected_contract_version,
+    next_user_decision: buildNextUserDecision(recipe.id, missingInputs),
     mutation_policy: "Dry-run only describes Orange CLI --json invocations; it does not execute commands or modify .orange-hyper.",
     adapter_rules: [
       "Natural-language layer calls the kernel.",
@@ -362,6 +430,32 @@ function step(value) {
   return value;
 }
 
+function input(value) {
+  return {
+    placeholder: null,
+    required: true,
+    ...value
+  };
+}
+
+function withStepIndexes(recipe) {
+  return {
+    ...recipe,
+    commands: recipe.commands.map((command, index) => {
+      const stepIndex = index + 1;
+      const inputRequirements = command.input_requirements || [];
+      return {
+        ...command,
+        step_index: stepIndex,
+        input_requirements: inputRequirements.map((requirement) => ({
+          ...requirement,
+          step_index: stepIndex
+        }))
+      };
+    })
+  };
+}
+
 function normalizeRecipeId(id) {
   return String(id || "").trim();
 }
@@ -370,7 +464,7 @@ function cloneRecipe(recipe) {
   return {
     ...recipe,
     when_to_use: [...recipe.when_to_use],
-    commands: recipe.commands.map((command) => ({ ...command, required_input: [...command.required_input] })),
+    commands: recipe.commands.map(cloneStep),
     required_inputs: [...recipe.required_inputs],
     outputs: [...recipe.outputs],
     safety_rules: [...recipe.safety_rules],
@@ -379,8 +473,49 @@ function cloneRecipe(recipe) {
   };
 }
 
+function cloneStep(command) {
+  return {
+    ...command,
+    required_input: [...command.required_input],
+    input_requirements: command.input_requirements.map((requirement) => ({ ...requirement }))
+  };
+}
+
 function cloneSafetyFlags(flags) {
   return { ...flags };
+}
+
+function collectRequiredInputs(steps) {
+  return steps.flatMap((command) => command.input_requirements.map((requirement) => ({ ...requirement })));
+}
+
+function collectMissingInputs(requiredInputs) {
+  return requiredInputs
+    .filter((requirement) => requirement.required && requirement.input_source !== INPUT_SOURCE.PREVIOUS_STEP)
+    .map((requirement) => ({ ...requirement }));
+}
+
+function buildNextUserDecision(recipeId, missingInputs) {
+  if (recipeId === "quest-capture") {
+    return "Ask whether to create a Quest, then collect request, title, and layer before running step 1.";
+  }
+  if (recipeId === "work-complete-to-memory") {
+    return "Ask for quest completion approval and evidence before step 1; ask again before the step 5 memory accept.";
+  }
+  if (recipeId === "project-status") {
+    return "Run read-only steps 1-3 if status is requested; ask before step 4 because identity build mutates generated state.";
+  }
+  if (recipeId === "hook-check") {
+    return "No extra approval is required for the read-only hook checks; do not add --write-report unless the user asks for a local report.";
+  }
+  if (recipeId === "mcp-advice") {
+    return "Choose either a user query for step 1 or an existing quest id from project state for step 2; present advice only.";
+  }
+  const userInputs = missingInputs.filter((requirement) => requirement.input_source === INPUT_SOURCE.USER);
+  if (userInputs.length) {
+    return `Collect ${userInputs.map((requirement) => requirement.name).join(", ")} before executing this recipe.`;
+  }
+  return "No user decision is required before read-only execution; dry-run itself executed nothing.";
 }
 
 function unknownRecipeError(id) {

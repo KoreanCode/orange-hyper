@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.0`
+- README version: `0.7-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 ## 当前功能
 
-以 v0.7.0-alpha.0 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract alpha 功能。
+以 v0.7.0-alpha.1 为基准，Orange Hyper 提供 Seed Kernel、Memory Graph Usability、read-only Identity Graph Preview、Minimal Hook Preview、MCP Advisor stable、Growth Signal Preview stable 和 Adapter Invocation Contract alpha 功能。
 
 - `orange init` 创建 repo-local `.orange-hyper/` 结构。
 - Quest markdown 和 YAML frontmatter 记录工作意图。
@@ -108,6 +108,7 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 - Growth candidate 只是建议，并保持 `auto_unlock: false` 和 `requires_user_approval: true`。
 - Growth Signal Preview 的 `growthLevel` 只是装饰性候选，不会自动 unlock role、tool、hook、MCP、subagent 或 workflow。
 - `adapter list`、`adapter show <recipe-id>`、`adapter dry-run <recipe-id>` 描述 natural-language/skill layer 如何通过 `--json` recipe 调用 Orange Kernel。
+- adapter dry-run 通过 `missing_inputs`、`input_source`、`step_index`、`next_user_decision` 描述安全调用顺序。
 - Adapter Layer 不直接修改 `.orange-hyper`，不解析 human output，也不会自动运行 Quest、Memory、MCP、Hook 或 Subagent 流程。
 - Adapter JSON Contract 定义 `--json` envelope、command id、stdout/stderr 和 exit-code 规则。
 

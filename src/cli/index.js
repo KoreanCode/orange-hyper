@@ -1105,10 +1105,18 @@ function formatAdapterDryRun(result) {
     `Parses human output: ${yesNo(result.safety_flags.parses_human_output)}`,
     `Requires JSON mode: ${yesNo(result.safety_flags.requires_json_mode)}`,
     "",
+    "Required inputs:",
+    ...formatAdapterInputRequirements(result.required_inputs),
+    "",
+    "Missing inputs:",
+    ...formatAdapterInputRequirements(result.missing_inputs),
+    "",
+    `Next user decision: ${result.next_user_decision}`,
+    "",
     result.mutation_policy,
     "",
     "Command sequence:",
-    ...result.commands.flatMap((command, index) => formatAdapterStep(command, index)),
+    ...result.steps.flatMap((command, index) => formatAdapterStep(command, index)),
     "",
     "Adapter rules:",
     ...result.adapter_rules.map((item) => `  - ${item}`)
@@ -1123,10 +1131,35 @@ function formatAdapterStep(command, index) {
     `  ${index + 1}. ${command.command}`,
     `     Why: ${command.why}`,
     `     Required input: ${command.required_input.length ? command.required_input.join(", ") : "none"}`,
+    "     Input sources:",
+    ...formatAdapterInputRequirements(command.input_requirements).map((line) => `  ${line}`),
     `     Expected JSON command id: ${command.expected_json_command_id}`,
     `     Mutates project state: ${yesNo(command.mutates_project_state)}`,
     `     Requires user approval: ${yesNo(command.requires_user_approval)}`
   ];
+}
+
+function formatAdapterInputRequirements(items) {
+  if (!items.length) {
+    return ["  - none"];
+  }
+  return items.map((item) => {
+    const parts = [
+      item.name,
+      `source=${item.input_source}`,
+      `step=${item.step_index}`
+    ];
+    if (item.placeholder) {
+      parts.push(`placeholder=${item.placeholder}`);
+    }
+    if (item.source_step_index) {
+      parts.push(`from_step=${item.source_step_index}`);
+    }
+    if (item.source_output) {
+      parts.push(`from_output=${item.source_output}`);
+    }
+    return `  - ${parts.join("; ")}`;
+  });
 }
 
 function formatAdapterListItems(items) {

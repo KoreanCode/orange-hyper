@@ -68,10 +68,24 @@ export interface AdapterSafetyFlags {
   auto_unlock: false;
 }
 
+export type AdapterInputSource = "user" | "previous_step" | "project_state";
+
+export interface AdapterStepInputRequirement {
+  name: string;
+  placeholder: string | null;
+  input_source: AdapterInputSource;
+  required: boolean;
+  step_index: number;
+  source_step_index?: number;
+  source_output?: string;
+}
+
 export interface AdapterRecipeStep {
+  step_index: number;
   command: string;
   why: string;
   required_input: string[];
+  input_requirements: AdapterStepInputRequirement[];
   expected_json_command_id: CommandId;
   mutates_project_state: boolean;
   requires_user_approval: boolean;
@@ -92,13 +106,17 @@ export interface AdapterRecipe {
 }
 
 export interface AdapterDryRunResult {
-  dry_run: true;
-  executed: false;
   recipe_id: string;
   recipe_title: string;
-  expected_contract_version: AdapterContractVersion;
-  safety_flags: AdapterSafetyFlags;
+  dry_run: true;
+  executed: false;
+  steps: AdapterRecipeStep[];
   commands: AdapterRecipeStep[];
+  required_inputs: AdapterStepInputRequirement[];
+  missing_inputs: AdapterStepInputRequirement[];
+  safety_flags: AdapterSafetyFlags;
+  expected_contract_version: AdapterContractVersion;
+  next_user_decision: string;
   mutation_policy: string;
   adapter_rules: string[];
 }

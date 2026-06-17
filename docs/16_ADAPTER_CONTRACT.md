@@ -1,6 +1,6 @@
 # Adapter Contract
 
-Orange Hyper v0.7.0-alpha.0 is still a Seed Kernel with Memory Graph Usability,
+Orange Hyper v0.7.0-alpha.1 is still a Seed Kernel with Memory Graph Usability,
 a read-only Identity Graph Preview, a stable Minimal Hook Preview, a stable
 read-only MCP Advisor, a read-only Growth Signal Preview, and the first Adapter
 Invocation Contract alpha. The `orange` CLI is the kernel control plane, not the
@@ -61,7 +61,7 @@ Structured failures use this envelope:
 }
 ```
 
-`contract_version` is the adapter-facing JSON contract version. v0.7.0-alpha.0
+`contract_version` is the adapter-facing JSON contract version. v0.7.0-alpha.1
 keeps `"0.1"` as the stable Seed Kernel adapter contract and appears in both
 success and failure envelopes.
 
@@ -167,6 +167,11 @@ must not modify `.orange-hyper`. Every recipe declares safety flags:
 `requires_json_mode: true`, `auto_accept: false`, `auto_install: false`, and
 `auto_unlock: false`.
 
+Dry-run output is the adapter-facing execution plan. It includes `steps`,
+structured `required_inputs`, `missing_inputs`, and `next_user_decision` so an
+adapter can distinguish user placeholders from previous-step outputs and
+project-state values before it considers running any real command.
+
 ## Command Examples
 
 ### `adapter list --json`
@@ -192,15 +197,39 @@ orange adapter list --json
         ],
         "commands": [
           {
-            "command": "orange quest new \"<user-request>\" --title \"<title>\" --layer <L0-L4> --json",
+            "step_index": 1,
+            "command": "orange quest new \"<request>\" --title \"<title>\" --layer <L0-L4> --json",
             "why": "Let the kernel create Quest frontmatter, route contract metadata, and the next command hints.",
-            "required_input": ["user_request", "title", "layer"],
+            "required_input": ["request", "title", "layer"],
+            "input_requirements": [
+              {
+                "name": "request",
+                "placeholder": "<request>",
+                "input_source": "user",
+                "required": true,
+                "step_index": 1
+              },
+              {
+                "name": "title",
+                "placeholder": "<title>",
+                "input_source": "user",
+                "required": true,
+                "step_index": 1
+              },
+              {
+                "name": "layer",
+                "placeholder": "<L0-L4>",
+                "input_source": "user",
+                "required": true,
+                "step_index": 1
+              }
+            ],
             "expected_json_command_id": "quest.new",
             "mutates_project_state": true,
             "requires_user_approval": true
           }
         ],
-        "required_inputs": ["user_request", "title", "layer"],
+        "required_inputs": ["request", "title", "layer"],
         "outputs": ["quest.id", "quest.file", "contract", "next.route", "next.capsule"],
         "safety_rules": [
           "Call `orange quest new ... --json`; do not create Quest markdown files directly."
@@ -248,20 +277,24 @@ output includes the full recipe fields listed in `docs/20_ADAPTER_LAYER.md`.
       "title": "Hook Check",
       "commands": [
         {
+          "step_index": 1,
           "command": "orange hook preview --json",
           "why": "Read the planned hook checks and report policy.",
           "required_input": [],
+          "input_requirements": [],
           "expected_json_command_id": "hook.preview",
           "mutates_project_state": false,
           "requires_user_approval": false
         },
         {
+          "step_index": 4,
           "command": "orange hook run stop --json",
           "why": "Observe stop-event warnings through the kernel without writing hook reports.",
-          "required_input": ["explicit_hook_observation_approval"],
+          "required_input": [],
+          "input_requirements": [],
           "expected_json_command_id": "hook.runStop",
           "mutates_project_state": false,
-          "requires_user_approval": true
+          "requires_user_approval": false
         }
       ],
       "expected_contract_version": "0.1",
@@ -293,11 +326,58 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
   "contract_version": "0.1",
   "command": "adapter.dryRun",
   "data": {
-    "dry_run": true,
-    "executed": false,
     "recipe_id": "project-status",
     "recipe_title": "Project Status",
-    "expected_contract_version": "0.1",
+    "dry_run": true,
+    "executed": false,
+    "steps": [
+      {
+        "step_index": 1,
+        "command": "orange doctor --json",
+        "why": "Read kernel diagnostics and project boundary status.",
+        "required_input": [],
+        "input_requirements": [],
+        "expected_json_command_id": "doctor.run",
+        "mutates_project_state": false,
+        "requires_user_approval": false
+      },
+      {
+        "step_index": 4,
+        "command": "orange identity build --json",
+        "why": "Refresh the kernel-owned identity summary only when the user wants that generated artifact.",
+        "required_input": ["explicit_identity_refresh_approval"],
+        "input_requirements": [
+          {
+            "name": "explicit_identity_refresh_approval",
+            "placeholder": null,
+            "input_source": "user",
+            "required": true,
+            "step_index": 4
+          }
+        ],
+        "expected_json_command_id": "identity.build",
+        "mutates_project_state": true,
+        "requires_user_approval": true
+      }
+    ],
+    "required_inputs": [
+      {
+        "name": "explicit_identity_refresh_approval",
+        "placeholder": null,
+        "input_source": "user",
+        "required": true,
+        "step_index": 4
+      }
+    ],
+    "missing_inputs": [
+      {
+        "name": "explicit_identity_refresh_approval",
+        "placeholder": null,
+        "input_source": "user",
+        "required": true,
+        "step_index": 4
+      }
+    ],
     "safety_flags": {
       "direct_file_mutation": false,
       "parses_human_output": false,
@@ -306,24 +386,8 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
       "auto_install": false,
       "auto_unlock": false
     },
-    "commands": [
-      {
-        "command": "orange doctor --json",
-        "why": "Read kernel diagnostics and project boundary status.",
-        "required_input": [],
-        "expected_json_command_id": "doctor.run",
-        "mutates_project_state": false,
-        "requires_user_approval": false
-      },
-      {
-        "command": "orange identity build --json",
-        "why": "Refresh the kernel-owned identity summary only when the user wants that generated artifact.",
-        "required_input": ["explicit_identity_refresh_approval"],
-        "expected_json_command_id": "identity.build",
-        "mutates_project_state": true,
-        "requires_user_approval": true
-      }
-    ],
+    "expected_contract_version": "0.1",
+    "next_user_decision": "Run read-only steps 1-3 if status is requested; ask before step 4 because identity build mutates generated state.",
     "mutation_policy": "Dry-run only describes Orange CLI --json invocations; it does not execute commands or modify .orange-hyper.",
     "adapter_rules": [
       "Natural-language layer calls the kernel.",
@@ -334,6 +398,9 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
   }
 }
 ```
+
+Actual dry-run output also includes a `commands` alias with the same entries as
+`steps` for compatibility with the initial v0.7 alpha.
 
 ### `growth status --json`
 

@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `0.7-doc.0`
+- README version: `0.7-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,7 +82,7 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Current Features
 
-As of v0.7.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, and Adapter Invocation Contract alpha features.
+As of v0.7.0-alpha.1, Orange Hyper provides the Seed Kernel, Memory Graph Usability, read-only Identity Graph Preview, Minimal Hook Preview, MCP Advisor stable, Growth Signal Preview stable, and Adapter Invocation Contract alpha features.
 
 - `orange init` creates a repo-local `.orange-hyper/` structure.
 - Quest markdown and YAML frontmatter record work intent.
@@ -108,6 +108,7 @@ As of v0.7.0-alpha.0, Orange Hyper provides the Seed Kernel, Memory Graph Usabil
 - Growth candidates are suggestions only and keep `auto_unlock: false` and `requires_user_approval: true`.
 - Growth Signal Preview `growthLevel` is a decorative candidate only; it does not automatically unlock roles, tools, hooks, MCPs, subagents, or workflows.
 - `adapter list`, `adapter show <recipe-id>`, and `adapter dry-run <recipe-id>` describe how natural-language and skill layers should call the Orange Kernel through `--json` recipes.
+- Adapter dry-run describes safe invocation order with `missing_inputs`, `input_source`, `step_index`, and `next_user_decision`.
 - The Adapter Layer does not directly modify `.orange-hyper`, parse human output, or automatically run Quest, Memory, MCP, Hook, or Subagent flows.
 - Adapter JSON Contract defines the `--json` envelope, command ids, stdout/stderr, and exit-code rules.
 
