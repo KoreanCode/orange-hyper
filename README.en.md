@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.3`
+- README version: `1.1-doc.4`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -210,6 +210,7 @@ The list below is not a long usage guide. It is the top-level kernel surface for
 - `growth`
 - `adapter`
 - `eval`
+- `sync`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->

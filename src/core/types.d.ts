@@ -30,6 +30,7 @@ export type CommandId =
   | "mcp.list"
   | "mcp.show"
   | "mcp.suggest"
+  | "project.init"
   | "quest.done"
   | "quest.new"
   | "remember.accept"
@@ -40,6 +41,9 @@ export type CommandId =
   | "remember.show"
   | "remember.validate"
   | "route.show"
+  | "sync.plan"
+  | "sync.apply"
+  | "sync.status"
   | "unknown.command"
   | `${string}.unknown`;
 
@@ -322,6 +326,180 @@ export interface GraphShowResult {
 
 export interface GraphSearchResult extends GraphListResult {
   query: string;
+}
+
+export type StructureNodeType =
+  | "project"
+  | "module"
+  | "domain"
+  | "component"
+  | "test"
+  | "document"
+  | "infrastructure"
+  | "datastore";
+
+export type StructureEdgeType =
+  | "contains"
+  | "depends_on"
+  | "tests"
+  | "documents"
+  | "configures";
+
+export interface StructureNode {
+  id: string;
+  type: StructureNodeType;
+  role: string;
+  label: string;
+  path: string;
+  source: string;
+  readOnly: true;
+  generated: true;
+  metadata: JsonObject;
+}
+
+export interface StructureEdge {
+  id: string;
+  from: string;
+  to: string;
+  relation: StructureEdgeType;
+  source: string;
+  readOnly: true;
+  generated: true;
+}
+
+export interface StructureGraph extends OriginMetadata {
+  schema_version: 1;
+  graph_version: string;
+  generated_at: string | null;
+  state_revision: string | null;
+  source: "project-sync-scanner";
+  readOnly: true;
+  generated: true;
+  project_id: string | null;
+  project_name: string;
+  node_types: StructureNodeType[];
+  edge_types: StructureEdgeType[];
+  scanner: {
+    mode: "minimal-project-structure";
+    llm: false;
+    ast: false;
+    callGraph: false;
+    graphEditing: false;
+  };
+  nodes: StructureNode[];
+  edges: StructureEdge[];
+  summary: StructureSummary;
+  ignored: {
+    directories: string[];
+  };
+}
+
+export interface StructureSummary {
+  node_count: number;
+  edge_count: number;
+  nodes_by_type: Record<string, number>;
+  edges_by_relation: Record<string, number>;
+  project_root_node: "project.root";
+}
+
+export interface SyncFreshness {
+  status: "missing" | "current" | "stale";
+  changed: boolean;
+  reason: string;
+}
+
+export interface SyncPlanResult {
+  schema_version: 1;
+  plan_version: string;
+  generated_at: string;
+  readOnly: true;
+  mutates: false;
+  project: {
+    project_id: string | null;
+    project_name: string;
+  };
+  state_revision: string;
+  previous_revision: string | null;
+  changed: boolean;
+  freshness: SyncFreshness;
+  files: {
+    index: string;
+    status: string;
+  };
+  graph: StructureGraph;
+  summary: StructureSummary;
+  ignored: JsonObject;
+  writes: [];
+}
+
+export interface SyncApplyResult {
+  schema_version: 1;
+  apply_version: string;
+  generated_at: string;
+  readOnly: false;
+  mutates: true;
+  applied: true;
+  project: SyncPlanResult["project"];
+  state_revision: string;
+  previous_revision: string | null;
+  changed: boolean;
+  files: SyncPlanResult["files"];
+  graph: StructureGraph;
+  summary: StructureSummary;
+  status: SyncStatusFile;
+  warnings: string[];
+  identity?: IdentityRefreshResult;
+}
+
+export interface SyncStatusFile {
+  schema_version: 1;
+  status_version: string;
+  generated_at: string;
+  last_sync_at: string;
+  project_id: string | null;
+  project_name: string;
+  state_revision: string;
+  previous_revision: string | null;
+  changed: false;
+  freshness: SyncFreshness;
+  structure_file: string;
+  status_file: string;
+  identity_built_from_revision: string | null;
+  identity_status: "current" | "stale";
+  identity_file: string | null;
+  identity_summary_file: string | null;
+  identity_warning: string | null;
+  readOnly: false;
+  mutates: true;
+}
+
+export interface SyncStatusResult {
+  schema_version: 1;
+  status_version: string;
+  generated_at: string;
+  readOnly: true;
+  mutates: false;
+  project: SyncPlanResult["project"];
+  files: SyncPlanResult["files"];
+  last_sync_at: string | null;
+  state_revision: string | null;
+  current_revision: string;
+  changed: boolean;
+  freshness: SyncFreshness;
+  identity_built_from_revision: string | null;
+  identity_status: "current" | "stale";
+  identity_warning: string | null;
+  summary: StructureSummary;
+  status: SyncStatusFile | null;
+}
+
+export interface IdentityRefreshResult {
+  status: "current" | "stale";
+  file: string | null;
+  summary_file: string | null;
+  state_revision: string | null;
+  identity_built_from_revision: string | null;
+  warning: string | null;
 }
 
 export interface DoctorDiagnostic {
@@ -1023,7 +1201,17 @@ export interface IdentitySourceGraphEdge {
   derived: false;
 }
 
-export type IdentityVisualNodeType = "memory" | "concept" | "sourceQuest" | "sourceProposal" | "category";
+export type IdentityVisualNodeType =
+  | "project"
+  | "module"
+  | "domain"
+  | "component"
+  | "test"
+  | "document"
+  | "infrastructure"
+  | "datastore"
+  | "memory"
+  | "memoryCluster";
 
 export interface IdentityVisualGraphNode {
   id: string;
@@ -1051,6 +1239,10 @@ export interface IdentityVisualGraphNode {
   category?: string;
   source_quest?: string;
   source_proposal?: string;
+  structurePath?: string;
+  structureRole?: string;
+  source?: string;
+  layoutRole?: string;
 }
 
 export interface IdentityVisualGraphEdge {
@@ -1061,9 +1253,24 @@ export interface IdentityVisualGraphEdge {
   source: string;
   strength: number;
   distance: number;
-  displayOnly: true;
-  derived: true;
+  displayOnly: boolean;
+  derived: boolean;
   readOnly: true;
+}
+
+export interface IdentityGraph {
+  schemaVersion: string;
+  readOnly: true;
+  editingSupported: false;
+  displayOnly: true;
+  source: "structure-plus-accepted-memory";
+  project_id: string | null;
+  project_name: string;
+  seed: string;
+  layout: "deterministic-seeded-force";
+  nodeTypeColors: Record<string, string>;
+  nodes: IdentityVisualGraphNode[];
+  edges: IdentityVisualGraphEdge[];
 }
 
 export interface IdentitySummary extends OriginMetadata {
@@ -1084,6 +1291,9 @@ export interface IdentitySummary extends OriginMetadata {
   acceptedMemoryNodes: number;
   projectBoundaryActive: boolean;
   topProposalNodeTypes: Array<{ nodeType: string; count: number }>;
+  structureGraph: StructureGraph;
+  memoryGraph: IdentitySummary["sourceGraph"];
+  identityGraph: IdentityGraph;
   graphPreview: {
     schemaVersion: string;
     readOnly: true;
@@ -1140,7 +1350,7 @@ export interface IdentitySummary extends OriginMetadata {
     readOnly: true;
     editingSupported: false;
     displayOnly: true;
-    source: "identity-html-visual-only";
+    source: "identity-html-visual-only" | "structure-plus-accepted-memory";
     project_id: string | null;
     project_name: string;
     seed: string;
@@ -1180,6 +1390,14 @@ export interface IdentitySummary extends OriginMetadata {
     boundaries: GrowthBoundaryFlags;
   };
   graphWarnings: string[];
+  state_revision: string | null;
+  identity_built_from_revision: string | null;
+  identity_status: "current" | "stale";
+  structure_status: {
+    last_sync_at: string | null;
+    state_revision: string | null;
+    identity_status: "current" | "stale";
+  } | null;
   origin: OriginMetadata;
   statusMessages: string[];
 }

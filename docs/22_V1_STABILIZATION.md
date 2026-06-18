@@ -4,7 +4,8 @@ Orange Hyper v1.0.0 is the first stable boundary release. Orange Hyper
 v1.1.0-alpha.0 adds a read-only Identity HTML Knowledge Graph view, and
 v1.1.0-alpha.1 realigns the README product surface around the AI-first usage
 model, v1.1.0-alpha.2 fixes the Identity Graph product spec, and
-v1.1.0-alpha.3 implements the full-screen read-only brain-like Identity Graph.
+v1.1.0-alpha.3 implements the full-screen read-only brain-like Identity Graph,
+and v1.1.0-alpha.4 adds Project Sync plus generated Structure Graph state.
 None of these alphas add a runtime adapter, MCP runner, hook installer, role
 system, planner, LLM judge, telemetry path, or graph editing surface. The
 purpose of the v1 line is to keep the v0.1 through v0.8 boundaries explicit,
@@ -12,8 +13,8 @@ verified, and publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.3`
-- README version: `1.1-doc.3`
+- package version: `1.1.0-alpha.4`
+- README version: `1.1-doc.4`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model
@@ -42,10 +43,9 @@ product experience.
 - Hook, Growth, and Eval remain warning/summary surfaces. MCP remains a
   suggestion surface. None of them automatically repair, install, unlock, or
   mutate project memory/config.
-- Knowledge Graph is documented as an accepted project memory graph, not a code
-  dependency graph. Current Identity HTML remains a read-only Knowledge Graph
-  Preview, not a full graph editor or a completed brain-like full-screen graph
-  dashboard.
+- Knowledge Graph is documented as generated project structure plus accepted
+  project memory, not a code dependency graph. Current Identity HTML remains
+  read-only and graph-first, not a full graph editor.
 
 ## v0.1-v0.8 Summary
 
@@ -72,6 +72,7 @@ product experience.
 | Growth is not automatic unlock | Pass. Growth commands read local signals and produce advisory candidates with `auto_unlock: false` and `requires_user_approval: true`. | `docs/19_GROWTH_SYSTEM.md`, growth tests |
 | Adapter is invocation contract | Pass. Adapter recipes describe safe `--json` command sequences and dry-runs. They do not execute recipes or mutate `.orange-hyper` directly. | `docs/16_ADAPTER_CONTRACT.md`, `docs/20_ADAPTER_LAYER.md`, adapter tests |
 | Eval is local-only report | Pass. Eval snapshot/report/explain read local `.orange-hyper` state only. Reports are stdout by default and write only under `.orange-hyper/evals/reports/` with `--write-report`. | `docs/21_EVAL_AND_REPORTS.md`, eval tests |
+| Project Sync is generated state | Pass. `sync plan` is read-only, `sync apply` writes only `.orange-hyper/structure/` and refreshes Identity HTML, and `sync status` reports freshness. | `docs/24_PROJECT_SYNC.md`, sync tests |
 
 ## Adapter JSON Contract
 
@@ -122,13 +123,14 @@ The v1 stable audited top-level CLI command surface is:
 - `growth`
 - `adapter`
 - `eval`
+- `sync`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->
 
 `init` is the bootstrap command. The user-requested audit surface is the
 post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
-`hook`, `mcp`, `growth`, `adapter`, `eval`, `doctor`, and `identity`.
+`hook`, `mcp`, `growth`, `adapter`, `eval`, `sync`, `doctor`, and `identity`.
 
 ## What v1 Stable Guarantees
 
@@ -138,7 +140,8 @@ post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
   surfaces stay warning-first, advisory, dry-run, or local-only as documented.
 - Shared project memory remains limited to config, completed Quest evidence,
   accepted memory proposals, and graph provenance.
-- Local reports are opt-in generated artifacts under ignored local directories.
+- Local/generated artifacts such as structure sync state, identity HTML, and
+  opt-in reports stay under ignored local directories.
 - Package contents are audited with `npm pack --dry-run`.
 
 ## What v1 Stable Does Not Guarantee
@@ -203,6 +206,7 @@ project memory:
 - `.orange-hyper/capsules/`
 - `.orange-hyper/traces/`
 - `.orange-hyper/identity/`
+- `.orange-hyper/structure/`
 - `.orange-hyper/hooks/reports/`
 - `.orange-hyper/evals/reports/`
 - `.orange-hyper/proposals/memory-delta/pending/`
@@ -247,6 +251,7 @@ The package must not include:
 - Eval reports are local count/warning summaries; token savings and
   success-rate improvement remain unavailable.
 - Identity output is generated local state and not shared memory.
+- Structure sync output is generated local state and not accepted memory.
 - `graph rebuild-index` rewrites only the generated graph read model and should
   not be treated as graph source editing.
 
@@ -280,13 +285,15 @@ node bin/orange.js growth status --json
 node bin/orange.js hook run stop --json
 node bin/orange.js mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
 node bin/orange.js graph list --json
+node bin/orange.js sync plan --json
+node bin/orange.js sync apply --json
+node bin/orange.js sync status --json
 ```
 
 ## Non-Goals
 
 The v1 stable line does not include:
 
-- new CLI features
 - MCP automatic installation or execution
 - hook installation or automatic mutation
 - role automatic creation

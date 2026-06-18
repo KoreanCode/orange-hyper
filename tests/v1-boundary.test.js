@@ -13,8 +13,8 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.3";
-const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.3";
+const EXPECTED_README_VERSION = "1.1-doc.4";
+const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.4";
 const COMMAND_SURFACE = [
   "init",
   "quest",
@@ -27,6 +27,7 @@ const COMMAND_SURFACE = [
   "growth",
   "adapter",
   "eval",
+  "sync",
   "doctor",
   "identity"
 ];
@@ -92,6 +93,9 @@ test("all supported JSON success commands keep contract_version 0.1", () => {
     ["graph.show", ["graph", "show", nodeId, "--json"]],
     ["graph.search", ["graph", "search", "contract_version", "--json"]],
     ["graph.rebuildIndex", ["graph", "rebuild-index", "--json"]],
+    ["sync.plan", ["sync", "plan", "--json"]],
+    ["sync.apply", ["sync", "apply", "--json"]],
+    ["sync.status", ["sync", "status", "--json"]],
     ["growth.status", ["growth", "status", "--json"]],
     ["growth.suggest", ["growth", "suggest", "--json"]],
     ["growth.explain", ["growth", "explain", "--json"]],
@@ -152,7 +156,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.1-doc.3", () => {
+test("README version metadata stays synchronized at 1.1-doc.4", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);
@@ -187,6 +191,8 @@ test("read-only and advisory boundary commands do not mutate .orange-hyper", () 
     ["doctor.run", ["doctor", "--json"]],
     ["graph.list", ["graph", "list", "--json"]],
     ["graph.search", ["graph", "search", "read-only", "--json"]],
+    ["sync.plan", ["sync", "plan", "--json"]],
+    ["sync.status", ["sync", "status", "--json"]],
     ["hook.preview", ["hook", "preview", "--json"]],
     ["hook.status", ["hook", "status", "--json"]],
     ["hook.runSessionStart", ["hook", "run", "session-start", "--json"]],
@@ -235,6 +241,7 @@ test("npm package surface includes release files and excludes tests/local artifa
     "assets/readme/core-flow.png",
     "assets/readme/memory-lifecycle.png",
     "RELEASE_NOTES.md",
+    "docs/24_PROJECT_SYNC.md",
     "LICENSE",
     "PROVENANCE.md",
     "SECURITY.md",

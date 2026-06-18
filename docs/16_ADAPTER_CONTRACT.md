@@ -100,6 +100,10 @@ failure envelopes.
 - `mcp.list`
 - `mcp.show`
 - `mcp.suggest`
+- `project.init`
+- `sync.plan`
+- `sync.apply`
+- `sync.status`
 - `doctor.run`
 - `identity.build`
 
@@ -270,8 +274,8 @@ orange adapter list --json
 ```
 
 The actual `recipes` array contains all built-in recipes:
-`quest-capture`, `work-complete-to-memory`, `project-status`, `hook-check`, and
-`mcp-advice`.
+`quest-capture`, `work-complete-to-memory`, `project-status`, `project-sync`,
+`hook-check`, and `mcp-advice`.
 
 ### `adapter show --json`
 

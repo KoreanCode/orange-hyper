@@ -29,6 +29,7 @@ pnpm-debug.log*
 .orange-hyper/capsules/
 .orange-hyper/traces/
 .orange-hyper/identity/
+.orange-hyper/structure/
 .orange-hyper/local/
 .orange-hyper/hooks/reports/
 .orange-hyper/evals/reports/

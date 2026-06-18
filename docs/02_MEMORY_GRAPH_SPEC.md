@@ -262,68 +262,84 @@ SVG/vanilla JS로 보여주는 소비자일 뿐이며, graph node Markdown,
 edge는 visualization용 display relation이며 persisted Memory Graph source edge가
 아니다.
 
-v1.1.0-alpha.3의 Identity HTML runtime state는 이 경계를 `sourceGraph`와
-`visualGraph`로 구현한다. `sourceGraph`는 accepted memory node와 persisted accepted
-edge만 포함하고, `visualGraph`는 HTML 내부에서만 derived concept/source/category
-node와 display edge를 더한다.
+v1.1.0-alpha.4의 Identity HTML runtime state는 이 경계를 `structureGraph`,
+`memoryGraph`, `identityGraph`로 구현한다. `memoryGraph`는 accepted memory node와
+persisted accepted edge만 포함한다. 기존 `sourceGraph` 이름은 호환 alias로 남길 수
+있지만 의미는 `memoryGraph`와 같다.
 
-### 2.2.1 sourceGraph vs visualGraph
+### 2.2.1 structureGraph, memoryGraph, identityGraph
 
-v1.1 Identity HTML은 persisted graph source와 generated display graph를 분리한다.
+v1.1 Identity HTML은 재생성 가능한 프로젝트 구조, 승인된 memory, 그리고 HTML에서
+보여줄 합성 그래프를 분리한다.
 
-`sourceGraph`는 Memory Graph의 source of truth를 뜻한다.
+`structureGraph`는 저장소에서 다시 만들 수 있는 generated state다.
 
 ```text
-sourceGraph:
+structureGraph:
+  project root node always present
+  module/domain/component/test/document/infrastructure/datastore nodes
+  generated from package/build/workspace files, top-level directories, and major files
+  stored under .orange-hyper/structure/
+  excludes .git, node_modules, dist, build, target, coverage, .orange-hyper
+  not accepted memory
+```
+
+`memoryGraph`는 Memory Graph의 source of truth를 뜻한다.
+
+```text
+memoryGraph:
   accepted memory nodes only
   current-project scoped
   backed by .orange-hyper/graph node Markdown and index read model
   persisted accepted memory edges only
   excludes pending/rejected proposals
-  excludes display-only concept/source/category nodes
+  excludes generated structure nodes
 ```
 
-`visualGraph`는 Identity HTML 안에서만 존재하는 render-time graph state다.
+`identityGraph`는 Identity HTML 안에서만 존재하는 composed render graph state다.
 
 ```text
-visualGraph:
-  sourceGraph memory nodes
-  + derived concept nodes
-  + derived sourceQuest nodes
-  + derived sourceProposal nodes
-  + derived category/type nodes
-  + derived display edges
+identityGraph:
+  structureGraph nodes
+  + memoryGraph nodes
+  + memory-to-structure edges by scope_paths or source path
+  + unmapped-memory cluster when no structure target exists
 ```
 
-Derived visual nodes must be marked as display-only:
+Identity display state must remain read-only:
 
 ```json
 {
-  "displayOnly": true,
-  "derived": true,
+  "displayOnly": false,
+  "derived": false,
   "readOnly": true
 }
 ```
 
-Derived visual node rules:
+Composition rules:
 
-- Derived nodes are never written to `.orange-hyper/graph`.
-- Derived nodes never become accepted memory by being displayed.
-- Derived nodes exist only inside generated Identity HTML state.
-- Derived display edges do not update `edges.jsonl`.
-- Pending/rejected proposals remain excluded from both sourceGraph and
-  visualGraph.
-- Identity HTML may hide derived nodes through UI filters, but hiding them does
-  not mutate project memory or source graph files.
+- Structure nodes are never accepted memory.
+- Accepted memory nodes never become structure nodes by being displayed.
+- Pending/rejected proposals remain excluded from memoryGraph and identityGraph.
+- Memory nodes connect to structure nodes through Quest `scope_paths` or source
+  path when available.
+- If no target exists, memory nodes sit under an `unmapped-memory` cluster.
+- Identity HTML filters do not mutate project memory, structure state, or graph
+  files.
 
-Initial v1.1 visual node type candidates:
+Initial alpha.4 identity node type candidates:
 
 ```text
+project
+module
+domain
+component
+test
+document
+infrastructure
+datastore
 memory
-concept
-sourceQuest
-sourceProposal
-category
+memoryCluster
 ```
 
 Optional future visual node types:

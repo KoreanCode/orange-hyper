@@ -14,6 +14,7 @@ const EXPECTED_RECIPE_IDS = [
   "quest-capture",
   "work-complete-to-memory",
   "project-status",
+  "project-sync",
   "hook-check",
   "mcp-advice"
 ];
@@ -34,6 +35,12 @@ const EXPECTED_STEP_CONTRACTS = {
     ["orange graph list --json", "graph.list", false, false],
     ["orange growth status --json", "growth.status", false, false],
     ["orange identity build --json", "identity.build", true, true]
+  ],
+  "project-sync": [
+    ["orange init --json", "project.init", true, true],
+    ["orange sync plan --json", "sync.plan", false, false],
+    ["orange sync apply --json", "sync.apply", true, true],
+    ["orange sync status --json", "sync.status", false, false]
   ],
   "hook-check": [
     ["orange hook preview --json", "hook.preview", false, false],

@@ -1,6 +1,7 @@
 capsules/
 traces/
 identity/
+structure/
 local/
 hooks/reports/
 evals/reports/

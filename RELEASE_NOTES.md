@@ -1,5 +1,44 @@
 # Release Notes
 
+## v1.1.0-alpha.4
+
+Project Sync and Identity Graph Foundation.
+
+- Package version is `1.1.0-alpha.4`.
+- README version is `1.1-doc.4`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- New JSON command ids are `project.init`, `sync.plan`, `sync.apply`, and
+  `sync.status`.
+- `orange init --json` now returns a valid JSON envelope for idempotent project
+  bootstrap.
+- The `project-sync` adapter recipe starts with idempotent `orange init --json`
+  before sync plan/apply/status.
+- `orange sync plan --json` scans repository structure read-only and writes
+  nothing.
+- `orange sync apply --json` writes only generated structure state:
+  `.orange-hyper/structure/index.json` and
+  `.orange-hyper/structure/status.json`.
+- `orange sync status --json` reports last sync, freshness, changed state, and
+  identity freshness.
+- Identity state now separates `structureGraph`, `memoryGraph`, and
+  `identityGraph`; `sourceGraph` remains as a compatibility alias for accepted
+  memory source state.
+- Identity HTML no longer expands low-quality keyword concept nodes by default.
+  The graph starts from `project.root`, generated project structure nodes, and
+  accepted memory.
+- Successful `sync apply`, `remember accept`, and `graph rebuild-index` attempt
+  to refresh Identity HTML. If identity build fails after sync apply, generated
+  structure state remains and status records a stale identity warning.
+- `doctor` warns when Identity HTML is stale relative to structure sync
+  revision.
+- Added `docs/24_PROJECT_SYNC.md` and updated Identity, Memory Graph, Adapter
+  Contract, README, and readiness docs.
+- Non-goals remain explicit: no React/Sigma renderer migration, Obsidian/JSON
+  Canvas export, full AST/call graph, LLM-generated structure, Memory Proposal
+  auto accept, postinstall mutation, graph editing, or MCP/hook/subagent auto
+  execution.
+
 ## v1.1.0-alpha.3
 
 Brain-like Identity Graph Implementation.

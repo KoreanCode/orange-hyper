@@ -54,7 +54,7 @@ test("eval snapshot supports human and JSON output", async () => {
   assert.equal(payload.data.memoryProposals.pending, 1);
   assert.equal(payload.data.graph.acceptedNodeCount, 1);
   assert.equal(payload.data.doctor.errorCount, 0);
-  assert.equal(payload.data.adapter.recipeCount, 5);
+  assert.equal(payload.data.adapter.recipeCount, 6);
   assert.equal(payload.data.identity.summaryExists, true);
   assert.equal(payload.data.reportPolicy.written, false);
   assert.deepEqual(payload.data.boundaries, {

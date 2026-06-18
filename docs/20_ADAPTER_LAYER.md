@@ -20,7 +20,7 @@ It must not mutate .orange-hyper directly.
 
 The Adapter Layer documents command recipes that an adapter can follow when it
 needs to capture a Quest, complete work into memory, summarize project status,
-check hook warnings, or ask for MCP advice.
+sync generated project structure, check hook warnings, or ask for MCP advice.
 
 The recipes do not execute automatically. The v0.7 stable surface exposes:
 
@@ -45,8 +45,8 @@ Each command supports `--json` and uses the same Adapter JSON Contract envelope:
 
 The `orange` CLI is the kernel control plane. It owns Quest creation, Quest
 completion, route traces, capsule generation, Memory Delta Proposal transitions,
-Doctor validation, graph read models, growth previews, hook observations, MCP
-advice, and identity output.
+Doctor validation, graph read models, Project Sync structure state, growth
+previews, hook observations, MCP advice, and identity output.
 
 Adapters must call Orange CLI commands. They must not create, edit, move, or
 delete files under `.orange-hyper/` directly.
@@ -195,6 +195,31 @@ Safety notes:
 - The adapter must not run `orange graph rebuild-index` automatically.
 - The adapter should summarize JSON fields instead of reimplementing the
   underlying status logic.
+
+### `project-sync`
+
+Use this when the user asks an AI to set up Orange Hyper for an existing repo
+and sync the current project structure.
+
+Command sequence:
+
+| Command | JSON command id | Mutates state | User approval |
+| --- | --- | --- | --- |
+| `orange init --json` | `project.init` | yes | yes |
+| `orange sync plan --json` | `sync.plan` | no | no |
+| `orange sync apply --json` | `sync.apply` | yes | yes |
+| `orange sync status --json` | `sync.status` | no | no |
+
+Safety notes:
+
+- `init` is idempotent and must run through `orange init --json`, not direct
+  file writes.
+- `sync plan` is read-only and writes nothing.
+- `sync apply` writes only generated structure state and refreshes Identity HTML.
+- Sync must not create Quest, Proposal, accepted Memory, hooks, MCP config, or
+  graph edits.
+- The adapter should parse `project.init` and `sync.*` JSON fields instead of scanning
+  `.orange-hyper/structure/` directly.
 
 ### `hook-check`
 

@@ -13,7 +13,7 @@
 <summary>Version metadata の詳細</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.3`
+- README version: `1.1-doc.4`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -210,6 +210,7 @@ Identity HTML は Orange Hyper Identity の primary product surface です。v1.
 - `growth`
 - `adapter`
 - `eval`
+- `sync`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->

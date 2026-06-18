@@ -21,6 +21,7 @@ import {
 } from "./memory.js";
 import { workspacePaths } from "./paths.js";
 import { questFiles, readQuestFile, validateQuestDocument } from "./quest.js";
+import { validateStructureState } from "./sync.js";
 
 /**
  * @returns {import("./types.d.ts").DoctorResult}
@@ -364,6 +365,11 @@ export function runDoctor(cwd = process.cwd(), options = {}) {
   pushUnique(warnings, graphReadModel.warnings);
   checks.push(...graphReadModel.checks);
   mergeDiagnostics(diagnostics, graphReadModel.diagnostics);
+  const structureState = validateStructureState(cwd, { projectIdentity });
+  errors.push(...structureState.errors);
+  pushUnique(warnings, structureState.warnings);
+  checks.push(...structureState.checks);
+  mergeDiagnostics(diagnostics, structureState.diagnostics);
 
   checkPublicMemoryState(cwd, paths, checks, addDiagnostic);
 
@@ -389,6 +395,7 @@ const PRIVATE_STATE_PREFIXES = [
   ".orange-hyper/capsules/",
   ".orange-hyper/traces/",
   ".orange-hyper/identity/",
+  ".orange-hyper/structure/",
   ".orange-hyper/local/",
   ".orange-hyper/proposals/memory-delta/pending/",
   ".orange-hyper/proposals/memory-delta/rejected/"

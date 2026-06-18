@@ -7,19 +7,25 @@ import { pendingProposalWarningCount, proposalCountsByStatus, topProposalNodeTyp
 import { originMetadata } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { listQuests } from "./quest.js";
+import {
+  buildMinimalStructureGraph,
+  readStructureGraph,
+  readStructureStatus,
+  recordIdentityBuildSuccess
+} from "./sync.js";
 import { nowIso } from "./time.js";
 
 const IDENTITY_STATUS_MESSAGES = [
   "Memory proposal review is active.",
   "This is a read-only Knowledge Graph.",
-  "It is built from accepted memory nodes.",
+  "It is built from generated structure state plus accepted memory nodes.",
   "It is not a code dependency graph.",
   "Pending/rejected proposals are not included.",
   "Graph editing is not supported.",
   "Accepted memory nodes are candidate project memory."
 ];
 
-const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.3";
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.4";
 
 const NODE_TYPE_COLORS = {
   decision: "#ffb454",
@@ -32,26 +38,17 @@ const NODE_TYPE_COLORS = {
 const DEFAULT_NODE_COLOR = "#f8fafc";
 
 const VISUAL_NODE_COLORS = {
+  project: "#f8fafc",
+  module: "#67e8f9",
+  domain: "#38bdf8",
+  component: "#a78bfa",
+  test: "#86efac",
+  document: "#facc15",
+  infrastructure: "#fb7185",
+  datastore: "#f472b6",
   memory: "#ffb454",
-  concept: "#67e8f9",
-  sourceQuest: "#a78bfa",
-  sourceProposal: "#f472b6",
-  category: "#86efac"
+  memoryCluster: "#cbd5e1"
 };
-
-const VISUAL_GRAPH_STOP_WORDS = new Set([
-  "candidate",
-  "evidence",
-  "hyper",
-  "memory",
-  "node",
-  "orange",
-  "proposal",
-  "quest",
-  "remember",
-  "this",
-  "with"
-]);
 
 /**
  * @returns {import("./types.d.ts").IdentityBuildResult}
@@ -72,13 +69,18 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const acceptedMemoryNodes = graph.nodes.length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const graphPreview = buildGraphPreview(graph.nodes);
-  const sourceGraph = buildSourceGraph(project, graphPreview, paths);
-  const visualGraph = buildVisualGraph(project, sourceGraph);
+  const memoryGraph = buildMemoryGraph(project, graphPreview, paths);
+  const sourceGraph = memoryGraph;
+  const structureState = readIdentityStructureState(cwd, project);
+  const structureGraph = structureState.graph;
+  const identityGraph = buildIdentityGraph(project, structureGraph, memoryGraph, quests);
+  const visualGraph = identityGraph;
   const growthSuggestion = buildGrowthSuggestionResult(cwd);
   const growthPreview = buildGrowthPreview(growthSuggestion.status, growthSuggestion);
   const generatedAt = nowIso(options.clock);
   const projectName = project.project_name || path.basename(cwd);
   const origin = originMetadata();
+  const stateRevision = structureState.status?.state_revision || structureGraph.state_revision || null;
 
   fs.mkdirSync(paths.identity, { recursive: true });
   const summary = {
@@ -101,22 +103,35 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     projectBoundaryActive: Boolean(project.project_id),
     topProposalNodeTypes: proposalNodeTypes,
     graphPreview,
+    structureGraph,
+    memoryGraph,
+    identityGraph,
     sourceGraph,
     visualGraph,
     growthPreview,
     graphWarnings: graph.warnings,
+    state_revision: stateRevision,
+    identity_built_from_revision: stateRevision,
+    identity_status: /** @type {"current"} */ ("current"),
+    structure_status: structureState.status ? {
+      last_sync_at: structureState.status.last_sync_at || null,
+      state_revision: structureState.status.state_revision || null,
+      identity_status: stateRevision ? "current" : structureState.status.identity_status || "stale"
+    } : null,
     origin,
     statusMessages: IDENTITY_STATUS_MESSAGES
   };
   const html = renderIdentityHtml(summary);
   fs.writeFileSync(paths.identityHtml, html);
   fs.writeFileSync(paths.identitySummaryJson, `${JSON.stringify(summary, null, 2)}\n`);
-  return {
+  const result = {
     filePath: paths.identityHtml,
     summaryFilePath: paths.identitySummaryJson,
     html,
     summary
   };
+  recordIdentityBuildSuccess(cwd, result, options);
+  return result;
 }
 
 /**
@@ -196,7 +211,7 @@ function buildGraphPreview(nodes) {
   });
 }
 
-function buildSourceGraph(project, graphPreview, paths) {
+function buildMemoryGraph(project, graphPreview, paths) {
   const nodes = graphPreview.nodes.map((node) => ({
     ...node,
     graphKind: "memory",
@@ -224,105 +239,42 @@ function buildSourceGraph(project, graphPreview, paths) {
   });
 }
 
-function buildVisualGraph(project, sourceGraph) {
+function readIdentityStructureState(cwd, project) {
+  const graph = readStructureGraph(cwd) || buildMinimalStructureGraph(cwd, project);
+  const status = readStructureStatus(cwd);
+  return { graph, status };
+}
+
+function buildIdentityGraph(project, structureGraph, memoryGraph, quests) {
   const nodes = [];
   const nodeById = new Map();
   const edges = [];
   const edgeKeys = new Set();
-  const conceptsByMemory = new Map();
 
   const addNode = (node) => addVisualNode(nodes, nodeById, node);
   const addEdge = (edge) => addVisualEdge(edges, edgeKeys, edge);
 
-  for (const sourceNode of sourceGraph.nodes) {
-    addNode({
-      ...sourceNode,
-      type: "memory",
-      visualType: "memory",
-      graphKind: "memory",
-      label: sourceNode.label || sourceNode.title || sourceNode.id,
-      color: sourceGraph.nodeTypeColors[sourceNode.node_type] || VISUAL_NODE_COLORS.memory,
-      displayOnly: false,
-      derived: false,
-      readOnly: true,
-      sourceMemoryIds: [sourceNode.id],
-      importance: 10 + Number(sourceNode.degree || 0)
-    });
-
-    const categoryId = `category.${slugId(sourceNode.node_type || "memory")}`;
-    addNode(derivedVisualNode(categoryId, "category", `${nodeTypeLabel(sourceNode.node_type)} memory`, {
-      category: sourceNode.node_type || "memory",
-      sourceMemoryIds: [sourceNode.id],
-      importance: 6
-    }));
-    addEdge(visualEdge(sourceNode.id, categoryId, "classified_as", 0.94, 92, sourceNode.node_type));
-
-    if (sourceNode.source_quest) {
-      const sourceQuestId = `sourceQuest.${slugId(sourceNode.source_quest)}`;
-      addNode(derivedVisualNode(sourceQuestId, "sourceQuest", shortSourceLabel("Quest", sourceNode.source_quest), {
-        source_quest: sourceNode.source_quest,
-        sourceMemoryIds: [sourceNode.id],
-        importance: 4
-      }));
-      addEdge(visualEdge(sourceNode.id, sourceQuestId, "derived_from_source_quest", 0.78, 118, sourceNode.source_quest));
-    }
-
-    if (sourceNode.source_proposal) {
-      const sourceProposalId = `sourceProposal.${slugId(sourceNode.source_proposal)}`;
-      addNode(derivedVisualNode(sourceProposalId, "sourceProposal", shortSourceLabel("Proposal", sourceNode.source_proposal), {
-        source_proposal: sourceNode.source_proposal,
-        sourceMemoryIds: [sourceNode.id],
-        importance: 4
-      }));
-      addEdge(visualEdge(sourceNode.id, sourceProposalId, "derived_from_source_proposal", 0.7, 128, sourceNode.source_proposal));
-    }
-
-    const concepts = extractVisualConcepts(sourceNode);
-    conceptsByMemory.set(sourceNode.id, concepts);
-    for (const concept of concepts) {
-      const conceptId = `concept.${slugId(concept)}`;
-      addNode(derivedVisualNode(conceptId, "concept", humanizeConceptLabel(concept), {
-        concept,
-        sourceMemoryIds: [sourceNode.id],
-        importance: 5
-      }));
-      addEdge(visualEdge(sourceNode.id, conceptId, "mentions_concept", 0.88, 86, concept));
-      addEdge(visualEdge(conceptId, categoryId, "concept_in_category", 0.42, 154, sourceNode.node_type));
-    }
+  for (const structureNode of structureGraph.nodes || []) {
+    addNode(identityStructureNode(structureNode));
+  }
+  for (const structureEdge of structureGraph.edges || []) {
+    addEdge(identityGraphEdge(structureEdge.from, structureEdge.to, structureEdge.relation, 0.82, distanceForRelation(structureEdge.relation), structureEdge.source || "structure"));
   }
 
-  const memoryNodes = sourceGraph.nodes;
-  for (let leftIndex = 0; leftIndex < memoryNodes.length; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < memoryNodes.length; rightIndex += 1) {
-      const left = memoryNodes[leftIndex];
-      const right = memoryNodes[rightIndex];
-      const sharedConcepts = intersection(conceptsByMemory.get(left.id) || [], conceptsByMemory.get(right.id) || []);
-      let strength = 0;
-      let targetDistance = 190;
-      const reasons = [];
-      if (left.node_type && left.node_type === right.node_type) {
-        strength += 0.38;
-        targetDistance -= 34;
-        reasons.push("same_type");
+  const questById = new Map(quests.map((quest) => [quest.data.id, quest]));
+  let unmappedNodeAdded = false;
+  for (const memoryNode of memoryGraph.nodes) {
+    addNode(identityMemoryNode(memoryNode, memoryGraph));
+    const target = matchStructureNodeForMemory(memoryNode, structureGraph, questById.get(memoryNode.source_quest));
+    if (target) {
+      addEdge(identityGraphEdge(memoryNode.id, target.id, "documents", 0.76, 150, "memory-scope"));
+    } else {
+      if (!unmappedNodeAdded) {
+        addNode(unmappedMemoryNode());
+        addEdge(identityGraphEdge("project.root", "unmapped-memory", "contains", 0.62, 240, "memory-scope"));
+        unmappedNodeAdded = true;
       }
-      if (left.source_quest && left.source_quest === right.source_quest) {
-        strength += 0.42;
-        targetDistance -= 42;
-        reasons.push("same_source_quest");
-      }
-      if (left.source_proposal && left.source_proposal === right.source_proposal) {
-        strength += 0.32;
-        targetDistance -= 28;
-        reasons.push("same_source_proposal");
-      }
-      if (sharedConcepts.length) {
-        strength += Math.min(0.46, sharedConcepts.length * 0.12);
-        targetDistance -= Math.min(48, sharedConcepts.length * 10);
-        reasons.push("shared_concepts");
-      }
-      if (strength > 0) {
-        addEdge(visualEdge(left.id, right.id, reasons.join("+") || "shared_context", Math.min(0.96, strength), Math.max(90, targetDistance), sharedConcepts.slice(0, 5).join(",")));
-      }
+      addEdge(identityGraphEdge("unmapped-memory", memoryNode.id, "contains", 0.64, 130, "memory-scope"));
     }
   }
 
@@ -338,19 +290,19 @@ function buildVisualGraph(project, sourceGraph) {
       String(left.id).localeCompare(String(right.id))
     );
 
-  return /** @type {import("./types.d.ts").IdentitySummary["visualGraph"]} */ ({
+  return /** @type {import("./types.d.ts").IdentityGraph} */ ({
     schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
     readOnly: true,
     editingSupported: false,
     displayOnly: true,
-    source: "identity-html-visual-only",
-    project_id: project.project_id || sourceGraph.project_id || null,
-    project_name: project.project_name || sourceGraph.project_name || "",
+    source: "structure-plus-accepted-memory",
+    project_id: project.project_id || structureGraph.project_id || memoryGraph.project_id || null,
+    project_name: project.project_name || structureGraph.project_name || memoryGraph.project_name || "",
     seed: stableHash(`${project.project_id || ""}|${visualNodes.map((node) => node.id).join("|")}`),
     layout: "deterministic-seeded-force",
     nodeTypeColors: {
       ...VISUAL_NODE_COLORS,
-      ...sourceGraph.nodeTypeColors
+      ...memoryGraph.nodeTypeColors
     },
     nodes: visualNodes,
     edges: edges.map((edge, index) => ({
@@ -483,6 +435,143 @@ function addVisualEdge(edges, edgeKeys, edge) {
   edges.push(edge);
 }
 
+function identityStructureNode(node) {
+  const isRoot = node.id === "project.root";
+  return {
+    id: node.id,
+    type: node.type,
+    visualType: node.type,
+    graphKind: "structure",
+    label: node.label || node.id,
+    color: VISUAL_NODE_COLORS[node.type] || DEFAULT_NODE_COLOR,
+    displayOnly: false,
+    derived: false,
+    readOnly: true,
+    sourceMemoryIds: [],
+    importance: isRoot ? 100 : importanceForStructureNode(node),
+    degree: 0,
+    structurePath: node.path || ".",
+    structureRole: node.role || "",
+    source: node.source || "project-sync-scanner",
+    layoutRole: isRoot ? "center" : "structure"
+  };
+}
+
+function identityMemoryNode(node, memoryGraph) {
+  return {
+    ...node,
+    type: "memory",
+    visualType: "memory",
+    graphKind: "memory",
+    label: node.label || node.title || node.id,
+    color: memoryGraph.nodeTypeColors[node.node_type] || VISUAL_NODE_COLORS.memory,
+    displayOnly: false,
+    derived: false,
+    readOnly: true,
+    sourceMemoryIds: [node.id],
+    importance: 18 + Number(node.degree || 0),
+    layoutRole: "accepted-memory"
+  };
+}
+
+function unmappedMemoryNode() {
+  return {
+    id: "unmapped-memory",
+    type: "memoryCluster",
+    visualType: "memoryCluster",
+    graphKind: "memory-cluster",
+    label: "Unmapped Memory",
+    color: VISUAL_NODE_COLORS.memoryCluster,
+    displayOnly: true,
+    derived: true,
+    readOnly: true,
+    sourceMemoryIds: [],
+    importance: 14,
+    degree: 0,
+    layoutRole: "unmapped-memory"
+  };
+}
+
+function identityGraphEdge(from, to, relation, strength, distance, source) {
+  return {
+    id: `identity-edge-${stableHash(`${from}|${to}|${relation}|${source || ""}`)}`,
+    from,
+    to,
+    relation,
+    source: source || "identity-graph",
+    strength,
+    distance,
+    displayOnly: true,
+    derived: false,
+    readOnly: true
+  };
+}
+
+function matchStructureNodeForMemory(memoryNode, structureGraph, quest) {
+  const nodes = structureGraph.nodes || [];
+  const candidates = new Set();
+  for (const scopePath of quest?.data?.scope_paths || []) {
+    const normalized = normalizeGraphPath(scopePath);
+    if (normalized) {
+      candidates.add(normalized);
+    }
+  }
+  if (memoryNode.source_path) {
+    candidates.add(normalizeGraphPath(memoryNode.source_path));
+  }
+  for (const candidate of candidates) {
+    const exact = nodes.find((node) => normalizeGraphPath(node.path) === candidate);
+    if (exact) {
+      return exact;
+    }
+    const nested = nodes
+      .filter((node) => {
+        const nodePath = normalizeGraphPath(node.path);
+        return nodePath && (candidate.startsWith(`${nodePath}/`) || nodePath.startsWith(`${candidate}/`));
+      })
+      .sort((left, right) => normalizeGraphPath(right.path).length - normalizeGraphPath(left.path).length)[0];
+    if (nested) {
+      return nested;
+    }
+  }
+  return null;
+}
+
+function normalizeGraphPath(value) {
+  const normalized = String(value || "")
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/\/+$/g, "");
+  if (!normalized || normalized === ".") {
+    return ".";
+  }
+  return normalized;
+}
+
+function importanceForStructureNode(node) {
+  const ranks = {
+    module: 32,
+    domain: 26,
+    component: 18,
+    test: 15,
+    document: 13,
+    infrastructure: 12,
+    datastore: 16
+  };
+  return ranks[node.type] || 10;
+}
+
+function distanceForRelation(relation) {
+  const distances = {
+    contains: 145,
+    depends_on: 190,
+    tests: 160,
+    documents: 170,
+    configures: 180
+  };
+  return distances[relation] || 160;
+}
+
 function derivedVisualNode(id, type, label, extra = {}) {
   return {
     id,
@@ -511,48 +600,6 @@ function visualEdge(from, to, relation, strength, distance, source) {
     derived: true,
     readOnly: true
   };
-}
-
-function extractVisualConcepts(node) {
-  const concepts = [];
-  const add = (value) => {
-    const token = normalizeConceptToken(value);
-    if (!token || VISUAL_GRAPH_STOP_WORDS.has(token) || concepts.includes(token)) {
-      return;
-    }
-    concepts.push(token);
-  };
-  for (const value of [
-    ...(node.keywords || []),
-    ...(node.tags || []),
-    node.title,
-    node.label,
-    node.candidate_memory_summary,
-    node.candidate_memory,
-    node.summary
-  ]) {
-    for (const token of String(value || "").split(/[^A-Za-z0-9_.-]+/)) {
-      add(token);
-    }
-  }
-  return concepts.slice(0, 8);
-}
-
-function normalizeConceptToken(value) {
-  const token = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^[^A-Za-z0-9]+/, "")
-    .replace(/[^A-Za-z0-9]+$/, "");
-  if (
-    token.length > 36 ||
-    token.includes("mem_delta") ||
-    token.startsWith("quest_") ||
-    token.includes("202606")
-  ) {
-    return "";
-  }
-  return token;
 }
 
 function humanizeConceptLabel(value) {
@@ -609,11 +656,16 @@ function degreeByVisualNodeId(nodes, edges) {
 
 function typeRank(type) {
   const ranks = {
-    memory: 0,
-    category: 1,
-    concept: 2,
-    sourceQuest: 3,
-    sourceProposal: 4
+    project: 0,
+    module: 1,
+    domain: 2,
+    component: 3,
+    test: 4,
+    document: 5,
+    infrastructure: 6,
+    datastore: 7,
+    memory: 8,
+    memoryCluster: 9
   };
   return ranks[type] ?? 9;
 }
@@ -703,8 +755,8 @@ ${acceptedMemoryRows}
     .join("\n");
   const boundaryItems = [
     "Read-only Knowledge Graph",
-    "Built from accepted project memory",
-    "Derived concept/source nodes are visual-only",
+    "Built from generated project structure plus accepted memory",
+    "Structure Graph and Memory Graph stay separate before composition",
     "Not a code dependency graph",
     "Pending/rejected proposals excluded"
   ];
@@ -728,9 +780,15 @@ ${acceptedMemoryRows}
       project_name: model.project_name || model.projectName || ""
     },
     graphPreview: model.graphPreview,
+    structureGraph: model.structureGraph,
+    memoryGraph: model.memoryGraph,
+    identityGraph: model.identityGraph,
     sourceGraph,
     visualGraph,
     growthPreview: model.growthPreview,
+    state_revision: model.state_revision || null,
+    identity_built_from_revision: model.identity_built_from_revision || null,
+    identity_status: model.identity_status || "current",
     boundary: boundaryItems,
     readOnly: true,
     editingSupported: false
@@ -738,6 +796,9 @@ ${acceptedMemoryRows}
   const stateJson = escapeScriptJson(JSON.stringify(dashboardState, null, 2));
   const graphDashboardState = escapeScriptJson(JSON.stringify(dashboardState, null, 2));
   const rawDetails = escapeHtml(JSON.stringify({
+    structureGraph: model.structureGraph,
+    memoryGraph: model.memoryGraph,
+    identityGraph: model.identityGraph,
     sourceGraph,
     visualGraph,
     graphPreview: model.graphPreview,
@@ -826,7 +887,7 @@ ${acceptedMemoryRows}
     .graph-node { cursor: pointer; }
     .graph-node circle { stroke: rgba(255, 255, 255, .72); stroke-width: 1.4; }
     .graph-node text { fill: #edf5ff; font-size: 12px; paint-order: stroke; stroke: #04060c; stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
-    .graph-node[data-type="concept"] text, .graph-node[data-type="sourceQuest"] text, .graph-node[data-type="sourceProposal"] text { font-size: 10px; fill: #d9e6f7; }
+    .graph-node[data-type="project"] text, .graph-node[data-type="module"] text, .graph-node[data-type="domain"] text { font-size: 11px; fill: #d9e6f7; }
     .graph-node[aria-selected="true"] circle { stroke: #ffffff; stroke-width: 2.8; }
     .noscript-fallback { position: fixed; z-index: 20; inset: 18px; overflow: auto; border: 1px solid rgba(148, 163, 184, .28); border-radius: 8px; padding: 18px; background: #060a14; color: #eef6ff; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -858,7 +919,7 @@ ${acceptedMemoryRows}
 ${boundaryItems.map((item) => `        <span>${escapeHtml(item)}</span>`).join("\n")}
       </div>
       <div class="bottom-status-bar" aria-live="polite">
-        <span id="graph-status-counts">Source nodes: ${sourceGraph.nodes.length} · Visual nodes: ${visualGraph.nodes.length} · Visual edges: ${visualGraph.edges.length}</span>
+        <span id="graph-status-counts">Structure nodes: ${model.structureGraph.nodes.length} · Memory nodes: ${sourceGraph.nodes.length} · Identity nodes: ${visualGraph.nodes.length}</span>
         <span>Read-only local HTML · no network fetch · no graph source mutation</span>
       </div>
     </section>
@@ -1021,7 +1082,7 @@ ${visualTypeOptions}
         <button id="detail-close" type="button">Close</button>
       </div>
       <div id="node-detail-body" class="drawer-body">
-        <p class="muted">Select a node to inspect accepted memory, visual-only derivation, source quest, and provenance.</p>
+        <p class="muted">Select a node to inspect structure, accepted memory, source scope, and provenance.</p>
       </div>
     </aside>
   </main>
@@ -1104,6 +1165,9 @@ ${stateJson}
         node.type,
         node.node_type,
         node.concept,
+        node.graphKind,
+        node.structurePath,
+        node.structureRole,
         node.source_quest,
         node.source_proposal,
         node.candidate_memory_summary,
@@ -1119,7 +1183,7 @@ ${stateJson}
     draw(nodes, edges);
     renderDetail(nodes.find((node) => node.id === selectedId) || null, edges.length, nodes.length);
     if (statusCounts) {
-      statusCounts.textContent = "Source nodes: " + ((state.sourceGraph && state.sourceGraph.nodes) || []).length + " · Visual nodes: " + nodes.length + " / " + allNodes.length + " · Visual edges: " + edges.length;
+      statusCounts.textContent = "Structure nodes: " + ((state.structureGraph && state.structureGraph.nodes) || []).length + " · Memory nodes: " + ((state.memoryGraph && state.memoryGraph.nodes) || []).length + " · Identity nodes: " + nodes.length + " / " + allNodes.length + " · Edges: " + edges.length;
     }
   };
 
@@ -1214,7 +1278,12 @@ ${stateJson}
     sorted.forEach((node) => {
       const typeIndex = Math.max(0, types.indexOf(filterType(node)));
       const angle = (-Math.PI / 2) + (typeIndex * Math.PI * 2) / Math.max(types.length, 1);
-      const baseRadius = node.type === "memory" ? 150 : node.type === "concept" ? 240 : 300;
+      if (node.layoutRole === "center") {
+        points.set(node.id, { x: centerX, y: centerY });
+        velocity.set(node.id, { x: 0, y: 0 });
+        return;
+      }
+      const baseRadius = node.type === "memory" ? 185 : node.type === "module" || node.type === "domain" ? 250 : 315;
       const jitterX = (hashUnit((graph.seed || "") + node.id + "x") - 0.5) * 150;
       const jitterY = (hashUnit((graph.seed || "") + node.id + "y") - 0.5) * 110;
       points.set(node.id, {
@@ -1263,12 +1332,19 @@ ${stateJson}
       for (const node of sorted) {
         const point = points.get(node.id);
         const vel = velocity.get(node.id);
+        if (node.layoutRole === "center") {
+          point.x = centerX;
+          point.y = centerY;
+          vel.x = 0;
+          vel.y = 0;
+          continue;
+        }
         const typeIndex = Math.max(0, types.indexOf(filterType(node)));
         const angle = (-Math.PI / 2) + (typeIndex * Math.PI * 2) / Math.max(types.length, 1);
-        const anchorRadius = node.type === "memory" ? 118 : node.type === "category" ? 235 : 260;
+        const anchorRadius = node.type === "memory" ? 165 : node.type === "module" || node.type === "domain" ? 245 : 285;
         const anchorX = centerX + Math.cos(angle) * anchorRadius;
         const anchorY = centerY + Math.sin(angle) * anchorRadius * 0.62;
-        const anchorStrength = node.type === "category" ? 0.018 : node.type === "memory" ? 0.006 : 0.01;
+        const anchorStrength = node.type === "memory" ? 0.008 : node.type === "module" || node.type === "domain" ? 0.014 : 0.011;
         vel.x += (anchorX - point.x) * anchorStrength;
         vel.y += (anchorY - point.y) * anchorStrength;
         point.x = clamp(point.x + vel.x, 44, width - 44);
@@ -1290,6 +1366,8 @@ ${stateJson}
       '<p class="subtle">' + escapeHtml(node.id) + '</p>',
       '<table class="data-table"><tbody>',
       '<tr><th>Visual Type</th><td>' + escapeHtml(node.type || "") + '</td></tr>',
+      '<tr><th>Graph Kind</th><td>' + escapeHtml(node.graphKind || "") + '</td></tr>',
+      '<tr><th>Structure Path</th><td>' + escapeHtml(node.structurePath || "none") + '</td></tr>',
       '<tr><th>Memory Type</th><td>' + escapeHtml(node.node_type || node.category || "") + '</td></tr>',
       '<tr><th>Derived</th><td>' + Boolean(node.derived) + '</td></tr>',
       '<tr><th>Display-only</th><td>' + Boolean(node.displayOnly) + '</td></tr>',
@@ -1362,9 +1440,10 @@ ${stateJson}
 
   const radiusForNode = (node) => {
     const degree = Number(node.degree || 0);
+    if (node.type === "project") return 23 + Math.min(12, degree * 1.2);
+    if (node.type === "module" || node.type === "domain") return 14 + Math.min(12, degree * 0.9);
     if (node.type === "memory") return 16 + Math.min(18, degree * 1.6);
-    if (node.type === "category") return 11 + Math.min(9, degree * 0.8);
-    if (node.type === "concept") return 7 + Math.min(7, degree * 0.55);
+    if (node.type === "component") return 10 + Math.min(9, degree * 0.65);
     return 6 + Math.min(6, degree * 0.45);
   };
 

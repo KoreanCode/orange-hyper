@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../core/adapter.js";
 import { generateCapsule } from "../core/capsule.js";
-import { initWorkspace, requireInitialized } from "../core/config.js";
+import { initWorkspace, readProjectIdentity, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
 import { buildEvalExplainResult, buildEvalReport, buildEvalSnapshot } from "../core/eval.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
@@ -23,6 +23,7 @@ import { originMetadata } from "../core/origin.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
+import { applySyncPlan, buildSyncPlan, getSyncStatus, recordIdentityBuildFailure } from "../core/sync.js";
 
 /**
  * @typedef {import("../core/types.d.ts").CommandId} CommandId
@@ -93,7 +94,7 @@ import { asArray } from "../core/text.js";
  * @typedef {{ proposal: MemoryProposalJson }} RememberRejectResult
  * @typedef {{ duplicated: boolean, warnings: string[], proposal: MemoryProposalJson }} RememberProposeResult
  * @typedef {{ filters: { status: string, type: string | null, quest: string | null }, proposals: MemoryProposalJson[] }} RememberListResult
- * @typedef {{ proposal: MemoryProposalJson, node: Record<string, unknown> }} RememberAcceptResult
+ * @typedef {{ proposal: MemoryProposalJson, node: Record<string, unknown>, identity?: import("../core/types.d.ts").IdentityRefreshResult }} RememberAcceptResult
  * @typedef {{ project: { project_id: string | null, project_name: string }, filters: import("../core/types.d.ts").GraphFilters, count: number, nodes: GraphNodeJson[], warnings: string[] }} GraphListJsonResult
  * @typedef {{ project: { project_id: string | null, project_name: string }, node: GraphNodeJson, warnings: string[] }} GraphShowJsonResult
  * @typedef {{ project: { project_id: string | null, project_name: string }, filters: import("../core/types.d.ts").GraphFilters, query: string, count: number, nodes: GraphNodeJson[], warnings: string[] }} GraphSearchJsonResult
@@ -146,6 +147,7 @@ const COMMAND_IDS = {
   identity: {
     build: "identity.build"
   },
+  init: "project.init",
   mcp: {
     list: "mcp.list",
     show: "mcp.show",
@@ -164,7 +166,12 @@ const COMMAND_IDS = {
     validate: "remember.validate",
     show: "remember.show"
   },
-  route: "route.show"
+  route: "route.show",
+  sync: {
+    plan: "sync.plan",
+    apply: "sync.apply",
+    status: "sync.status"
+  }
 };
 
 export async function main(argv = process.argv.slice(2), env = {}) {
@@ -186,6 +193,10 @@ export async function main(argv = process.argv.slice(2), env = {}) {
       force: Boolean(args.flags.force),
       projectName: args.flags.project
     });
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.init, formatInitJson(cwd, paths, args)));
+      return;
+    }
     write(io, `Initialized ${path.relative(cwd, paths.root)}`);
     return;
   }
@@ -270,6 +281,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "remember") {
     await rememberCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "sync") {
+    await syncCommand(cwd, io, rest);
     return;
   }
 
@@ -670,18 +686,21 @@ async function graphCommand(cwd, io, argv) {
   if (subcommand === "rebuild-index") {
     const args = parseArgs(rest);
     const result = rebuildGraphIndex(cwd);
+    const identity = refreshIdentityAfterMutation(cwd);
     const data = {
       project: formatGraphProject(result.project),
       file: path.relative(cwd, result.filePath),
       count: result.index.nodes.length,
       index: result.index,
-      warnings: result.warnings
+      warnings: result.warnings,
+      identity
     };
     if (args.flags.json) {
       writeJson(io, jsonOk(COMMAND_IDS.graph["rebuild-index"], data));
       return;
     }
     write(io, `Rebuilt ${path.relative(cwd, result.filePath)} with ${result.index.nodes.length} node${result.index.nodes.length === 1 ? "" : "s"}.`);
+    write(io, formatIdentityRefresh(identity));
     writeGraphWarnings(io, result.warnings);
     return;
   }
@@ -814,11 +833,13 @@ async function rememberCommand(cwd, io, argv) {
     const args = parseArgs(rest);
     const selector = args.positionals[0];
     const accepted = acceptMemoryDelta(cwd, selector);
+    const identity = refreshIdentityAfterMutation(cwd);
     if (args.flags.json) {
       /** @type {RememberAcceptResult} */
       const data = {
         proposal: formatMemoryProposalJson(cwd, accepted.proposal, { includeBody: false }),
-        node: formatMemoryNodeJson(cwd, accepted.node)
+        node: formatMemoryNodeJson(cwd, accepted.node),
+        identity
       };
       writeJson(io, jsonOk(COMMAND_IDS.remember.accept, data));
       return;
@@ -826,6 +847,7 @@ async function rememberCommand(cwd, io, argv) {
     write(io, `Accepted memory proposal: ${accepted.proposal.data.id}`);
     write(io, `Proposal: ${path.relative(cwd, accepted.proposal.filePath)}`);
     write(io, `Node: ${path.relative(cwd, accepted.node.filePath)}`);
+    write(io, formatIdentityRefresh(identity));
     return;
   }
   if (subcommand === "reject") {
@@ -846,6 +868,47 @@ async function rememberCommand(cwd, io, argv) {
     return;
   }
   throw new Error(`Unknown remember command: ${subcommand}`);
+}
+
+async function syncCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help") {
+    write(io, syncUsage());
+    return;
+  }
+  const args = parseArgs(rest);
+  assertOnlySyncFlags(args.flags);
+  assertNoSyncPositionals(args.positionals);
+  if (subcommand === "plan") {
+    const result = buildSyncPlan(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.sync.plan, result));
+      return;
+    }
+    write(io, formatSyncPlan(result));
+    return;
+  }
+  if (subcommand === "apply") {
+    const result = applySyncPlan(cwd);
+    const identity = refreshIdentityAfterMutation(cwd);
+    result.identity = identity;
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.sync.apply, result));
+      return;
+    }
+    write(io, formatSyncApply(result));
+    return;
+  }
+  if (subcommand === "status") {
+    const result = getSyncStatus(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.sync.status, result));
+      return;
+    }
+    write(io, formatSyncStatus(result));
+    return;
+  }
+  throw new Error(`Unknown sync command: ${subcommand}`);
 }
 
 async function routeCommand(cwd, io, argv) {
@@ -971,6 +1034,20 @@ function assertEvalWriteReportFlag(flags) {
   }
   if (flags["write-report"] !== true) {
     throw new Error("--write-report does not accept a path or value; eval reports are written to .orange-hyper/evals/reports/.");
+  }
+}
+
+function assertOnlySyncFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (key !== "json") {
+      throw new Error(`Unsupported sync flag: --${key}`);
+    }
+  }
+}
+
+function assertNoSyncPositionals(positionals) {
+  if (positionals.length) {
+    throw new Error(`Unexpected sync argument: ${positionals[0]}`);
   }
 }
 
@@ -1474,6 +1551,92 @@ function formatCountMap(value) {
 }
 
 /**
+ * @returns {import("../core/types.d.ts").IdentityRefreshResult}
+ */
+function refreshIdentityAfterMutation(cwd) {
+  try {
+    const identity = buildIdentityPlaceholder(cwd);
+    return {
+      status: /** @type {"current"} */ ("current"),
+      file: path.relative(cwd, identity.filePath),
+      summary_file: path.relative(cwd, identity.summaryFilePath),
+      state_revision: identity.summary.state_revision || null,
+      identity_built_from_revision: identity.summary.identity_built_from_revision || null,
+      warning: null
+    };
+  } catch (error) {
+    const status = recordIdentityBuildFailure(cwd, error);
+    return {
+      status: /** @type {"stale"} */ ("stale"),
+      file: status?.identity_file || null,
+      summary_file: status?.identity_summary_file || null,
+      state_revision: status?.state_revision || null,
+      identity_built_from_revision: status?.identity_built_from_revision || null,
+      warning: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+function formatIdentityRefresh(identity) {
+  if (!identity) {
+    return "Identity: not refreshed.";
+  }
+  if (identity.status === "current") {
+    return `Identity: current (${identity.summary_file})`;
+  }
+  return `Identity: stale (${identity.warning || "identity build failed"})`;
+}
+
+function formatSyncPlan(result) {
+  return [
+    "Orange sync plan",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Mutates: ${yesNo(result.mutates)}`,
+    `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    `State revision: ${result.state_revision}`,
+    `Previous revision: ${result.previous_revision || "none"}`,
+    `Changed: ${yesNo(result.changed)}`,
+    `Freshness: ${result.freshness.status}`,
+    `Nodes: ${result.summary.node_count}`,
+    `Edges: ${result.summary.edge_count}`,
+    `Would write: ${result.files.index}, ${result.files.status}`,
+    "No files were written."
+  ].join("\n");
+}
+
+function formatSyncApply(result) {
+  return [
+    "Orange sync apply",
+    `Applied: ${yesNo(result.applied)}`,
+    `State revision: ${result.state_revision}`,
+    `Previous revision: ${result.previous_revision || "none"}`,
+    `Changed before apply: ${yesNo(result.changed)}`,
+    `Wrote: ${result.files.index}`,
+    `Wrote: ${result.files.status}`,
+    `Nodes: ${result.summary.node_count}`,
+    `Edges: ${result.summary.edge_count}`,
+    formatIdentityRefresh(result.identity)
+  ].join("\n");
+}
+
+function formatSyncStatus(result) {
+  return [
+    "Orange sync status",
+    `Read-only: ${yesNo(result.readOnly)}`,
+    `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    `Last sync: ${result.last_sync_at || "none"}`,
+    `Applied revision: ${result.state_revision || "none"}`,
+    `Current revision: ${result.current_revision}`,
+    `Changed: ${yesNo(result.changed)}`,
+    `Freshness: ${result.freshness.status}`,
+    `Identity status: ${result.identity_status}`,
+    `Identity built from revision: ${result.identity_built_from_revision || "none"}`,
+    `Nodes: ${result.summary.node_count}`,
+    `Edges: ${result.summary.edge_count}`
+  ].join("\n");
+}
+
+/**
  * @param {HookPreviewResult} result
  */
 function formatHookPreview(result) {
@@ -1916,6 +2079,9 @@ function defaultErrorHint(command = "command") {
   if (command.startsWith("hook.")) {
     return "Run `orange hook status` to inspect supported preview events; add `--write-report` only when you want a local report under `.orange-hyper/hooks/reports/`.";
   }
+  if (command.startsWith("sync.")) {
+    return "Run `orange sync plan --json` for a read-only preview, then `orange sync apply --json` to update generated structure state.";
+  }
   return "Run `orange --help` for command usage, or rerun without --json for human-readable diagnostics.";
 }
 
@@ -1925,6 +2091,25 @@ function write(io, value) {
 
 function writeJson(io, value) {
   write(io, JSON.stringify(value, null, 2));
+}
+
+function formatInitJson(cwd, paths, args) {
+  const project = readProjectIdentity(cwd);
+  return {
+    initialized: true,
+    idempotent: true,
+    forced: Boolean(args.flags.force),
+    project,
+    files: {
+      root: path.relative(cwd, paths.root),
+      config: path.relative(cwd, paths.config),
+      gitignore: path.relative(cwd, paths.orangeGitignore),
+      current_capsule: path.relative(cwd, paths.currentCapsule),
+      graph_index: path.relative(cwd, paths.graphIndex),
+      graph_edges: path.relative(cwd, paths.graphEdges),
+      route_trace: path.relative(cwd, paths.routeTrace)
+    }
+  };
 }
 
 /**
@@ -2207,6 +2392,9 @@ function usage() {
     "  graph show <node-id> [--json]",
     "  graph search <query> [--type decision|constraint|component|risk|verification] [--source-quest <quest-id>] [--source-proposal <proposal-id>] [--json]",
     "  graph rebuild-index [--json]",
+    "  sync plan [--json]",
+    "  sync apply [--json]",
+    "  sync status [--json]",
     "  eval snapshot [--json]",
     "  eval report [--json] [--write-report]",
     "  eval explain [--json]",
@@ -2222,6 +2410,17 @@ function usage() {
     "  hook run stop [--json] [--write-report]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
+  ].join("\n");
+}
+
+function syncUsage() {
+  return [
+    "orange sync <command>",
+    "",
+    "Commands:",
+    "  plan [--json]",
+    "  apply [--json]",
+    "  status [--json]"
   ].join("\n");
 }
 

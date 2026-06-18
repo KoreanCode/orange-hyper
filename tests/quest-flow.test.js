@@ -1728,16 +1728,16 @@ test("identity build writes generated placeholder html", async () => {
   assert.match(html, /identity-demo/);
   assert.match(html, new RegExp(`Project ID: ${escapeRegExp(config.project_id)}`));
   assert.match(html, /Read-only Knowledge Graph/);
-  assert.match(html, /Built from accepted project memory/);
-  assert.match(html, /Derived concept\/source nodes are visual-only/);
+  assert.match(html, /Built from generated project structure plus accepted memory/);
+  assert.match(html, /Structure Graph and Memory Graph stay separate before composition/);
   assert.match(html, /Not a code dependency graph/);
   assert.match(html, /Pending\/rejected proposals excluded/);
   assert.match(html, /Graph editing is not supported\./);
   assert.match(html, /Growth Signal Preview/);
   assert.match(html, /Accepted memory nodes are candidate project memory\./);
   assert.match(html, /Project Boundary/);
-  assert.match(html, /Source nodes:/);
-  assert.match(html, /Visual nodes:/);
+  assert.match(html, /Structure nodes:/);
+  assert.match(html, /Identity nodes:/);
   assert.match(html, /node-detail-drawer/);
   assert.match(html, /identity-sidebar/);
   assert.match(html, /<meta name="source-repository" content="https:\/\/github\.com\/KoreanCode\/orange-hyper">/);
@@ -1779,7 +1779,7 @@ test("identity build --json prints generated html path and summary", async () =>
   assert.deepEqual(payload.data.summary.statusMessages, [
     "Memory proposal review is active.",
     "This is a read-only Knowledge Graph.",
-    "It is built from accepted memory nodes.",
+    "It is built from generated structure state plus accepted memory nodes.",
     "It is not a code dependency graph.",
     "Pending/rejected proposals are not included.",
     "Graph editing is not supported.",

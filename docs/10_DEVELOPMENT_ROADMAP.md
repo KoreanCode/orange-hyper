@@ -243,7 +243,7 @@ contract를 고정한다.
 - `orange adapter dry-run <recipe-id>`
 - Adapter JSON Contract를 따르는 `adapter.list`, `adapter.show`, `adapter.dryRun`
 - built-in recipe: `quest-capture`, `work-complete-to-memory`, `project-status`,
-  `hook-check`, `mcp-advice`
+  `project-sync`, `hook-check`, `mcp-advice`
 - recipe command sequence와 required input/output metadata
 - no-direct-file-mutation guard
 - `--json` only parsing guard

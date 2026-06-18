@@ -18,9 +18,11 @@ function tempWorkspace() {
 test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   const cwd = tempWorkspace();
   const paths = initWorkspace(cwd, { projectName: "identity-graph-demo" });
+  createSourceFixture(cwd);
+  assertJsonCommand(runOrange(["sync", "apply", "--json"], cwd), "sync.apply");
   const config = readConfig(cwd);
-  const firstAccepted = createAcceptedMemory(cwd, "document accepted dashboard decision", "decision", "identity graph checked");
-  const secondAccepted = createAcceptedMemory(cwd, "document accepted dashboard tradeoff", "decision", "identity graph checked");
+  const firstAccepted = createAcceptedMemory(cwd, "document accepted dashboard decision", "decision", "identity graph checked", ["src/user/user-service.js"]);
+  const secondAccepted = createAcceptedMemory(cwd, "document accepted dashboard tradeoff", "decision", "identity graph checked", ["docs/architecture.md"]);
   const thirdAccepted = createAcceptedMemory(cwd, "source visual concept clustering verification", "verification", "identity graph checked");
   const pending = createPendingMemory(cwd, "pending dashboard note", "risk");
   const rejected = createRejectedMemory(cwd, "rejected dashboard note", "verification");
@@ -29,9 +31,12 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   const summary = payload.data.summary;
   const preview = summary.graphPreview;
   const sourceGraph = summary.sourceGraph;
+  const structureGraph = summary.structureGraph;
+  const memoryGraph = summary.memoryGraph;
+  const identityGraph = summary.identityGraph;
   const visualGraph = summary.visualGraph;
 
-  assert.equal(preview.schemaVersion, "1.1.0-alpha.3");
+  assert.equal(preview.schemaVersion, "1.1.0-alpha.4");
   assert.equal(preview.readOnly, true);
   assert.equal(preview.editingSupported, false);
   assert.equal(preview.acceptedMemoryNodes, 3);
@@ -59,7 +64,7 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
     assert.equal(edge.readOnly, true);
   }
 
-  assert.equal(sourceGraph.schemaVersion, "1.1.0-alpha.3");
+  assert.equal(sourceGraph.schemaVersion, "1.1.0-alpha.4");
   assert.equal(sourceGraph.readOnly, true);
   assert.equal(sourceGraph.editingSupported, false);
   assert.equal(sourceGraph.source, ".orange-hyper/graph");
@@ -84,19 +89,32 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
     assert.equal(edge.readOnly, true);
   }
 
-  assert.equal(visualGraph.schemaVersion, "1.1.0-alpha.3");
+  assert.equal(structureGraph.nodes.some((node) => node.id === "project.root" && node.type === "project"), true);
+  assert.equal(structureGraph.nodes.some((node) => node.id === "component.src-user-user-service"), true);
+  assert.equal(structureGraph.nodes.some((node) => acceptedNodeIds.has(node.id)), false);
+  assert.deepEqual(new Set(memoryGraph.nodes.map((node) => node.id)), acceptedNodeIds);
+  assert.deepEqual(memoryGraph.nodes, sourceGraph.nodes);
+
+  assert.equal(identityGraph.schemaVersion, "1.1.0-alpha.4");
+  assert.equal(identityGraph.source, "structure-plus-accepted-memory");
+  assert.equal(identityGraph.nodes.some((node) => node.id === "project.root" && node.layoutRole === "center"), true);
+  assert.equal(identityGraph.nodes.some((node) => node.type === "memory"), true);
+  assert.equal(identityGraph.nodes.some((node) => node.type === "component"), true);
+  assert.equal(identityGraph.edges.some((edge) => edge.relation === "documents" && acceptedNodeIds.has(edge.from)), true);
+
+  assert.equal(visualGraph.schemaVersion, "1.1.0-alpha.4");
   assert.equal(visualGraph.readOnly, true);
   assert.equal(visualGraph.editingSupported, false);
   assert.equal(visualGraph.displayOnly, true);
-  assert.equal(visualGraph.source, "identity-html-visual-only");
+  assert.equal(visualGraph.source, "structure-plus-accepted-memory");
   assert.equal(visualGraph.layout, "deterministic-seeded-force");
   assert.ok(visualGraph.nodes.length > sourceGraph.nodes.length);
-  assert.ok(visualGraph.nodes.length >= 20, `expected dense visual graph, got ${visualGraph.nodes.length}`);
+  assert.ok(visualGraph.nodes.length >= structureGraph.nodes.length + sourceGraph.nodes.length);
   assert.ok(visualGraph.edges.length > preview.edges.length);
-  assert.equal(visualGraph.nodes.some((node) => node.type === "concept"), true);
-  assert.equal(visualGraph.nodes.some((node) => node.type === "sourceQuest"), true);
-  assert.equal(visualGraph.nodes.some((node) => node.type === "sourceProposal"), true);
-  assert.equal(visualGraph.nodes.some((node) => node.type === "category"), true);
+  assert.equal(visualGraph.nodes.some((node) => node.type === "concept"), false);
+  assert.equal(visualGraph.nodes.some((node) => node.type === "sourceQuest"), false);
+  assert.equal(visualGraph.nodes.some((node) => node.type === "sourceProposal"), false);
+  assert.equal(visualGraph.nodes.some((node) => node.label === "Before" || node.label === "Should" || node.label === "Work" || node.label === "v0.4.0-alpha.1"), false);
   const memoryVisualNodes = visualGraph.nodes.filter((node) => node.type === "memory");
   assert.deepEqual(new Set(memoryVisualNodes.map((node) => node.id)), acceptedNodeIds);
   for (const node of visualGraph.nodes.filter((node) => node.derived)) {
@@ -108,6 +126,9 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   const stateText = fs.readFileSync(paths.identityHtml, "utf8");
   const state = extractJsonScript(stateText, "orange-knowledge-graph-state");
   assert.equal(state.readOnly, true);
+  assert.equal(state.structureGraph.nodes.some((node) => node.id === "project.root"), true);
+  assert.equal(state.memoryGraph.nodes.length, 3);
+  assert.equal(state.identityGraph.nodes.some((node) => node.id === "project.root"), true);
   assert.equal(state.sourceGraph.nodes.length, 3);
   assert.equal(state.visualGraph.nodes.length, visualGraph.nodes.length);
   assert.deepEqual(new Set(state.sourceGraph.nodes.map((node) => node.id)), acceptedNodeIds);
@@ -147,8 +168,8 @@ test("identity HTML contains vanilla SVG graph view, filters, read-only warning,
   assert.match(html, /aria-label="Visual legend"/);
   assert.match(html, /#ffb454/);
   assert.match(html, /Read-only Knowledge Graph/);
-  assert.match(html, /Built from accepted project memory/);
-  assert.match(html, /Derived concept\/source nodes are visual-only/);
+  assert.match(html, /Built from generated project structure plus accepted memory/);
+  assert.match(html, /Structure Graph and Memory Graph stay separate before composition/);
   assert.match(html, /Not a code dependency graph/);
   assert.match(html, /Pending\/rejected proposals excluded/);
   assert.match(html, /Graph editing is not supported\./);
@@ -171,14 +192,19 @@ test("identity Knowledge Graph handles empty accepted memory without breaking fa
   const payload = assertJsonCommand(runOrange(["identity", "build", "--json"], cwd), "identity.build");
   const preview = payload.data.summary.graphPreview;
   const sourceGraph = payload.data.summary.sourceGraph;
+  const structureGraph = payload.data.summary.structureGraph;
+  const memoryGraph = payload.data.summary.memoryGraph;
+  const identityGraph = payload.data.summary.identityGraph;
   const visualGraph = payload.data.summary.visualGraph;
   assert.equal(preview.acceptedMemoryNodes, 0);
   assert.deepEqual(preview.nodes, []);
   assert.deepEqual(preview.edges, []);
   assert.deepEqual(sourceGraph.nodes, []);
   assert.deepEqual(sourceGraph.edges, []);
-  assert.deepEqual(visualGraph.nodes, []);
-  assert.deepEqual(visualGraph.edges, []);
+  assert.deepEqual(memoryGraph.nodes, []);
+  assert.equal(structureGraph.nodes.some((node) => node.id === "project.root"), true);
+  assert.equal(identityGraph.nodes.some((node) => node.id === "project.root"), true);
+  assert.equal(visualGraph.nodes.some((node) => node.id === "project.root"), true);
 
   const html = fs.readFileSync(paths.identityHtml, "utf8");
   assert.match(html, /No accepted memory nodes yet/);
@@ -188,8 +214,8 @@ test("identity Knowledge Graph handles empty accepted memory without breaking fa
   assert.match(html, /JavaScript is disabled, so this read-only accepted memory table is shown instead of the SVG graph\./);
 });
 
-function createAcceptedMemory(cwd, title, nodeType, evidence) {
-  const quest = createCompletedQuest(cwd, title, evidence);
+function createAcceptedMemory(cwd, title, nodeType, evidence, paths = []) {
+  const quest = createCompletedQuest(cwd, title, evidence, paths);
   const proposal = proposeMemoryDelta(cwd, quest.id, {
     nodeType,
     clock: nextClock()
@@ -214,9 +240,10 @@ function createRejectedMemory(cwd, title, nodeType) {
   });
 }
 
-function createCompletedQuest(cwd, title, evidence) {
+function createCompletedQuest(cwd, title, evidence, paths = []) {
   const quest = createQuest(cwd, title, {
     layer: "L2",
+    paths,
     expectedVerification: [evidence],
     clock: nextClock()
   });
@@ -225,6 +252,14 @@ function createCompletedQuest(cwd, title, evidence) {
     evidence: [evidence]
   });
   return quest;
+}
+
+function createSourceFixture(cwd) {
+  fs.mkdirSync(path.join(cwd, "src", "user"), { recursive: true });
+  fs.mkdirSync(path.join(cwd, "docs"), { recursive: true });
+  fs.writeFileSync(path.join(cwd, "package.json"), JSON.stringify({ name: "identity-fixture" }, null, 2));
+  fs.writeFileSync(path.join(cwd, "src", "user", "user-service.js"), "export function userService() { return true; }\n");
+  fs.writeFileSync(path.join(cwd, "docs", "architecture.md"), "# Architecture\n");
 }
 
 let clockCounter = 0;

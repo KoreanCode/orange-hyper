@@ -254,6 +254,84 @@ const ADAPTER_RECIPES = [
     safety_flags: ADAPTER_SAFETY_FLAGS
   },
   {
+    id: "project-sync",
+    title: "Project Sync",
+    purpose: "Scan an existing repository into generated Structure Graph state and refresh Identity HTML through the Orange Kernel.",
+    when_to_use: [
+      "The user asks to set up Orange Hyper for an existing project and sync the current structure.",
+      "An adapter needs repository structure in Identity HTML without creating Quest, Proposal, or Memory state."
+    ],
+    commands: [
+      step({
+        command: "orange init --json",
+        why: "Idempotently create the Orange Hyper workspace before scanning an existing project.",
+        required_input: ["explicit_project_init_approval"],
+        input_requirements: [
+          input({ name: "explicit_project_init_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+        ],
+        expected_json_command_id: "project.init",
+        mutates_project_state: true,
+        requires_user_approval: true
+      }),
+      step({
+        command: "orange sync plan --json",
+        why: "Preview the deterministic project structure scan without writing files.",
+        required_input: [],
+        expected_json_command_id: "sync.plan",
+        mutates_project_state: false,
+        requires_user_approval: false
+      }),
+      step({
+        command: "orange sync apply --json",
+        why: "Write only generated structure state and refresh Identity HTML from the new revision.",
+        required_input: ["explicit_sync_approval"],
+        input_requirements: [
+          input({ name: "explicit_sync_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+        ],
+        expected_json_command_id: "sync.apply",
+        mutates_project_state: true,
+        requires_user_approval: true
+      }),
+      step({
+        command: "orange sync status --json",
+        why: "Read last sync, freshness, changed state, and identity freshness.",
+        required_input: [],
+        expected_json_command_id: "sync.status",
+        mutates_project_state: false,
+        requires_user_approval: false
+      })
+    ],
+    required_inputs: [
+      "explicit_project_init_approval before init",
+      "explicit_sync_approval before apply"
+    ],
+    outputs: [
+      ".orange-hyper/",
+      "sync plan",
+      ".orange-hyper/structure/index.json",
+      ".orange-hyper/structure/status.json",
+      "identity refresh status",
+      "sync freshness status"
+    ],
+    safety_rules: [
+      "`init` is idempotent and must run through `orange init --json`, not direct file writes.",
+      "Use `sync plan` first when the user wants a preview; it must remain read-only.",
+      "`sync apply` writes generated structure state only.",
+      "Do not create Quest, Proposal, accepted Memory, hooks, MCP config, or graph edits during sync.",
+      "Parse only `project.init` and `sync.*` JSON envelopes."
+    ],
+    forbidden_actions: [
+      "Quest creation during sync",
+      "Memory Proposal creation during sync",
+      "Memory Proposal auto accept",
+      "MCP, hook, or subagent execution",
+      "AST/call graph generation",
+      "graph editing"
+    ],
+    expected_contract_version: EXPECTED_CONTRACT_VERSION,
+    safety_flags: ADAPTER_SAFETY_FLAGS
+  },
+  {
     id: "hook-check",
     title: "Hook Check",
     purpose: "Inspect read-only hook preview/status/run warnings without installing or changing hook policy.",
@@ -504,6 +582,9 @@ function buildNextUserDecision(recipeId, missingInputs) {
   }
   if (recipeId === "project-status") {
     return "Run read-only steps 1-3 if status is requested; ask before step 4 because identity build mutates generated state.";
+  }
+  if (recipeId === "project-sync") {
+    return "Run the read-only sync plan first; run sync apply only when the user has asked to sync generated structure state.";
   }
   if (recipeId === "hook-check") {
     return "No extra approval is required for the read-only hook checks; do not add --write-report unless the user asks for a local report.";
