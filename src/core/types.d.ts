@@ -93,9 +93,11 @@ export interface AdapterRecipeStep {
   why: string;
   required_input: string[];
   input_requirements: AdapterStepInputRequirement[];
-  expected_json_command_id: CommandId;
+  expected_json_command_id: CommandId | null;
   mutates_project_state: boolean;
   requires_user_approval: boolean;
+  input_source: AdapterInputSource;
+  condition: string;
 }
 
 export interface AdapterRecipe {
@@ -256,6 +258,8 @@ export interface AcceptedMemoryNodeFrontmatter extends OriginMetadata {
   origin: "memory-delta-proposal";
   source_proposal: string;
   source_quest: string;
+  source_path: string;
+  scope_paths: string[];
   source_proposal_hash: string;
   title?: string;
   provenance: {
@@ -264,6 +268,8 @@ export interface AcceptedMemoryNodeFrontmatter extends OriginMetadata {
     proposal_id: string;
     source_proposal: string;
     source_quest: string;
+    source_path: string;
+    scope_paths: string[];
     accepted_at: string;
     node_type: MemoryNodeType;
     origin: "memory-delta-proposal";
@@ -282,6 +288,8 @@ export interface GraphIndexEntry extends OriginMetadata {
   title: string;
   source_quest: string;
   source_proposal: string;
+  source_path: string;
+  scope_paths: string[];
   accepted_at: string;
   candidate_memory: string;
   summary: string;
@@ -402,6 +410,23 @@ export interface StructureSummary {
   project_root_node: "project.root";
 }
 
+export interface StructureDiff {
+  added_nodes: string[];
+  changed_nodes: string[];
+  removed_nodes: string[];
+  added_edges: string[];
+  removed_edges: string[];
+  unchanged_nodes: string[];
+  counts: {
+    added_nodes: number;
+    changed_nodes: number;
+    removed_nodes: number;
+    added_edges: number;
+    removed_edges: number;
+    unchanged_nodes: number;
+  };
+}
+
 export interface SyncFreshness {
   status: "missing" | "current" | "stale";
   changed: boolean;
@@ -420,8 +445,17 @@ export interface SyncPlanResult {
   };
   state_revision: string;
   previous_revision: string | null;
+  current_revision: string | null;
+  planned_revision: string;
   changed: boolean;
   freshness: SyncFreshness;
+  diff: StructureDiff;
+  added_nodes: string[];
+  changed_nodes: string[];
+  removed_nodes: string[];
+  added_edges: string[];
+  removed_edges: string[];
+  unchanged_nodes: string[];
   files: {
     index: string;
     status: string;
@@ -442,7 +476,16 @@ export interface SyncApplyResult {
   project: SyncPlanResult["project"];
   state_revision: string;
   previous_revision: string | null;
+  current_revision: string | null;
+  planned_revision: string;
   changed: boolean;
+  diff: StructureDiff;
+  added_nodes: string[];
+  changed_nodes: string[];
+  removed_nodes: string[];
+  added_edges: string[];
+  removed_edges: string[];
+  unchanged_nodes: string[];
   files: SyncPlanResult["files"];
   graph: StructureGraph;
   summary: StructureSummary;
@@ -460,6 +503,15 @@ export interface SyncStatusFile {
   project_name: string;
   state_revision: string;
   previous_revision: string | null;
+  current_revision: string | null;
+  planned_revision: string;
+  diff: StructureDiff;
+  added_nodes: string[];
+  changed_nodes: string[];
+  removed_nodes: string[];
+  added_edges: string[];
+  removed_edges: string[];
+  unchanged_nodes: string[];
   changed: false;
   freshness: SyncFreshness;
   structure_file: string;
@@ -483,9 +535,17 @@ export interface SyncStatusResult {
   files: SyncPlanResult["files"];
   last_sync_at: string | null;
   state_revision: string | null;
-  current_revision: string;
+  current_revision: string | null;
+  planned_revision: string;
   changed: boolean;
   freshness: SyncFreshness;
+  diff: StructureDiff;
+  added_nodes: string[];
+  changed_nodes: string[];
+  removed_nodes: string[];
+  added_edges: string[];
+  removed_edges: string[];
+  unchanged_nodes: string[];
   identity_built_from_revision: string | null;
   identity_status: "current" | "stale";
   identity_warning: string | null;
@@ -1179,10 +1239,17 @@ export interface IdentitySourceGraphNode extends GraphIndexEntry {
   candidate_memory_summary: string;
   degree: number;
   readOnly: true;
+  source_path: string;
+  scope_paths: string[];
   sourceOfTruth: true;
   displayOnly: false;
   derived: false;
   graphKind: "memory";
+  mapping_status?: "mapped" | "unmapped" | "orphaned";
+  mapped_structure_node_id?: string | null;
+  mapped_structure_node_path?: string | null;
+  mapping_reason?: string;
+  mapping_candidates?: string[];
   kind?: string;
   confidence?: string;
   origin?: string;
@@ -1239,6 +1306,13 @@ export interface IdentityVisualGraphNode {
   category?: string;
   source_quest?: string;
   source_proposal?: string;
+  source_path?: string;
+  scope_paths?: string[];
+  mapping_status?: "mapped" | "unmapped" | "orphaned";
+  mapped_structure_node_id?: string | null;
+  mapped_structure_node_path?: string | null;
+  mapping_reason?: string;
+  mapping_candidates?: string[];
   structurePath?: string;
   structureRole?: string;
   source?: string;
@@ -1273,6 +1347,21 @@ export interface IdentityGraph {
   edges: IdentityVisualGraphEdge[];
 }
 
+export interface MemoryMappingSummary {
+  total: number;
+  mapped: number;
+  unmapped: number;
+  orphaned: number;
+  entries: Array<{
+    memory_node_id: string;
+    status: "mapped" | "unmapped" | "orphaned";
+    structure_node_id: string | null;
+    structure_node_path: string | null;
+    candidates: string[];
+    reason: string;
+  }>;
+}
+
 export interface IdentitySummary extends OriginMetadata {
   project_id: string;
   project_name: string;
@@ -1294,6 +1383,8 @@ export interface IdentitySummary extends OriginMetadata {
   structureGraph: StructureGraph;
   memoryGraph: IdentitySummary["sourceGraph"];
   identityGraph: IdentityGraph;
+  memoryMapping: MemoryMappingSummary;
+  memory_mapping: MemoryMappingSummary;
   graphPreview: {
     schemaVersion: string;
     readOnly: true;
@@ -1327,6 +1418,8 @@ export interface IdentitySummary extends OriginMetadata {
       title: string;
       source_quest: string;
       source_proposal: string;
+      source_path: string;
+      scope_paths: string[];
       accepted_at: string;
     }>;
   };
@@ -1342,6 +1435,7 @@ export interface IdentitySummary extends OriginMetadata {
     nodeTypeColors: Partial<Record<MemoryNodeType, string>>;
     nodeTypeDistribution: Partial<Record<MemoryNodeType, number>>;
     acceptedMemoryNodes: number;
+    memory_mapping?: MemoryMappingSummary;
     nodes: IdentitySourceGraphNode[];
     edges: IdentitySourceGraphEdge[];
   };

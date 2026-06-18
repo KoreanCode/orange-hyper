@@ -5,7 +5,9 @@ v1.1.0-alpha.0 adds a read-only Identity HTML Knowledge Graph view, and
 v1.1.0-alpha.1 realigns the README product surface around the AI-first usage
 model, v1.1.0-alpha.2 fixes the Identity Graph product spec, and
 v1.1.0-alpha.3 implements the full-screen read-only brain-like Identity Graph,
-and v1.1.0-alpha.4 adds Project Sync plus generated Structure Graph state.
+v1.1.0-alpha.4 adds Project Sync plus generated Structure Graph state, and
+v1.1.0-alpha.5 hardens AI-first bootstrap, sync diff quality, semantic
+Structure Graph roles, accepted-memory mapping, and stale Identity diagnostics.
 None of these alphas add a runtime adapter, MCP runner, hook installer, role
 system, planner, LLM judge, telemetry path, or graph editing surface. The
 purpose of the v1 line is to keep the v0.1 through v0.8 boundaries explicit,
@@ -13,8 +15,8 @@ verified, and publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.4`
-- README version: `1.1-doc.4`
+- package version: `1.1.0-alpha.5`
+- README version: `1.1-doc.5`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model
@@ -72,7 +74,7 @@ product experience.
 | Growth is not automatic unlock | Pass. Growth commands read local signals and produce advisory candidates with `auto_unlock: false` and `requires_user_approval: true`. | `docs/19_GROWTH_SYSTEM.md`, growth tests |
 | Adapter is invocation contract | Pass. Adapter recipes describe safe `--json` command sequences and dry-runs. They do not execute recipes or mutate `.orange-hyper` directly. | `docs/16_ADAPTER_CONTRACT.md`, `docs/20_ADAPTER_LAYER.md`, adapter tests |
 | Eval is local-only report | Pass. Eval snapshot/report/explain read local `.orange-hyper` state only. Reports are stdout by default and write only under `.orange-hyper/evals/reports/` with `--write-report`. | `docs/21_EVAL_AND_REPORTS.md`, eval tests |
-| Project Sync is generated state | Pass. `sync plan` is read-only, `sync apply` writes only `.orange-hyper/structure/` and refreshes Identity HTML, and `sync status` reports freshness. | `docs/24_PROJECT_SYNC.md`, sync tests |
+| Project Sync is generated state | Pass. `init --json` is idempotent, `sync plan` is read-only, `sync apply` writes only `.orange-hyper/structure/` and refreshes Identity HTML, `sync status` reports freshness and diff fields, and accepted memory is preserved as overlay state. | `docs/24_PROJECT_SYNC.md`, sync tests |
 
 ## Adapter JSON Contract
 
@@ -285,9 +287,11 @@ node bin/orange.js growth status --json
 node bin/orange.js hook run stop --json
 node bin/orange.js mcp suggest --query "Spring Security 최신 문서 확인이 필요해" --json
 node bin/orange.js graph list --json
+node bin/orange.js init --json
 node bin/orange.js sync plan --json
 node bin/orange.js sync apply --json
 node bin/orange.js sync status --json
+node bin/orange.js identity build --json
 ```
 
 ## Non-Goals

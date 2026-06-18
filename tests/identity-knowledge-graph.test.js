@@ -36,7 +36,7 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   const identityGraph = summary.identityGraph;
   const visualGraph = summary.visualGraph;
 
-  assert.equal(preview.schemaVersion, "1.1.0-alpha.4");
+  assert.equal(preview.schemaVersion, "1.1.0-alpha.5");
   assert.equal(preview.readOnly, true);
   assert.equal(preview.editingSupported, false);
   assert.equal(preview.acceptedMemoryNodes, 3);
@@ -64,7 +64,7 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
     assert.equal(edge.readOnly, true);
   }
 
-  assert.equal(sourceGraph.schemaVersion, "1.1.0-alpha.4");
+  assert.equal(sourceGraph.schemaVersion, "1.1.0-alpha.5");
   assert.equal(sourceGraph.readOnly, true);
   assert.equal(sourceGraph.editingSupported, false);
   assert.equal(sourceGraph.source, ".orange-hyper/graph");
@@ -90,19 +90,19 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   }
 
   assert.equal(structureGraph.nodes.some((node) => node.id === "project.root" && node.type === "project"), true);
-  assert.equal(structureGraph.nodes.some((node) => node.id === "component.src-user-user-service"), true);
+  assert.equal(structureGraph.nodes.some((node) => node.id === "component.src-user-user-service" && node.role === "service"), true);
   assert.equal(structureGraph.nodes.some((node) => acceptedNodeIds.has(node.id)), false);
   assert.deepEqual(new Set(memoryGraph.nodes.map((node) => node.id)), acceptedNodeIds);
   assert.deepEqual(memoryGraph.nodes, sourceGraph.nodes);
 
-  assert.equal(identityGraph.schemaVersion, "1.1.0-alpha.4");
+  assert.equal(identityGraph.schemaVersion, "1.1.0-alpha.5");
   assert.equal(identityGraph.source, "structure-plus-accepted-memory");
   assert.equal(identityGraph.nodes.some((node) => node.id === "project.root" && node.layoutRole === "center"), true);
   assert.equal(identityGraph.nodes.some((node) => node.type === "memory"), true);
   assert.equal(identityGraph.nodes.some((node) => node.type === "component"), true);
   assert.equal(identityGraph.edges.some((edge) => edge.relation === "documents" && acceptedNodeIds.has(edge.from)), true);
 
-  assert.equal(visualGraph.schemaVersion, "1.1.0-alpha.4");
+  assert.equal(visualGraph.schemaVersion, "1.1.0-alpha.5");
   assert.equal(visualGraph.readOnly, true);
   assert.equal(visualGraph.editingSupported, false);
   assert.equal(visualGraph.displayOnly, true);

@@ -13,7 +13,7 @@
 <summary>Version metadata の詳細</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.4`
+- README version: `1.1-doc.5`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`

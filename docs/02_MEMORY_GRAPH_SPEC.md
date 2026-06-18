@@ -262,7 +262,7 @@ SVG/vanilla JS로 보여주는 소비자일 뿐이며, graph node Markdown,
 edge는 visualization용 display relation이며 persisted Memory Graph source edge가
 아니다.
 
-v1.1.0-alpha.4의 Identity HTML runtime state는 이 경계를 `structureGraph`,
+v1.1.0-alpha.5의 Identity HTML runtime state는 이 경계를 `structureGraph`,
 `memoryGraph`, `identityGraph`로 구현한다. `memoryGraph`는 accepted memory node와
 persisted accepted edge만 포함한다. 기존 `sourceGraph` 이름은 호환 alias로 남길 수
 있지만 의미는 `memoryGraph`와 같다.
@@ -327,7 +327,7 @@ Composition rules:
 - Identity HTML filters do not mutate project memory, structure state, or graph
   files.
 
-Initial alpha.4 identity node type candidates:
+Initial alpha.5 identity node type candidates:
 
 ```text
 project

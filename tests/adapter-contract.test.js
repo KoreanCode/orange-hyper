@@ -39,6 +39,7 @@ const EXPECTED_STEP_CONTRACTS = {
   "project-sync": [
     ["orange init --json", "project.init", true, true],
     ["orange sync plan --json", "sync.plan", false, false],
+    ["user approval: approve generated structure sync", null, false, true],
     ["orange sync apply --json", "sync.apply", true, true],
     ["orange sync status --json", "sync.status", false, false]
   ],
@@ -148,9 +149,16 @@ test("adapter recipe steps declare expected JSON command ids", () => {
   for (const recipe of payload.data.recipes) {
     assert.ok(recipe.commands.length > 0);
     for (const command of recipe.commands) {
-      assert.match(command.command, / --json(?:$| )/);
-      assert.equal(typeof command.expected_json_command_id, "string");
-      assert.match(command.expected_json_command_id, /^[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+$/);
+      if (command.expected_json_command_id === null) {
+        assert.match(command.command, /^user approval:/);
+      } else {
+        assert.match(command.command, / --json(?:$| )/);
+        assert.equal(typeof command.expected_json_command_id, "string");
+        assert.match(command.expected_json_command_id, /^[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)+$/);
+      }
+      assert.equal(typeof command.input_source, "string");
+      assert.equal(typeof command.condition, "string");
+      assert.notEqual(command.condition.trim(), "");
     }
   }
 });
@@ -214,11 +222,37 @@ test("mutating recipe commands require approval and read-only commands do not", 
     for (const command of recipe.commands) {
       if (command.mutates_project_state) {
         assert.equal(command.requires_user_approval, true, command.command);
+      } else if (command.expected_json_command_id === null) {
+        assert.equal(command.requires_user_approval, true, command.command);
       } else {
         assert.equal(command.requires_user_approval, false, command.command);
       }
     }
   }
+});
+
+test("project-sync recipe exposes init, plan, approval, apply, and status conditions", () => {
+  const cwd = tempWorkspace();
+  const payload = assertJsonCommand(runOrange(["adapter", "dry-run", "project-sync", "--json"], cwd), "adapter.dryRun");
+  assert.deepEqual(
+    payload.data.steps.map((step) => [step.step_index, step.command, step.expected_json_command_id, step.input_source]),
+    [
+      [1, "orange init --json", "project.init", "user"],
+      [2, "orange sync plan --json", "sync.plan", "previous_step"],
+      [3, "user approval: approve generated structure sync", null, "user"],
+      [4, "orange sync apply --json", "sync.apply", "previous_step"],
+      [5, "orange sync status --json", "sync.status", "previous_step"]
+    ]
+  );
+  assert.deepEqual(
+    payload.data.missing_inputs.map((input) => [input.name, input.step_index, input.input_source]),
+    [
+      ["explicit_project_init_approval", 1, "user"],
+      ["explicit_sync_approval", 3, "user"]
+    ]
+  );
+  assert.match(payload.data.steps[0].condition, /already initialized/);
+  assert.match(payload.data.steps[3].condition, /preserves accepted memory/);
 });
 
 test("adapter recipe placeholders are declared as input requirements", () => {
@@ -271,7 +305,9 @@ function assertRecipe(recipe) {
     assert.equal(typeof command.step_index, "number");
     assert.ok(Array.isArray(command.required_input));
     assert.ok(Array.isArray(command.input_requirements));
-    assert.equal(typeof command.expected_json_command_id, "string");
+    assert.ok(typeof command.expected_json_command_id === "string" || command.expected_json_command_id === null);
+    assert.ok(["user", "previous_step", "project_state"].includes(command.input_source));
+    assert.equal(typeof command.condition, "string");
     assert.equal(typeof command.mutates_project_state, "boolean");
     assert.equal(typeof command.requires_user_approval, "boolean");
     for (const input of command.input_requirements) {

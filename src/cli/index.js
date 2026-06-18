@@ -20,6 +20,7 @@ import {
   validateMemoryDeltaProposalBySelector
 } from "../core/memory.js";
 import { originMetadata } from "../core/origin.js";
+import { workspacePaths } from "../core/paths.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
@@ -189,12 +190,13 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "init") {
     const args = parseArgs(rest);
+    const before = snapshotInitPaths(cwd);
     const paths = initWorkspace(cwd, {
       force: Boolean(args.flags.force),
       projectName: args.flags.project
     });
     if (args.flags.json) {
-      writeJson(io, jsonOk(COMMAND_IDS.init, formatInitJson(cwd, paths, args)));
+      writeJson(io, jsonOk(COMMAND_IDS.init, formatInitJson(cwd, paths, args, before)));
       return;
     }
     write(io, `Initialized ${path.relative(cwd, paths.root)}`);
@@ -1299,7 +1301,9 @@ function formatAdapterStep(command, index) {
     `     Required input: ${command.required_input.length ? command.required_input.join(", ") : "none"}`,
     "     Input sources:",
     ...formatAdapterInputRequirements(command.input_requirements).map((line) => `  ${line}`),
-    `     Expected JSON command id: ${command.expected_json_command_id}`,
+    `     Expected JSON command id: ${command.expected_json_command_id || "none (user approval gate)"}`,
+    `     Step input source: ${command.input_source}`,
+    `     Condition: ${command.condition}`,
     `     Mutates project state: ${yesNo(command.mutates_project_state)}`,
     `     Requires user approval: ${yesNo(command.requires_user_approval)}`
   ];
@@ -1593,10 +1597,13 @@ function formatSyncPlan(result) {
     `Read-only: ${yesNo(result.readOnly)}`,
     `Mutates: ${yesNo(result.mutates)}`,
     `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
+    `Current revision: ${result.current_revision || "none"}`,
+    `Planned revision: ${result.planned_revision}`,
     `State revision: ${result.state_revision}`,
     `Previous revision: ${result.previous_revision || "none"}`,
     `Changed: ${yesNo(result.changed)}`,
     `Freshness: ${result.freshness.status}`,
+    `Diff: +${result.added_nodes.length} nodes, ~${result.changed_nodes.length} nodes, -${result.removed_nodes.length} nodes, +${result.added_edges.length} edges, -${result.removed_edges.length} edges`,
     `Nodes: ${result.summary.node_count}`,
     `Edges: ${result.summary.edge_count}`,
     `Would write: ${result.files.index}, ${result.files.status}`,
@@ -1608,9 +1615,12 @@ function formatSyncApply(result) {
   return [
     "Orange sync apply",
     `Applied: ${yesNo(result.applied)}`,
+    `Current revision before apply: ${result.current_revision || "none"}`,
+    `Planned revision: ${result.planned_revision}`,
     `State revision: ${result.state_revision}`,
     `Previous revision: ${result.previous_revision || "none"}`,
     `Changed before apply: ${yesNo(result.changed)}`,
+    `Diff before apply: +${result.added_nodes.length} nodes, ~${result.changed_nodes.length} nodes, -${result.removed_nodes.length} nodes, +${result.added_edges.length} edges, -${result.removed_edges.length} edges`,
     `Wrote: ${result.files.index}`,
     `Wrote: ${result.files.status}`,
     `Nodes: ${result.summary.node_count}`,
@@ -1626,9 +1636,11 @@ function formatSyncStatus(result) {
     `Project: ${result.project.project_name} (${result.project.project_id || "missing"})`,
     `Last sync: ${result.last_sync_at || "none"}`,
     `Applied revision: ${result.state_revision || "none"}`,
-    `Current revision: ${result.current_revision}`,
+    `Current revision: ${result.current_revision || "none"}`,
+    `Planned revision: ${result.planned_revision}`,
     `Changed: ${yesNo(result.changed)}`,
     `Freshness: ${result.freshness.status}`,
+    `Diff: +${result.added_nodes.length} nodes, ~${result.changed_nodes.length} nodes, -${result.removed_nodes.length} nodes, +${result.added_edges.length} edges, -${result.removed_edges.length} edges`,
     `Identity status: ${result.identity_status}`,
     `Identity built from revision: ${result.identity_built_from_revision || "none"}`,
     `Nodes: ${result.summary.node_count}`,
@@ -2093,12 +2105,28 @@ function writeJson(io, value) {
   write(io, JSON.stringify(value, null, 2));
 }
 
-function formatInitJson(cwd, paths, args) {
+function formatInitJson(cwd, paths, args, before = snapshotInitPaths(cwd)) {
   const project = readProjectIdentity(cwd);
+  const forced = Boolean(args.flags.force);
+  const after = snapshotInitPaths(cwd);
+  const createdPaths = Object.entries(after)
+    .filter(([key, exists]) => exists && !before[key])
+    .map(([key]) => initPathLabel(key, cwd, paths))
+    .sort((left, right) => left.localeCompare(right));
+  const preservedPaths = Object.entries(before)
+    .filter(([key, existed]) => existed && after[key] && !forced)
+    .map(([key]) => initPathLabel(key, cwd, paths))
+    .sort((left, right) => left.localeCompare(right));
   return {
     initialized: true,
+    already_initialized: Boolean(before.root && before.config),
     idempotent: true,
-    forced: Boolean(args.flags.force),
+    forced,
+    project_id: project.project_id,
+    project_name: project.project_name,
+    root: path.relative(cwd, paths.root),
+    created_paths: createdPaths,
+    preserved_paths: preservedPaths,
     project,
     files: {
       root: path.relative(cwd, paths.root),
@@ -2110,6 +2138,33 @@ function formatInitJson(cwd, paths, args) {
       route_trace: path.relative(cwd, paths.routeTrace)
     }
   };
+}
+
+function snapshotInitPaths(cwd) {
+  const paths = workspacePaths(cwd);
+  return {
+    root: fs.existsSync(paths.root),
+    config: fs.existsSync(paths.config),
+    orangeGitignore: fs.existsSync(paths.orangeGitignore),
+    activeQuests: fs.existsSync(paths.activeQuests),
+    completedQuests: fs.existsSync(paths.completedQuests),
+    currentCapsule: fs.existsSync(paths.currentCapsule),
+    pendingMemoryDeltaProposals: fs.existsSync(paths.pendingMemoryDeltaProposals),
+    acceptedMemoryDeltaProposals: fs.existsSync(paths.acceptedMemoryDeltaProposals),
+    rejectedMemoryDeltaProposals: fs.existsSync(paths.rejectedMemoryDeltaProposals),
+    graphDecisionNodes: fs.existsSync(paths.graphDecisionNodes),
+    graphConstraintNodes: fs.existsSync(paths.graphConstraintNodes),
+    graphComponentNodes: fs.existsSync(paths.graphComponentNodes),
+    graphRiskNodes: fs.existsSync(paths.graphRiskNodes),
+    graphVerificationNodes: fs.existsSync(paths.graphVerificationNodes),
+    graphIndex: fs.existsSync(paths.graphIndex),
+    graphEdges: fs.existsSync(paths.graphEdges),
+    routeTrace: fs.existsSync(paths.routeTrace)
+  };
+}
+
+function initPathLabel(key, cwd, paths) {
+  return path.relative(cwd, paths[key] || paths.root).split(path.sep).join("/");
 }
 
 /**

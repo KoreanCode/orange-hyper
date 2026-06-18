@@ -7,8 +7,8 @@ import { workspacePaths } from "./paths.js";
 import { nowIso } from "./time.js";
 
 export const STRUCTURE_GRAPH_SCHEMA_VERSION = /** @type {1} */ (1);
-export const STRUCTURE_GRAPH_VERSION = "1.1.0-alpha.4";
-export const STRUCTURE_STATUS_VERSION = "1.1.0-alpha.4";
+export const STRUCTURE_GRAPH_VERSION = "1.1.0-alpha.5";
+export const STRUCTURE_STATUS_VERSION = "1.1.0-alpha.5";
 
 const STRUCTURE_NODE_TYPES = new Set([
   "project",
@@ -76,6 +76,32 @@ const BINARY_EXTENSIONS = new Set([
   ".zip"
 ]);
 
+const ASSET_EXTENSIONS = new Set([
+  ".ai",
+  ".css.map",
+  ".eot",
+  ".fig",
+  ".icns",
+  ".map",
+  ".otf",
+  ".psd",
+  ".sketch",
+  ".svg",
+  ".ttf",
+  ".woff",
+  ".woff2"
+]);
+
+const ASSET_DIR_NAMES = new Set([
+  "asset",
+  "assets",
+  "fonts",
+  "images",
+  "media",
+  "public",
+  "static"
+]);
+
 const SOURCE_EXTENSIONS = new Set([
   ".c",
   ".cc",
@@ -127,8 +153,10 @@ export function buildSyncPlan(cwd = process.cwd(), options = {}) {
     state_revision: stateRevision
   });
   const previousStatus = readStructureStatus(cwd);
-  const previousRevision = previousStatus?.state_revision || null;
+  const previousGraph = readStructureGraph(cwd);
+  const previousRevision = previousStatus?.state_revision || previousGraph?.state_revision || null;
   const freshness = freshnessForRevision(previousRevision, stateRevision);
+  const diff = diffStructureGraphs(previousGraph, graphWithRevision);
   return {
     schema_version: STRUCTURE_GRAPH_SCHEMA_VERSION,
     plan_version: STRUCTURE_GRAPH_VERSION,
@@ -138,8 +166,12 @@ export function buildSyncPlan(cwd = process.cwd(), options = {}) {
     project: formatProject(project),
     state_revision: stateRevision,
     previous_revision: previousRevision,
+    current_revision: previousRevision,
+    planned_revision: stateRevision,
     changed: freshness.changed,
     freshness,
+    diff,
+    ...diffFields(diff),
     files: structureFiles(cwd),
     graph: graphWithRevision,
     summary: summarizeStructureGraph(graphWithRevision),
@@ -178,7 +210,11 @@ export function applySyncPlan(cwd = process.cwd(), options = {}) {
     project: plan.project,
     state_revision: plan.state_revision,
     previous_revision: plan.previous_revision,
+    current_revision: plan.current_revision,
+    planned_revision: plan.planned_revision,
     changed: plan.changed,
+    diff: plan.diff,
+    ...diffFields(plan.diff),
     files: plan.files,
     graph: plan.graph,
     summary: plan.summary,
@@ -197,8 +233,15 @@ export function getSyncStatus(cwd = process.cwd(), options = {}) {
   const status = readStructureStatus(cwd);
   const graph = buildStructureGraph(cwd, project, { generatedAt: null, stateRevision: null });
   const currentRevision = stateRevisionForGraph(graph);
-  const previousRevision = status?.state_revision || null;
+  const graphWithRevision = /** @type {import("./types.d.ts").StructureGraph} */ ({
+    ...graph,
+    generated_at: generatedAt,
+    state_revision: currentRevision
+  });
+  const appliedGraph = readStructureGraph(cwd);
+  const previousRevision = status?.state_revision || appliedGraph?.state_revision || null;
   const freshness = freshnessForRevision(previousRevision, currentRevision);
+  const diff = diffStructureGraphs(appliedGraph, graphWithRevision);
   const identityBuiltFromRevision = status?.identity_built_from_revision || null;
   const identityStatus = identityStatusFor(status, currentRevision);
   return {
@@ -211,9 +254,12 @@ export function getSyncStatus(cwd = process.cwd(), options = {}) {
     files: structureFiles(cwd),
     last_sync_at: status?.last_sync_at || null,
     state_revision: previousRevision,
-    current_revision: currentRevision,
+    current_revision: previousRevision,
+    planned_revision: currentRevision,
     changed: freshness.changed,
     freshness,
+    diff,
+    ...diffFields(diff),
     identity_built_from_revision: identityBuiltFromRevision,
     identity_status: identityStatus,
     identity_warning: status?.identity_warning || null,
@@ -344,6 +390,15 @@ export function validateStructureState(cwd = process.cwd(), context = {}) {
   }
   if (status.identity_status === "stale" || (status.state_revision && status.identity_built_from_revision && status.identity_built_from_revision !== status.state_revision)) {
     addDiagnostic(warnings, diagnostics, "IDENTITY_STRUCTURE_STALE", "identity build is stale relative to structure sync state", "Run `orange identity build --json`; sync apply, remember accept, and graph rebuild-index refresh it automatically when possible.");
+  }
+  if (status.identity_status === "stale" && status.identity_warning) {
+    addDiagnostic(
+      warnings,
+      diagnostics,
+      "IDENTITY_BUILD_FAILED",
+      `identity build failed after structure sync: ${status.identity_warning}`,
+      "Source structure state was preserved. Re-run `orange identity build --json` after fixing the cause."
+    );
   }
   return { errors, warnings, checks, diagnostics };
 }
@@ -571,7 +626,7 @@ function inspectTopLevelDirectories(context) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) {
       continue;
     }
-    if (isIgnoredDirectory(entry.name, entry.name)) {
+    if (isIgnoredDirectory(entry.name, entry.name) || ASSET_DIR_NAMES.has(entry.name.toLowerCase())) {
       context.ignored.push(entry.name);
       continue;
     }
@@ -590,7 +645,7 @@ function inspectTopLevelDirectories(context) {
 function inspectFiles(context) {
   const files = collectFiles(context.cwd, { maxDepth: 7 });
   for (const relPath of files) {
-    const classification = classifyFile(relPath);
+    const classification = classifyFile(relPath, context.cwd);
     if (!classification) {
       continue;
     }
@@ -608,8 +663,9 @@ function inspectFiles(context) {
       type: classification.type,
       role: classification.role,
       path: relPath,
-      label: labelForPath(relPath),
-      source: classification.source
+      label: classification.label || labelForPath(relPath),
+      source: classification.source,
+      metadata: classification.metadata || {}
     });
     const container = ensureContainerForPath(context, relPath, classification.type);
     addEdge(context, container, node.id, "contains", classification.source);
@@ -706,22 +762,25 @@ function ensureContainerForPath(context, relPath, type) {
   if (parts.length === 1) {
     return "project.root";
   }
+  const sourceRoot = sourceRootInfo(parts);
   const top = parts[0];
-  if (type === "component" && isSourceRoot(top)) {
-    const moduleId = context.nodeIdByPath.get(top) || addNode(context, {
+  if ((type === "component" || type === "test" || type === "infrastructure" || type === "datastore") && sourceRoot) {
+    const modulePath = sourceRoot.index > 0 ? parts.slice(0, sourceRoot.index).join("/") : sourceRoot.path;
+    const moduleId = context.nodeIdByPath.get(modulePath) || addNode(context, {
       type: "module",
       role: "source-directory",
-      path: top,
-      label: top,
+      path: modulePath,
+      label: modulePath === sourceRoot.path ? sourceRoot.path : path.posix.basename(modulePath),
       source: "source-root"
     }).id;
-    if (parts.length > 2) {
-      const domainPath = `${top}/${parts[1]}`;
+    if (parts.length > sourceRoot.index + 2) {
+      const domainEnd = Math.max(sourceRoot.index + 2, parts.length - 1);
+      const domainPath = parts.slice(0, domainEnd).join("/");
       const domain = addNode(context, {
         type: "domain",
         role: "source-domain",
         path: domainPath,
-        label: parts[1],
+        label: parts[domainEnd - 1],
         source: "source-directory"
       });
       addEdge(context, moduleId, domain.id, "contains", "source-directory");
@@ -816,7 +875,7 @@ function classifyDirectory(name) {
   return "module";
 }
 
-function classifyFile(relPath) {
+function classifyFile(relPath, cwd) {
   const normalized = normalizeRelativePath(relPath);
   const basename = path.posix.basename(normalized);
   const ext = path.posix.extname(normalized).toLowerCase();
@@ -824,7 +883,7 @@ function classifyFile(relPath) {
     return { type: "infrastructure", role: manifestRole(basename), source: basename };
   }
   if (isTestPath(normalized)) {
-    return { type: "test", role: "test-file", source: "test-file" };
+    return semanticTestClassification(normalized, cwd);
   }
   if (DOCUMENT_EXTENSIONS.has(ext) && (isDocsPath(normalized) || basename.toLowerCase().startsWith("readme"))) {
     return { type: "document", role: "document-file", source: "document-file" };
@@ -832,13 +891,86 @@ function classifyFile(relPath) {
   if (isDatastorePath(normalized) || DATASTORE_EXTENSIONS.has(ext)) {
     return { type: "datastore", role: "datastore-file", source: "datastore-file" };
   }
+  if (SOURCE_EXTENSIONS.has(ext) && isSourcePath(normalized)) {
+    return semanticSourceClassification(normalized, cwd);
+  }
   if (isInfrastructurePath(normalized) || basename === "Dockerfile" || CONFIG_EXTENSIONS.has(ext)) {
     return { type: "infrastructure", role: "config-file", source: "config-file" };
   }
-  if (SOURCE_EXTENSIONS.has(ext) && isSourcePath(normalized)) {
-    return { type: "component", role: "source-file", source: "source-file" };
+  return null;
+}
+
+function semanticTestClassification(relPath, cwd) {
+  const ext = path.posix.extname(relPath).toLowerCase();
+  const framework = ext === ".java" ? "spring" : "node";
+  return {
+    type: "test",
+    role: framework === "spring" ? "Test" : "test",
+    source: "test-file",
+    label: semanticLabelForPath(relPath),
+    metadata: cleanMetadata({ framework })
+  };
+}
+
+function semanticSourceClassification(relPath, cwd) {
+  const ext = path.posix.extname(relPath).toLowerCase();
+  const basename = path.posix.basename(relPath, ext);
+  const lowerPath = relPath.toLowerCase();
+  const lowerBase = basename.toLowerCase();
+  const isJava = ext === ".java";
+  const content = isJava ? safeReadText(path.join(cwd, relPath)).slice(0, 20000) : "";
+
+  if (isJava) {
+    if (/@(?:RestController|Controller)\b/.test(content) || lowerBase.endsWith("controller")) {
+      return sourceRole("component", "Controller", "spring", relPath);
+    }
+    if (/@Service\b/.test(content) || lowerBase.endsWith("service")) {
+      return sourceRole("component", "Service", "spring", relPath);
+    }
+    if (/@Repository\b/.test(content) || lowerBase.endsWith("repository")) {
+      return sourceRole("component", "Repository", "spring", relPath);
+    }
+    if (/@Entity\b/.test(content) || lowerBase.endsWith("entity")) {
+      return sourceRole("datastore", "Entity", "spring", relPath);
+    }
+    if (/@Configuration\b/.test(content) || lowerBase.endsWith("configuration") || lowerBase.endsWith("config")) {
+      return sourceRole("infrastructure", "Configuration", "spring", relPath);
+    }
+    if (["application", "main"].includes(lowerBase)) {
+      return sourceRole("component", "entrypoint", "spring", relPath);
+    }
+    return null;
+  }
+
+  if (/(^|\/)(routes?|router|api)(\/|$)/.test(lowerPath) || ["route", "routes", "router"].includes(lowerBase) || lowerBase.endsWith(".route")) {
+    return sourceRole("component", "route", "node", relPath);
+  }
+  if (/(^|\/)controllers?(\/|$)/.test(lowerPath) || lowerBase.includes("controller")) {
+    return sourceRole("component", "controller", "node", relPath);
+  }
+  if (/(^|\/)services?(\/|$)/.test(lowerPath) || lowerBase.includes("service")) {
+    return sourceRole("component", "service", "node", relPath);
+  }
+  if (/(^|\/)(repositories?|repos?)(\/|$)/.test(lowerPath) || lowerBase.includes("repository") || lowerBase.endsWith("repo")) {
+    return sourceRole("component", "repository", "node", relPath);
+  }
+  if (/(^|\/)config(s)?(\/|$)/.test(lowerPath) || lowerBase.includes("config")) {
+    return sourceRole("infrastructure", "config", "node", relPath);
+  }
+  if (["app", "index", "main", "server"].includes(lowerBase)) {
+    return sourceRole("component", "entrypoint", "node", relPath);
   }
   return null;
+}
+
+function sourceRole(type, role, framework, relPath) {
+  return {
+    type,
+    role,
+    source: `${framework}-${String(role).toLowerCase()}`,
+    label: semanticLabelForPath(relPath),
+    metadata: cleanMetadata({ framework, role })
+  };
 }
 
 function manifestRole(basename) {
@@ -879,6 +1011,17 @@ function structureNodeId(type, role, relPath) {
   return `${type}.${slugId(base || role)}`;
 }
 
+function sourceRootInfo(parts) {
+  const index = parts.findIndex((part) => isSourceRoot(part));
+  if (index === -1) {
+    return null;
+  }
+  return {
+    index,
+    path: parts[index]
+  };
+}
+
 function stateRevisionForGraph(graph) {
   const payload = {
     schema_version: graph.schema_version,
@@ -890,6 +1033,73 @@ function stateRevisionForGraph(graph) {
     edges: graph.edges.map((edge) => stableObject(edge)).sort(compareStable)
   };
   return `struct_${shortHash(JSON.stringify(payload), 24)}`;
+}
+
+function diffStructureGraphs(previousGraph, plannedGraph) {
+  const previousNodes = new Map(asArray(previousGraph?.nodes).map((node) => [node.id, stableObject(node)]));
+  const plannedNodes = new Map(asArray(plannedGraph?.nodes).map((node) => [node.id, stableObject(node)]));
+  const previousEdges = new Map(asArray(previousGraph?.edges).map((edge) => [edge.id, stableObject(edge)]));
+  const plannedEdges = new Map(asArray(plannedGraph?.edges).map((edge) => [edge.id, stableObject(edge)]));
+  const addedNodes = [];
+  const changedNodes = [];
+  const removedNodes = [];
+  const unchangedNodes = [];
+  const addedEdges = [];
+  const removedEdges = [];
+
+  for (const [id, node] of plannedNodes) {
+    if (!previousNodes.has(id)) {
+      addedNodes.push(id);
+      continue;
+    }
+    if (JSON.stringify(previousNodes.get(id)) === JSON.stringify(node)) {
+      unchangedNodes.push(id);
+    } else {
+      changedNodes.push(id);
+    }
+  }
+  for (const id of previousNodes.keys()) {
+    if (!plannedNodes.has(id)) {
+      removedNodes.push(id);
+    }
+  }
+  for (const id of plannedEdges.keys()) {
+    if (!previousEdges.has(id)) {
+      addedEdges.push(id);
+    }
+  }
+  for (const id of previousEdges.keys()) {
+    if (!plannedEdges.has(id)) {
+      removedEdges.push(id);
+    }
+  }
+  return {
+    added_nodes: addedNodes.sort(),
+    changed_nodes: changedNodes.sort(),
+    removed_nodes: removedNodes.sort(),
+    added_edges: addedEdges.sort(),
+    removed_edges: removedEdges.sort(),
+    unchanged_nodes: unchangedNodes.sort(),
+    counts: {
+      added_nodes: addedNodes.length,
+      changed_nodes: changedNodes.length,
+      removed_nodes: removedNodes.length,
+      added_edges: addedEdges.length,
+      removed_edges: removedEdges.length,
+      unchanged_nodes: unchangedNodes.length
+    }
+  };
+}
+
+function diffFields(diff) {
+  return {
+    added_nodes: diff.added_nodes,
+    changed_nodes: diff.changed_nodes,
+    removed_nodes: diff.removed_nodes,
+    added_edges: diff.added_edges,
+    removed_edges: diff.removed_edges,
+    unchanged_nodes: diff.unchanged_nodes
+  };
 }
 
 /**
@@ -928,6 +1138,10 @@ function buildAppliedStatus({ cwd, plan, previousStatus, generatedAt }) {
     project_name: plan.project.project_name,
     state_revision: plan.state_revision,
     previous_revision: plan.previous_revision,
+    current_revision: plan.state_revision,
+    planned_revision: plan.state_revision,
+    diff: plan.diff,
+    ...diffFields(plan.diff),
     changed: /** @type {false} */ (false),
     freshness: {
       status: /** @type {"current"} */ ("current"),
@@ -1040,6 +1254,9 @@ function isIgnoredDirectory(name, relPath) {
   if (IGNORED_DIR_NAMES.has(name)) {
     return true;
   }
+  if (ASSET_DIR_NAMES.has(String(name || "").toLowerCase())) {
+    return true;
+  }
   const parts = normalizeRelativePath(relPath).split("/");
   return parts.some((part) => GENERATED_DIR_NAMES.has(part));
 }
@@ -1048,10 +1265,10 @@ function isGeneratedOrBinaryFile(relPath) {
   const normalized = normalizeRelativePath(relPath);
   const basename = path.posix.basename(normalized);
   const ext = path.posix.extname(normalized).toLowerCase();
-  if (BINARY_EXTENSIONS.has(ext)) {
+  if (BINARY_EXTENSIONS.has(ext) || ASSET_EXTENSIONS.has(ext)) {
     return true;
   }
-  if (/\.min\.(?:js|css)$/.test(basename) || basename.endsWith(".map")) {
+  if (/\.min\.(?:js|css)$/.test(basename) || basename.endsWith(".map") || basename.endsWith("~") || /^\.(?:DS_Store|tmp|temp)/i.test(basename)) {
     return true;
   }
   if (basename.endsWith(".lock") || basename === "package-lock.json" || basename === "yarn.lock" || basename === "pnpm-lock.yaml") {
@@ -1061,7 +1278,7 @@ function isGeneratedOrBinaryFile(relPath) {
 }
 
 function isSourceRoot(value) {
-  return ["app", "apps", "lib", "packages", "services", "src"].includes(value);
+  return ["app", "apps", "lib", "packages", "server", "services", "src"].includes(value);
 }
 
 function isSourcePath(relPath) {
@@ -1096,6 +1313,20 @@ function labelForPath(relPath) {
     return "Project";
   }
   return path.posix.basename(relPath);
+}
+
+function semanticLabelForPath(relPath) {
+  const basename = path.posix.basename(relPath, path.posix.extname(relPath));
+  return basename
+    .replace(/\.(controller|service|repository|repo|route|routes|config|configuration|entity|test|spec)$/i, " $1")
+    .replace(/[-_.]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .trim() || labelForPath(relPath);
+}
+
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function slugId(value) {

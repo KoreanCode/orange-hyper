@@ -303,6 +303,8 @@ output includes the full recipe fields listed in `docs/20_ADAPTER_LAYER.md`.
           "required_input": [],
           "input_requirements": [],
           "expected_json_command_id": "hook.preview",
+          "input_source": "project_state",
+          "condition": "Run when the recipe reaches this step and its required inputs are available.",
           "mutates_project_state": false,
           "requires_user_approval": false
         },
@@ -313,6 +315,8 @@ output includes the full recipe fields listed in `docs/20_ADAPTER_LAYER.md`.
           "required_input": [],
           "input_requirements": [],
           "expected_json_command_id": "hook.runStop",
+          "input_source": "project_state",
+          "condition": "Run when the recipe reaches this step and its required inputs are available.",
           "mutates_project_state": false,
           "requires_user_approval": false
         }
@@ -358,6 +362,8 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
         "required_input": [],
         "input_requirements": [],
         "expected_json_command_id": "doctor.run",
+        "input_source": "project_state",
+        "condition": "Run when the recipe reaches this step and its required inputs are available.",
         "mutates_project_state": false,
         "requires_user_approval": false
       },
@@ -376,6 +382,8 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
           }
         ],
         "expected_json_command_id": "identity.build",
+        "input_source": "user",
+        "condition": "Run when the recipe reaches this step and its required inputs are available.",
         "mutates_project_state": true,
         "requires_user_approval": true
       }
@@ -421,6 +429,67 @@ sequence: `doctor.run`, `graph.list`, `growth.status`, and `identity.build`.
 
 Actual dry-run output also includes a `commands` alias with the same entries as
 `steps` for v0.7 dry-run compatibility.
+
+For `project-sync`, dry-run exposes an explicit user approval gate between plan
+and apply:
+
+```json
+{
+  "recipe_id": "project-sync",
+  "steps": [
+    {
+      "step_index": 1,
+      "command": "orange init --json",
+      "expected_json_command_id": "project.init",
+      "input_source": "user",
+      "condition": "Run first. If the project is already initialized, `project.init` must return a no-op JSON result without overwriting existing config, Quest, Proposal, or Graph state.",
+      "mutates_project_state": true,
+      "requires_user_approval": true
+    },
+    {
+      "step_index": 2,
+      "command": "orange sync plan --json",
+      "expected_json_command_id": "sync.plan",
+      "input_source": "previous_step",
+      "condition": "Run only after `project.init` returns ok; this step is read-only and provides the diff the user should review.",
+      "mutates_project_state": false,
+      "requires_user_approval": false
+    },
+    {
+      "step_index": 3,
+      "command": "user approval: approve generated structure sync",
+      "expected_json_command_id": null,
+      "input_source": "user",
+      "condition": "Required after `sync.plan` and before `sync.apply`; this is an adapter/user gate, not an Orange CLI command.",
+      "mutates_project_state": false,
+      "requires_user_approval": true
+    },
+    {
+      "step_index": 4,
+      "command": "orange sync apply --json",
+      "expected_json_command_id": "sync.apply",
+      "input_source": "previous_step",
+      "condition": "Run only after user approval. It writes generated structure state, preserves accepted memory, and attempts Identity HTML refresh.",
+      "mutates_project_state": true,
+      "requires_user_approval": true
+    },
+    {
+      "step_index": 5,
+      "command": "orange sync status --json",
+      "expected_json_command_id": "sync.status",
+      "input_source": "previous_step",
+      "condition": "Run after `sync.apply` to verify the applied revision, diff, and identity freshness.",
+      "mutates_project_state": false,
+      "requires_user_approval": false
+    }
+  ]
+}
+```
+
+`sync.plan` and `sync.status` include `added_nodes`, `changed_nodes`,
+`removed_nodes`, `added_edges`, `removed_edges`, `unchanged_nodes`,
+`current_revision`, and `planned_revision`. Repeating sync without repository
+structure changes should report zero added/changed/removed nodes and edges.
 
 ### `eval snapshot --json`
 

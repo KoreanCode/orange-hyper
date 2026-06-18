@@ -1,5 +1,47 @@
 # Release Notes
 
+## v1.1.0-alpha.5
+
+AI-first Bootstrap and Sync Quality Hardening.
+
+- Package version is `1.1.0-alpha.5`.
+- README version is `1.1-doc.5`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `orange init --json` now reports `initialized`, `already_initialized`,
+  `project_id`, `project_name`, `root`, `created_paths`, and
+  `preserved_paths` for AI-first bootstrap. Re-running init is a no-op for
+  existing config, Quest, Proposal, accepted Memory, and Graph state.
+- The `project-sync` recipe is fixed to `project.init`, `sync.plan`, explicit
+  user approval, `sync.apply`, and `sync.status`. Each step declares
+  `mutates_project_state`, `requires_user_approval`,
+  `expected_json_command_id`, `input_source`, and `condition`.
+- `sync plan`, `sync apply`, and `sync status` expose diff fields:
+  `added_nodes`, `changed_nodes`, `removed_nodes`, `added_edges`,
+  `removed_edges`, `unchanged_nodes`, `current_revision`, and
+  `planned_revision`. Repeating sync without repository changes reports zero
+  added/changed/removed nodes and edges.
+- Structure Graph scanning now prefers semantic project structure over a flat
+  source-file list. Node and Spring fixtures cover role-based nodes such as
+  route/controller/service/repository/config/test and
+  Controller/Service/Repository/Entity/Configuration/Test.
+- Low-value lock, generated, build output, temporary, simple asset, and
+  indiscriminate source-file nodes are excluded or folded by default.
+- Accepted memory maps onto structure nodes using Quest `scope_paths`, source
+  path, and explicit component/module references. Identity summary reports
+  mapped, unmapped, and orphaned accepted-memory counts.
+- If a structure target disappears, the generated Structure Graph removes the
+  structure node on apply while preserving accepted memory. The Identity graph
+  marks the affected memory as orphaned rather than deleting it.
+- Successful `sync apply`, `remember accept`, and `graph rebuild-index` continue
+  to attempt Identity HTML refresh. If Identity build fails, source state remains
+  intact, `identity_status` becomes `stale`, and `doctor --json` includes an
+  `IDENTITY_BUILD_FAILED` diagnostic with the manual recovery command.
+- Non-goals remain explicit: no React/Sigma renderer migration, Obsidian/JSON
+  Canvas export, full AST/call graph, LLM-generated structure, Memory Proposal
+  auto accept, postinstall mutation, graph editing, or MCP/hook/subagent auto
+  execution.
+
 ## v1.1.0-alpha.4
 
 Project Sync and Identity Graph Foundation.

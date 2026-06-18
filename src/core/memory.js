@@ -287,7 +287,7 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
   }
 
   const accepted = moveProposal(cwd, proposal, "accepted", acceptedAt);
-  const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt, project);
+  const node = buildGraphNodeFromProposal(cwd, accepted, acceptedAt, project, sourceQuest);
   fs.writeFileSync(nodeFilePath, stringifyFrontmatter(node.data, node.body));
   const summary = extractSection(node.body, "Summary") || proposal.data.title || node.data.id;
   const keywords = inferGraphIndexKeywords([
@@ -306,6 +306,8 @@ export function acceptMemoryDelta(cwd, selector, options = {}) {
     title: titleFromCandidate(summary),
     source_proposal: proposal.data.id,
     source_quest: proposal.data.source_quest,
+    source_path: node.data.source_path || "",
+    scope_paths: node.data.scope_paths || [],
     accepted_at: node.data.accepted_at,
     node_type: node.data.node_type,
     candidate_memory: summary,
@@ -849,9 +851,11 @@ function assertSameProject(leftKind, leftId, leftData, rightKind, rightId, right
   throw new Error(`${leftKind} ${leftId || "(unknown)"} project_id ${leftData.project_id} does not match ${rightKind} ${rightId || "(unknown)"} project_id ${rightData.project_id}`);
 }
 
-function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
+function buildGraphNodeFromProposal(cwd, proposal, createdAt, project, sourceQuest = null) {
   const nodeId = graphNodeIdForProposal(proposal);
   const sourceProposalHash = hashMemoryDeltaProposalSource(proposal);
+  const scopePaths = asArray(sourceQuest?.data?.scope_paths).map((item) => String(item)).filter(Boolean);
+  const sourcePath = scopePaths.length === 1 ? scopePaths[0] : "";
   const data = {
     schema_version: MEMORY_GRAPH_NODE_SCHEMA_VERSION,
     ...originMetadata(),
@@ -868,6 +872,8 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
     origin: "memory-delta-proposal",
     source_proposal: proposal.data.id,
     source_quest: proposal.data.source_quest,
+    source_path: sourcePath,
+    scope_paths: scopePaths,
     source_proposal_hash: sourceProposalHash,
     provenance: {
       ...originMetadata(),
@@ -876,6 +882,8 @@ function buildGraphNodeFromProposal(cwd, proposal, createdAt, project) {
       proposal_id: proposal.data.id,
       source_proposal: proposal.data.id,
       source_quest: proposal.data.source_quest,
+      source_path: sourcePath,
+      scope_paths: scopePaths,
       accepted_at: createdAt,
       node_type: proposal.data.node_type,
       origin: "memory-delta-proposal",

@@ -201,20 +201,23 @@ Safety notes:
 Use this when the user asks an AI to set up Orange Hyper for an existing repo
 and sync the current project structure.
 
-Command sequence:
+Step sequence:
 
-| Command | JSON command id | Mutates state | User approval |
-| --- | --- | --- | --- |
-| `orange init --json` | `project.init` | yes | yes |
-| `orange sync plan --json` | `sync.plan` | no | no |
-| `orange sync apply --json` | `sync.apply` | yes | yes |
-| `orange sync status --json` | `sync.status` | no | no |
+| Step | Command or gate | JSON command id | Input source | Condition | Mutates state | User approval |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `orange init --json` | `project.init` | `user` | Run first. Already-initialized projects return a no-op JSON result and preserve existing config, Quest, Proposal, and Graph state. | yes | yes |
+| 2 | `orange sync plan --json` | `sync.plan` | `previous_step` | Run after `project.init`; read the diff fields before writing. | no | no |
+| 3 | user approval: approve generated structure sync | none | `user` | Required after plan and before apply. This is not an Orange CLI command. | no | yes |
+| 4 | `orange sync apply --json` | `sync.apply` | `previous_step` | Run only after approval; writes generated structure state and refreshes Identity HTML. | yes | yes |
+| 5 | `orange sync status --json` | `sync.status` | `previous_step` | Verify applied revision, diff, and identity freshness. | no | no |
 
 Safety notes:
 
 - `init` is idempotent and must run through `orange init --json`, not direct
   file writes.
-- `sync plan` is read-only and writes nothing.
+- `sync plan` is read-only and writes nothing. It exposes `added_nodes`,
+  `changed_nodes`, `removed_nodes`, `added_edges`, `removed_edges`,
+  `unchanged_nodes`, `current_revision`, and `planned_revision`.
 - `sync apply` writes only generated structure state and refreshes Identity HTML.
 - Sync must not create Quest, Proposal, accepted Memory, hooks, MCP config, or
   graph edits.

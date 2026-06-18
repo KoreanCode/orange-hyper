@@ -271,7 +271,9 @@ const ADAPTER_RECIPES = [
         ],
         expected_json_command_id: "project.init",
         mutates_project_state: true,
-        requires_user_approval: true
+        requires_user_approval: true,
+        input_source: INPUT_SOURCE.USER,
+        condition: "Run first. If the project is already initialized, `project.init` must return a no-op JSON result without overwriting existing config, Quest, Proposal, or Graph state."
       }),
       step({
         command: "orange sync plan --json",
@@ -279,18 +281,41 @@ const ADAPTER_RECIPES = [
         required_input: [],
         expected_json_command_id: "sync.plan",
         mutates_project_state: false,
-        requires_user_approval: false
+        requires_user_approval: false,
+        input_source: INPUT_SOURCE.PREVIOUS_STEP,
+        condition: "Run only after `project.init` returns ok; this step is read-only and provides the diff the user should review."
+      }),
+      step({
+        command: "user approval: approve generated structure sync",
+        why: "Let the user approve the planned generated Structure Graph changes before any write.",
+        required_input: ["explicit_sync_approval"],
+        input_requirements: [
+          input({ name: "explicit_sync_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+        ],
+        expected_json_command_id: null,
+        mutates_project_state: false,
+        requires_user_approval: true,
+        input_source: INPUT_SOURCE.USER,
+        condition: "Required after `sync.plan` and before `sync.apply`; this is an adapter/user gate, not an Orange CLI command."
       }),
       step({
         command: "orange sync apply --json",
         why: "Write only generated structure state and refresh Identity HTML from the new revision.",
         required_input: ["explicit_sync_approval"],
         input_requirements: [
-          input({ name: "explicit_sync_approval", placeholder: null, input_source: INPUT_SOURCE.USER })
+          input({
+            name: "explicit_sync_approval",
+            placeholder: null,
+            input_source: INPUT_SOURCE.PREVIOUS_STEP,
+            source_step_index: 3,
+            source_output: "approved"
+          })
         ],
         expected_json_command_id: "sync.apply",
         mutates_project_state: true,
-        requires_user_approval: true
+        requires_user_approval: true,
+        input_source: INPUT_SOURCE.PREVIOUS_STEP,
+        condition: "Run only after user approval. It writes generated structure state, preserves accepted memory, and attempts Identity HTML refresh."
       }),
       step({
         command: "orange sync status --json",
@@ -298,12 +323,14 @@ const ADAPTER_RECIPES = [
         required_input: [],
         expected_json_command_id: "sync.status",
         mutates_project_state: false,
-        requires_user_approval: false
+        requires_user_approval: false,
+        input_source: INPUT_SOURCE.PREVIOUS_STEP,
+        condition: "Run after `sync.apply` to verify the applied revision, diff, and identity freshness."
       })
     ],
     required_inputs: [
       "explicit_project_init_approval before init",
-      "explicit_sync_approval before apply"
+      "explicit_sync_approval between plan and apply"
     ],
     outputs: [
       ".orange-hyper/",
@@ -505,7 +532,11 @@ export function dryRunAdapterRecipe(id) {
 }
 
 function step(value) {
-  return value;
+  return {
+    input_source: inferStepInputSource(value),
+    condition: "Run when the recipe reaches this step and its required inputs are available.",
+    ...value
+  };
 }
 
 function input(value) {
@@ -573,6 +604,20 @@ function collectMissingInputs(requiredInputs) {
     .map((requirement) => ({ ...requirement }));
 }
 
+function inferStepInputSource(value) {
+  const sources = (value.input_requirements || []).map((requirement) => requirement.input_source).filter(Boolean);
+  if (sources.includes(INPUT_SOURCE.USER)) {
+    return INPUT_SOURCE.USER;
+  }
+  if (sources.includes(INPUT_SOURCE.PREVIOUS_STEP)) {
+    return INPUT_SOURCE.PREVIOUS_STEP;
+  }
+  if (sources.includes(INPUT_SOURCE.PROJECT_STATE)) {
+    return INPUT_SOURCE.PROJECT_STATE;
+  }
+  return INPUT_SOURCE.PROJECT_STATE;
+}
+
 function buildNextUserDecision(recipeId, missingInputs) {
   if (recipeId === "quest-capture") {
     return "Ask whether to create a Quest, then collect request, title, and layer before running step 1.";
@@ -584,7 +629,7 @@ function buildNextUserDecision(recipeId, missingInputs) {
     return "Run read-only steps 1-3 if status is requested; ask before step 4 because identity build mutates generated state.";
   }
   if (recipeId === "project-sync") {
-    return "Run the read-only sync plan first; run sync apply only when the user has asked to sync generated structure state.";
+    return "Run project.init and the read-only sync plan first; ask for explicit approval at step 3 before sync apply writes generated structure state.";
   }
   if (recipeId === "hook-check") {
     return "No extra approval is required for the read-only hook checks; do not add --write-report unless the user asks for a local report.";

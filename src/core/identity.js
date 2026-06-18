@@ -25,7 +25,7 @@ const IDENTITY_STATUS_MESSAGES = [
   "Accepted memory nodes are candidate project memory."
 ];
 
-const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.4";
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.5";
 
 const NODE_TYPE_COLORS = {
   decision: "#ffb454",
@@ -69,11 +69,13 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
   const acceptedMemoryNodes = graph.nodes.length;
   const proposalNodeTypes = topProposalNodeTypes(cwd);
   const graphPreview = buildGraphPreview(graph.nodes);
-  const memoryGraph = buildMemoryGraph(project, graphPreview, paths);
-  const sourceGraph = memoryGraph;
+  let memoryGraph = buildMemoryGraph(project, graphPreview, paths);
   const structureState = readIdentityStructureState(cwd, project);
   const structureGraph = structureState.graph;
-  const identityGraph = buildIdentityGraph(project, structureGraph, memoryGraph, quests);
+  const memoryMapping = buildMemoryMapping(cwd, memoryGraph.nodes, structureGraph, quests);
+  memoryGraph = applyMemoryMapping(memoryGraph, memoryMapping);
+  const sourceGraph = memoryGraph;
+  const identityGraph = buildIdentityGraph(project, structureGraph, memoryGraph);
   const visualGraph = identityGraph;
   const growthSuggestion = buildGrowthSuggestionResult(cwd);
   const growthPreview = buildGrowthPreview(growthSuggestion.status, growthSuggestion);
@@ -108,6 +110,8 @@ export function buildIdentityPlaceholder(cwd = process.cwd(), options = {}) {
     identityGraph,
     sourceGraph,
     visualGraph,
+    memoryMapping: memoryMapping.summary,
+    memory_mapping: memoryMapping.summary,
     growthPreview,
     graphWarnings: graph.warnings,
     state_revision: stateRevision,
@@ -168,9 +172,11 @@ function buildGraphPreview(nodes) {
     node_id: node.id,
     node_type: node.node_type,
     title: node.title,
-    source_quest: node.source_quest,
-    source_proposal: node.source_proposal,
-    accepted_at: node.accepted_at
+      source_quest: node.source_quest,
+      source_proposal: node.source_proposal,
+      source_path: node.source_path || "",
+      scope_paths: Array.isArray(node.scope_paths) ? node.scope_paths : [],
+      accepted_at: node.accepted_at
   }));
   const edges = buildGraphPreviewEdges(nodes);
   const degreeByNode = degreeByNodeId(nodes, edges);
@@ -197,6 +203,8 @@ function buildGraphPreview(nodes) {
       title: node.title,
       source_quest: node.source_quest,
       source_proposal: node.source_proposal,
+      source_path: node.source_path || "",
+      scope_paths: Array.isArray(node.scope_paths) ? node.scope_paths : [],
       accepted_at: node.accepted_at,
       candidate_memory: node.candidate_memory,
       candidate_memory_summary: node.candidate_memory || node.summary || node.title || node.id,
@@ -245,7 +253,7 @@ function readIdentityStructureState(cwd, project) {
   return { graph, status };
 }
 
-function buildIdentityGraph(project, structureGraph, memoryGraph, quests) {
+function buildIdentityGraph(project, structureGraph, memoryGraph) {
   const nodes = [];
   const nodeById = new Map();
   const edges = [];
@@ -261,13 +269,21 @@ function buildIdentityGraph(project, structureGraph, memoryGraph, quests) {
     addEdge(identityGraphEdge(structureEdge.from, structureEdge.to, structureEdge.relation, 0.82, distanceForRelation(structureEdge.relation), structureEdge.source || "structure"));
   }
 
-  const questById = new Map(quests.map((quest) => [quest.data.id, quest]));
   let unmappedNodeAdded = false;
+  let orphanedNodeAdded = false;
   for (const memoryNode of memoryGraph.nodes) {
     addNode(identityMemoryNode(memoryNode, memoryGraph));
-    const target = matchStructureNodeForMemory(memoryNode, structureGraph, questById.get(memoryNode.source_quest));
+    const targetId = memoryNode.mapped_structure_node_id || null;
+    const target = targetId ? (structureGraph.nodes || []).find((node) => node.id === targetId) : null;
     if (target) {
       addEdge(identityGraphEdge(memoryNode.id, target.id, "documents", 0.76, 150, "memory-scope"));
+    } else if (memoryNode.mapping_status === "orphaned") {
+      if (!orphanedNodeAdded) {
+        addNode(orphanedMemoryNode());
+        addEdge(identityGraphEdge("project.root", "orphaned-memory", "contains", 0.62, 240, "memory-scope"));
+        orphanedNodeAdded = true;
+      }
+      addEdge(identityGraphEdge("orphaned-memory", memoryNode.id, "contains", 0.64, 130, "memory-scope"));
     } else {
       if (!unmappedNodeAdded) {
         addNode(unmappedMemoryNode());
@@ -492,6 +508,24 @@ function unmappedMemoryNode() {
   };
 }
 
+function orphanedMemoryNode() {
+  return {
+    id: "orphaned-memory",
+    type: "memoryCluster",
+    visualType: "memoryCluster",
+    graphKind: "memory-cluster",
+    label: "Orphaned Memory",
+    color: VISUAL_NODE_COLORS.memoryCluster,
+    displayOnly: true,
+    derived: true,
+    readOnly: true,
+    sourceMemoryIds: [],
+    importance: 14,
+    degree: 0,
+    layoutRole: "orphaned-memory"
+  };
+}
+
 function identityGraphEdge(from, to, relation, strength, distance, source) {
   return {
     id: `identity-edge-${stableHash(`${from}|${to}|${relation}|${source || ""}`)}`,
@@ -507,22 +541,70 @@ function identityGraphEdge(from, to, relation, strength, distance, source) {
   };
 }
 
-function matchStructureNodeForMemory(memoryNode, structureGraph, quest) {
+function buildMemoryMapping(cwd, memoryNodes, structureGraph, quests) {
+  const questById = new Map(quests.map((quest) => [quest.data.id, quest]));
+  const entries = memoryNodes.map((node) =>
+    resolveMemoryMapping(cwd, node, structureGraph, questById.get(node.source_quest))
+  );
+  const counts = entries.reduce((acc, entry) => {
+    acc[entry.status] = (acc[entry.status] || 0) + 1;
+    return acc;
+  }, { mapped: 0, unmapped: 0, orphaned: 0 });
+  const byNodeId = new Map(entries.map((entry) => [entry.memory_node_id, entry]));
+  return {
+    byNodeId,
+    summary: {
+      total: entries.length,
+      mapped: counts.mapped || 0,
+      unmapped: counts.unmapped || 0,
+      orphaned: counts.orphaned || 0,
+      entries
+    }
+  };
+}
+
+function applyMemoryMapping(memoryGraph, memoryMapping) {
+  return {
+    ...memoryGraph,
+    memory_mapping: memoryMapping.summary,
+    nodes: memoryGraph.nodes.map((node) => {
+      const entry = memoryMapping.byNodeId.get(node.id);
+      return {
+        ...node,
+        mapping_status: entry?.status || "unmapped",
+        mapped_structure_node_id: entry?.structure_node_id || null,
+        mapped_structure_node_path: entry?.structure_node_path || null,
+        mapping_reason: entry?.reason || "no mapping evaluated",
+        mapping_candidates: entry?.candidates || []
+      };
+    })
+  };
+}
+
+function resolveMemoryMapping(cwd, memoryNode, structureGraph, quest) {
   const nodes = structureGraph.nodes || [];
   const candidates = new Set();
-  for (const scopePath of quest?.data?.scope_paths || []) {
+  for (const scopePath of [
+    ...(quest?.data?.scope_paths || []),
+    ...(Array.isArray(memoryNode.scope_paths) ? memoryNode.scope_paths : []),
+    memoryNode.source_path,
+    memoryNode.provenance?.source_path
+  ].filter(Boolean)) {
     const normalized = normalizeGraphPath(scopePath);
     if (normalized) {
       candidates.add(normalized);
     }
   }
-  if (memoryNode.source_path) {
-    candidates.add(normalizeGraphPath(memoryNode.source_path));
-  }
   for (const candidate of candidates) {
     const exact = nodes.find((node) => normalizeGraphPath(node.path) === candidate);
     if (exact) {
-      return exact;
+      return mappingEntry(memoryNode, "mapped", exact, Array.from(candidates), "scope_path_exact");
+    }
+  }
+  for (const candidate of candidates) {
+    const existsOnDisk = candidate === "." || fs.existsSync(path.join(cwd, candidate));
+    if (!existsOnDisk) {
+      continue;
     }
     const nested = nodes
       .filter((node) => {
@@ -531,10 +613,79 @@ function matchStructureNodeForMemory(memoryNode, structureGraph, quest) {
       })
       .sort((left, right) => normalizeGraphPath(right.path).length - normalizeGraphPath(left.path).length)[0];
     if (nested) {
-      return nested;
+      return mappingEntry(memoryNode, "mapped", nested, Array.from(candidates), "scope_path_parent");
     }
   }
-  return null;
+  if (candidates.size) {
+    return mappingEntry(memoryNode, "orphaned", null, Array.from(candidates), "scope_path_missing_from_structure");
+  }
+  const referenced = matchStructureNodeByText(memoryNode, nodes);
+  if (referenced) {
+    return mappingEntry(memoryNode, "mapped", referenced, [], "explicit_component_or_module_reference");
+  }
+  return mappingEntry(memoryNode, "unmapped", null, [], "no_scope_path_or_explicit_reference");
+}
+
+function mappingEntry(memoryNode, status, structureNode, candidates, reason) {
+  return {
+    memory_node_id: memoryNode.id,
+    status,
+    structure_node_id: structureNode?.id || null,
+    structure_node_path: structureNode?.path || null,
+    candidates: candidates.sort((left, right) => left.localeCompare(right)),
+    reason
+  };
+}
+
+function matchStructureNodeByText(memoryNode, nodes) {
+  const text = [
+    memoryNode.title,
+    memoryNode.label,
+    memoryNode.candidate_memory,
+    memoryNode.summary,
+    ...(Array.isArray(memoryNode.tags) ? memoryNode.tags : []),
+    ...(Array.isArray(memoryNode.keywords) ? memoryNode.keywords : [])
+  ].join(" ").toLowerCase();
+  if (!text.trim()) {
+    return null;
+  }
+  return nodes
+    .filter((node) => node.id !== "project.root")
+    .map((node) => ({ node, score: textReferenceScore(text, node) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) =>
+      right.score - left.score ||
+      typeRank(left.node.type) - typeRank(right.node.type) ||
+      String(left.node.id).localeCompare(String(right.node.id))
+    )[0]?.node || null;
+}
+
+function textReferenceScore(text, node) {
+  const labels = Array.from(new Set([
+    node.label,
+    node.role,
+    node.path,
+    path.posix.basename(String(node.path || ""), path.posix.extname(String(node.path || "")))
+  ].filter(Boolean).map((value) => normalizeReferenceText(value))));
+  let score = 0;
+  for (const label of labels) {
+    if (label.length < 4) {
+      continue;
+    }
+    if (text.includes(label)) {
+      score += label.length + (node.type === "component" ? 12 : 0) + (node.type === "module" ? 6 : 0);
+    }
+  }
+  return score;
+}
+
+function normalizeReferenceText(value) {
+  return String(value || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[\/_.-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .trim();
 }
 
 function normalizeGraphPath(value) {
@@ -785,6 +936,8 @@ ${acceptedMemoryRows}
     identityGraph: model.identityGraph,
     sourceGraph,
     visualGraph,
+    memoryMapping: model.memoryMapping || model.memory_mapping || null,
+    memory_mapping: model.memory_mapping || model.memoryMapping || null,
     growthPreview: model.growthPreview,
     state_revision: model.state_revision || null,
     identity_built_from_revision: model.identity_built_from_revision || null,
@@ -801,6 +954,8 @@ ${acceptedMemoryRows}
     identityGraph: model.identityGraph,
     sourceGraph,
     visualGraph,
+    memoryMapping: model.memoryMapping,
+    memory_mapping: model.memory_mapping,
     graphPreview: model.graphPreview,
     growthPreview: model.growthPreview,
     graphWarnings: model.graphWarnings
