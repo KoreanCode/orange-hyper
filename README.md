@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.6`
+- README version: `1.1-doc.7`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,17 +82,36 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 
 ## 설치
 
+기본 설치는 프로젝트에 npm 패키지를 추가하는 방식이 아니다. Orange Hyper는 사용자의 프로젝트가 Node/npm 프로젝트로 오염되지 않도록 standalone binary를 우선한다.
+
+설치 우선순위:
+
+1. Standalone binary: GitHub Release에서 플랫폼별 `orange` 실행 파일을 받아 user-local 위치에 설치한다.
+2. Future package manager: Homebrew, Scoop 같은 사용자 범위 패키지 매니저는 추후 채널이다.
+3. `npx` exact-version fallback: 임시 확인이 필요할 때만 `orange-hyper@1.1.0-alpha.7`처럼 정확한 버전이나 `@alpha`를 지정한다.
+4. Project-local npm install: 사용자가 명시적으로 요청한 경우에만 쓰는 advanced/manual option이다.
+
+macOS/Linux user-local 설치:
+
 ```bash
-npm install -D orange-hyper
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.sh | sh
 ```
 
-설치 없이 패키지가 보이는지 짧게 확인하려면 다음 명령만 사용하면 됩니다.
+Windows PowerShell user-local 설치:
 
-```bash
-npx -y --package orange-hyper@latest orange --help
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.7"
 ```
 
-이 명령은 계속 외워서 쓰는 주 UX가 아닙니다. 설치 이후에는 AI에게 Orange Hyper를 사용해 달라고 말하고, AI/agent/adapter가 필요한 순간 `orange ... --json` kernel command를 호출하는 흐름으로 이어집니다.
+설치기는 checksum을 검증하고 실패하면 설치를 중단한다. `npm`, `package.json`, `package-lock.json`, `node_modules`를 사용하지 않으며 현재 프로젝트 파일을 수정하지 않는다.
+
+fallback으로만 패키지가 보이는지 짧게 확인하려면 exact version을 지정한다.
+
+```bash
+npx -y --package orange-hyper@1.1.0-alpha.7 orange --help
+```
+
+이 명령은 기본 설치가 아니다. `npm init -y`나 `npm install -D orange-hyper`는 AI가 자동 실행하면 안 된다. npm package는 제거하지 않고 developer/fallback 채널로 유지한다.
 
 ## AI에게 처음 말할 프롬프트
 
@@ -101,7 +120,15 @@ npx -y --package orange-hyper@latest orange --help
 ```text
 이 프로젝트에서 Orange Hyper를 사용해줘.
 
-설치 직후라면 먼저 `orange init --json`으로 idempotent bootstrap을 해줘.
+먼저 PATH에서 `orange --version`과 `orange env --json`이 실행되는지 확인해줘.
+
+PATH에 `orange`가 없으면 standalone binary 설치를 제안하고, 내가 승인한 뒤 user-local 위치에 설치해줘.
+
+`npm init -y`를 실행하지 마. `npm install -D orange-hyper`를 기본 설치로 사용하지 마. 프로젝트 `package.json`, `package-lock.json`, `node_modules`를 만들거나 수정하지 마.
+
+npm fallback은 내가 명시적으로 요청한 경우에만 사용하고, 그때도 `orange-hyper@alpha` 또는 `orange-hyper@1.1.0-alpha.7`처럼 tag나 정확한 버전을 지정해줘.
+
+설치 또는 PATH 확인 뒤에는 `orange init --json`으로 idempotent bootstrap을 해줘.
 
 그 다음 `orange sync plan --json`으로 diff를 보여주고, 내가 승인하면 `orange sync apply --json`과 `orange sync status --json`으로 Structure Graph와 Identity HTML을 갱신해줘.
 
@@ -198,6 +225,7 @@ Identity HTML은 Orange Hyper Identity의 primary product surface입니다. v1.1
 - [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
 - [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
 - [Project Sync](docs/24_PROJECT_SYNC.md)
+- [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference
@@ -223,6 +251,7 @@ Identity HTML은 Orange Hyper Identity의 primary product surface입니다. v1.1
 - `adapter`
 - `eval`
 - `sync`
+- `env`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->

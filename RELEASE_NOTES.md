@@ -1,5 +1,38 @@
 # Release Notes
 
+## v1.1.0-alpha.7
+
+Standalone Distribution Foundation.
+
+- Package version is `1.1.0-alpha.7`.
+- README version is `1.1-doc.7`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Added the standalone distribution foundation: `npm run build:standalone`
+  bundles `bin/orange.js` and `src/**` into `dist/standalone/orange.cjs`.
+- Added Node 24 SEA build support for platform binaries:
+  `orange-windows-x64.exe`, `orange-macos-arm64`, `orange-linux-x64`, and
+  experimental `orange-macos-x64`.
+- Added checksum-verifying user-local installers: `install.sh` installs to
+  `~/.local/bin/orange`, and `install.ps1` installs to
+  `$env:LOCALAPPDATA\OrangeHyper\bin\orange.exe`.
+- Added `orange --version` and `orange env --json` with command id
+  `environment.show`. The env output reports version, distribution,
+  executable, platform, arch, embedded Node runtime state, project
+  initialization, and project root.
+- Added standalone release manifest generation for `checksums.txt` and
+  `release-manifest.json`.
+- Added a dedicated standalone GitHub Release workflow separate from npm
+  Trusted Publishing.
+- Updated README and manual fallback docs so AI checks PATH first, proposes
+  standalone binary installation if needed, does not run `npm init -y`, does not
+  default to `npm install -D orange-hyper`, and never creates project
+  `package.json`, `package-lock.json`, or `node_modules` as part of Orange
+  setup.
+- Added standalone distribution tests for the CommonJS bundle, release manifest,
+  installer idempotence, checksum mismatch blocking, and fresh non-Node project
+  smoke with no npm project files created.
+
 ## v1.1.0-alpha.6
 
 Identity Graph Renderer and Responsive Hardening.

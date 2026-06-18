@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.6`
+- README version: `1.1-doc.7`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -82,17 +82,36 @@ The goal is not a giant automation system. The user keeps asking lightly. The pr
 
 ## Installation
 
+The default installation path is not a project-local npm dependency. Orange Hyper prefers a standalone binary so a non-Node project does not gain `package.json`, `package-lock.json`, or `node_modules` just to use Orange.
+
+Installation priority:
+
+1. Standalone binary: install the platform-specific `orange` executable from GitHub Releases into a user-local directory.
+2. Future package managers: Homebrew, Scoop, and similar user-scope package managers are future channels.
+3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-alpha.7` or `@alpha`.
+4. Project-local npm install: an advanced/manual option only when the user explicitly asks for it.
+
+macOS/Linux user-local install:
+
 ```bash
-npm install -D orange-hyper
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.sh | sh
 ```
 
-To briefly check the package without installing it, use only this command:
+Windows PowerShell user-local install:
 
-```bash
-npx -y --package orange-hyper@latest orange --help
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.7"
 ```
 
-This command is not the primary UX you should keep using by hand. After installation, tell your AI to use Orange Hyper, and let the AI, agent, or adapter call `orange ... --json` kernel commands when they are needed.
+The installer verifies SHA-256 checksums and stops on mismatch. It does not use npm, create package files, create `node_modules`, or modify the current project.
+
+For fallback package visibility checks, pin the exact version:
+
+```bash
+npx -y --package orange-hyper@1.1.0-alpha.7 orange --help
+```
+
+This is not the default installation path. AI should not automatically run `npm init -y` or `npm install -D orange-hyper`. The npm package remains available as a developer/fallback channel.
 
 ## First Prompt To Give Your AI
 
@@ -100,6 +119,18 @@ Paste this into your AI when you want to use Orange Hyper in a new or existing r
 
 ```text
 Use Orange Hyper for this project.
+
+First, check whether `orange --version` and `orange env --json` work from PATH.
+
+If `orange` is missing, suggest standalone binary installation and install it into a user-local location only after I approve.
+
+Do not run `npm init -y`. Do not use `npm install -D orange-hyper` as the default install path. Do not create or modify project `package.json`, `package-lock.json`, or `node_modules`.
+
+Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@alpha` or `orange-hyper@1.1.0-alpha.7`.
+
+After install or PATH confirmation, run `orange init --json` for idempotent bootstrap.
+
+Then run `orange sync plan --json` and show me the diff. If I approve, run `orange sync apply --json` and `orange sync status --json` to refresh generated Structure Graph and Identity HTML.
 
 I will not manage CLI commands directly. When needed, call orange ... --json kernel commands yourself.
 
@@ -186,6 +217,8 @@ Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboa
 - [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
 - [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
 - [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
+- [Project Sync](docs/24_PROJECT_SYNC.md)
+- [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference
@@ -211,6 +244,7 @@ The list below is not a long usage guide. It is the top-level kernel surface for
 - `adapter`
 - `eval`
 - `sync`
+- `env`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->

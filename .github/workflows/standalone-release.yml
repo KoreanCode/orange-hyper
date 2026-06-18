@@ -1,0 +1,116 @@
+name: Standalone Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            arch: x64
+            runner: windows-latest
+            filename: orange-windows-x64.exe
+          - platform: macos
+            arch: arm64
+            runner: macos-14
+            filename: orange-macos-arm64
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+            filename: orange-linux-x64
+          - platform: macos
+            arch: x64
+            runner: macos-13
+            filename: orange-macos-x64
+            experimental: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check README sync
+        run: npm run check:readme-sync
+
+      - name: Bundle standalone CLI
+        run: npm run build:standalone
+
+      - name: Build SEA binary
+        run: npm run build:sea -- --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+
+      - name: Verify standalone binary
+        run: node scripts/smoke-standalone-binary.js --binary dist/standalone/${{ matrix.filename }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: standalone-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/standalone/${{ matrix.filename }}
+          if-no-files-found: error
+
+  release:
+    name: Publish standalone assets
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Download binaries
+        uses: actions/download-artifact@v6
+        with:
+          path: dist/release
+          merge-multiple: true
+
+      - name: Add installers
+        run: |
+          cp install.sh dist/release/install.sh
+          cp install.ps1 dist/release/install.ps1
+
+      - name: Generate checksums and manifest
+        run: node scripts/build-release-manifest.js --assets-dir dist/release --version "${GITHUB_REF_NAME#v}" --release-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+
+      - name: Create release if needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "Orange Hyper $GITHUB_REF_NAME standalone assets."
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/release/* --clobber

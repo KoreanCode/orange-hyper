@@ -4,6 +4,7 @@ import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../c
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, readProjectIdentity, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
+import { buildEnvironmentInfo } from "../core/environment.js";
 import { buildEvalExplainResult, buildEvalReport, buildEvalSnapshot } from "../core/eval.js";
 import { listGraphNodes, rebuildGraphIndex, searchGraphNodes, showGraphNode } from "../core/graph.js";
 import { buildGrowthExplainResult, buildGrowthStatus, buildGrowthSuggestionResult } from "../core/growth.js";
@@ -19,7 +20,7 @@ import {
   reviseMemoryDeltaProposal,
   validateMemoryDeltaProposalBySelector
 } from "../core/memory.js";
-import { originMetadata } from "../core/origin.js";
+import { ORANGE_HYPER_VERSION, originMetadata } from "../core/origin.js";
 import { workspacePaths } from "../core/paths.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
@@ -121,6 +122,7 @@ const COMMAND_IDS = {
   },
   capsule: "capsule.build",
   doctor: "doctor.run",
+  env: "environment.show",
   eval: {
     snapshot: "eval.snapshot",
     report: "eval.report",
@@ -182,6 +184,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     stderr: process.stderr
   };
   const [command, ...rest] = argv;
+
+  if (command === "--version" || command === "-v" || command === "version") {
+    write(io, ORANGE_HYPER_VERSION);
+    return;
+  }
 
   if (!command || command === "help" || command === "--help" || command === "-h") {
     write(io, usage());
@@ -248,6 +255,19 @@ export async function main(argv = process.argv.slice(2), env = {}) {
     if (!result.ok) {
       process.exitCode = EXIT_CODES.validation;
     }
+    return;
+  }
+
+  if (command === "env") {
+    const args = parseArgs(rest);
+    assertOnlyEnvFlags(args.flags);
+    assertNoEnvPositionals(args.positionals);
+    const result = buildEnvironmentInfo(cwd);
+    if (args.flags.json) {
+      writeJson(io, jsonOk(COMMAND_IDS.env, result));
+      return;
+    }
+    write(io, formatEnvironment(result));
     return;
   }
 
@@ -1050,6 +1070,20 @@ function assertOnlySyncFlags(flags) {
 function assertNoSyncPositionals(positionals) {
   if (positionals.length) {
     throw new Error(`Unexpected sync argument: ${positionals[0]}`);
+  }
+}
+
+function assertOnlyEnvFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (key !== "json") {
+      throw new Error(`Unsupported env flag: --${key}`);
+    }
+  }
+}
+
+function assertNoEnvPositionals(positionals) {
+  if (positionals.length) {
+    throw new Error(`Unexpected env argument: ${positionals[0]}`);
   }
 }
 
@@ -1903,6 +1937,20 @@ function formatDoctor(result) {
   return lines.join("\n");
 }
 
+function formatEnvironment(result) {
+  return [
+    "Orange environment",
+    `Version: ${result.version}`,
+    `Distribution: ${result.distribution}`,
+    `Executable: ${result.executable}`,
+    `Platform: ${result.platform}`,
+    `Arch: ${result.arch}`,
+    `Embedded Node runtime: ${yesNo(result.node_runtime_embedded)}`,
+    `Project initialized: ${yesNo(result.project_initialized)}`,
+    `Project root: ${result.project_root || "none"}`
+  ].join("\n");
+}
+
 function formatMemoryProposalValidation(proposal, validation) {
   const lines = [
     validation.valid
@@ -2084,6 +2132,9 @@ function defaultErrorHint(command = "command") {
   }
   if (command.startsWith("doctor.")) {
     return "Run `orange doctor` without --json to read each diagnostic; repair flags should be explicit user actions.";
+  }
+  if (command.startsWith("environment.")) {
+    return "Run `orange env --json` without extra arguments to inspect the Orange executable, distribution, and project initialization state.";
   }
   if (command.startsWith("eval.")) {
     return "Run `orange eval report` without --json for a readable local-only report; `--write-report` is a boolean flag and does not accept a path.";
@@ -2450,6 +2501,7 @@ function usage() {
     "  sync plan [--json]",
     "  sync apply [--json]",
     "  sync status [--json]",
+    "  env [--json]",
     "  eval snapshot [--json]",
     "  eval report [--json] [--write-report]",
     "  eval explain [--json]",

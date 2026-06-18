@@ -54,6 +54,34 @@ delete files under `.orange-hyper/` directly.
 Adapters must parse only `--json` output. Human-readable output is display text
 for people and is not a stable machine interface.
 
+## Install Policy For AI/Adapters
+
+Adapters should discover Orange before trying to install it:
+
+```bash
+orange --version
+orange env --json
+```
+
+If `orange` is missing, the adapter should propose standalone binary
+installation and wait for user approval. The installer must use a user-local
+location and must not mutate the current project.
+
+Forbidden default install actions:
+
+```bash
+npm init -y
+npm install -D orange-hyper
+```
+
+The npm path is allowed only when the user explicitly asks for it. If npm
+fallback is used for a temporary check, specify `orange-hyper@alpha` or an exact
+version such as `orange-hyper@1.1.0-alpha.7`.
+
+After install or PATH confirmation, the adapter should use `orange init --json`
+and then the `project-sync` recipe. It must not create or modify project
+`package.json`, `package-lock.json`, or `node_modules`.
+
 ## Boundary Flags
 
 Every built-in recipe carries these safety flags:

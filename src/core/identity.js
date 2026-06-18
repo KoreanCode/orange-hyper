@@ -26,7 +26,7 @@ const IDENTITY_STATUS_MESSAGES = [
   "Accepted memory nodes are candidate project memory."
 ];
 
-const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.6";
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.7";
 
 const NODE_TYPE_COLORS = {
   decision: "#ffb454",

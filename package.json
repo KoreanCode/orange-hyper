@@ -1,6 +1,6 @@
 {
   "name": "orange-hyper",
-  "version": "1.1.0-alpha.6",
+  "version": "1.1.0-alpha.7",
   "description": "Lightweight quest and capsule kernel for coding agents.",
   "type": "module",
   "author": "nambanote",
@@ -27,7 +27,10 @@
     "test": "node --test",
     "typecheck": "tsc --noEmit",
     "doctor": "node bin/orange.js doctor",
-    "check:readme-sync": "node scripts/check-readme-sync.js"
+    "check:readme-sync": "node scripts/check-readme-sync.js",
+    "build:standalone": "node scripts/build-standalone.js",
+    "build:sea": "node scripts/build-sea.js",
+    "release:manifest": "node scripts/build-release-manifest.js"
   },
   "engines": {
     "node": ">=20"
@@ -42,6 +45,8 @@
     "README.en.md",
     "README.zh-CN.md",
     "README.ja.md",
+    "install.sh",
+    "install.ps1",
     "readme-hero.png",
     "assets",
     "CITATION.cff",
@@ -55,6 +60,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.3",
+    "esbuild": "^0.28.1",
+    "postject": "^1.0.0-alpha.6",
     "typescript": "^6.0.3"
   }
 }

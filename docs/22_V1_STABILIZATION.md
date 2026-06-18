@@ -11,6 +11,9 @@ Structure Graph roles, accepted-memory mapping, and stale Identity diagnostics.
 v1.1.0-alpha.6 hardens Identity HTML rendering with Canvas, build-time graph
 layout coordinates, Structure/Memory/Combined views, responsive drawers, and
 500+ node fixture coverage.
+v1.1.0-alpha.7 adds the standalone distribution foundation: a bundled CommonJS
+entry, Node SEA binary release workflow, checksum-verifying user-local
+installers, and `orange env --json`.
 None of these alphas add a runtime adapter, MCP runner, hook installer, role
 system, planner, LLM judge, telemetry path, or graph editing surface. The
 purpose of the v1 line is to keep the v0.1 through v0.8 boundaries explicit,
@@ -18,8 +21,8 @@ verified, and publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.6`
-- README version: `1.1-doc.6`
+- package version: `1.1.0-alpha.7`
+- README version: `1.1-doc.7`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model
@@ -30,7 +33,14 @@ product experience.
 - The user talks to an AI normally and does not need to memorize Orange CLI
   commands.
 - Installation appears immediately after the Orange Hyper introduction, but
-  the `npx ... orange --help` check is framed only as a quick package check.
+  the standalone binary is the default path. The `npx ... orange --help` check
+  is framed only as an exact-version fallback.
+- The AI should check `orange --version` and `orange env --json` from PATH
+  first, then propose user-local standalone installation if `orange` is
+  missing.
+- The AI must not run `npm init -y`, must not use `npm install -D orange-hyper`
+  as the default install path, and must not create or modify project
+  `package.json`, `package-lock.json`, or `node_modules`.
 - The AI, skill, or adapter calls `orange ... --json` kernel commands when the
   task benefits from Quest capture, verification evidence, Memory Proposal,
   accepted memory graph reads, hook warnings, MCP suggestions, growth signals,
@@ -129,13 +139,15 @@ The v1 stable audited top-level CLI command surface is:
 - `adapter`
 - `eval`
 - `sync`
+- `env`
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->
 
 `init` is the bootstrap command. The user-requested audit surface is the
 post-init kernel surface: `quest`, `route`, `capsule`, `remember`, `graph`,
-`hook`, `mcp`, `growth`, `adapter`, `eval`, `sync`, `doctor`, and `identity`.
+`hook`, `mcp`, `growth`, `adapter`, `eval`, `sync`, `env`, `doctor`, and
+`identity`.
 
 ## What v1 Stable Guarantees
 
@@ -230,8 +242,9 @@ The npm package is expected to include:
 - `bin/`
 - `src/`
 - `docs/`
-- `scripts/check-readme-sync.js`
+- `scripts/`
 - `README.md`, `README.en.md`, `README.zh-CN.md`, `README.ja.md`
+- `install.sh`, `install.ps1`
 - `readme-hero.png` and `assets/readme/`
 - `RELEASE_NOTES.md`
 - `LICENSE`
@@ -283,6 +296,7 @@ npm run check:readme-sync
 git diff --check
 node bin/orange.js --help
 npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
+node bin/orange.js env --json
 node bin/orange.js doctor --json
 node bin/orange.js eval report --json
 node bin/orange.js adapter dry-run project-status --json

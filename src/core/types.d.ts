@@ -12,6 +12,7 @@ export type CommandId =
   | "adapter.dryRun"
   | "capsule.build"
   | "doctor.run"
+  | "environment.show"
   | "eval.snapshot"
   | "eval.report"
   | "eval.explain"

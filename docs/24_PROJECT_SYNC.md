@@ -6,6 +6,18 @@ and generate local Structure Graph state.
 The user does not need to manage CLI details. The natural-language layer should
 call `orange ... --json` and parse only JSON envelopes.
 
+Before running Project Sync, the AI/adapter should find `orange` on PATH:
+
+```bash
+orange --version
+orange env --json
+```
+
+If it is missing, propose standalone binary installation and wait for user
+approval. Do not run `npm init -y`, do not use `npm install -D orange-hyper` as
+the default install path, and do not create or modify project `package.json`,
+`package-lock.json`, or `node_modules`.
+
 ## Commands
 
 ```bash
@@ -163,7 +175,7 @@ The scanner should not create a default node for every source file. It should
 prefer project/module/domain/component/test/document/infrastructure/datastore
 structure over a flat file list.
 
-Not implemented in alpha.6:
+Not implemented in alpha.7:
 
 - React/Sigma runtime renderer migration
 - Obsidian or JSON Canvas export
@@ -173,6 +185,7 @@ Not implemented in alpha.6:
 - postinstall mutation
 - graph editing
 - MCP/hook/subagent auto execution
+- automatic update
 
 ## Graph Model
 
@@ -241,7 +254,7 @@ Composition rules:
 - Identity summary includes `memory_mapping.mapped`, `memory_mapping.unmapped`,
   and `memory_mapping.orphaned` counts.
 - pending/rejected proposals are excluded.
-- keyword concept expansion is disabled by default in alpha.6.
+- keyword concept expansion is disabled by default in alpha.7.
 
 Identity HTML view modes:
 

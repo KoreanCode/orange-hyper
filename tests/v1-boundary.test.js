@@ -13,8 +13,8 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.6";
-const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.6";
+const EXPECTED_README_VERSION = "1.1-doc.7";
+const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.7";
 const COMMAND_SURFACE = [
   "init",
   "quest",
@@ -28,6 +28,7 @@ const COMMAND_SURFACE = [
   "adapter",
   "eval",
   "sync",
+  "env",
   "doctor",
   "identity"
 ];
@@ -86,6 +87,7 @@ test("all supported JSON success commands keep contract_version 0.1", () => {
     ["adapter.list", ["adapter", "list", "--json"]],
     ["adapter.show", ["adapter", "show", "project-status", "--json"]],
     ["adapter.dryRun", ["adapter", "dry-run", "project-status", "--json"]],
+    ["environment.show", ["env", "--json"]],
     ["eval.snapshot", ["eval", "snapshot", "--json"]],
     ["eval.report", ["eval", "report", "--json"]],
     ["eval.explain", ["eval", "explain", "--json"]],
@@ -156,7 +158,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.1-doc.6", () => {
+test("README version metadata stays synchronized at 1.1-doc.7", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);
@@ -206,6 +208,7 @@ test("read-only and advisory boundary commands do not mutate .orange-hyper", () 
     ["adapter.list", ["adapter", "list", "--json"]],
     ["adapter.show", ["adapter", "show", "project-status", "--json"]],
     ["adapter.dryRun", ["adapter", "dry-run", "project-status", "--json"]],
+    ["environment.show", ["env", "--json"]],
     ["eval.snapshot", ["eval", "snapshot", "--json"]],
     ["eval.report", ["eval", "report", "--json"]],
     ["eval.explain", ["eval", "explain", "--json"]]
@@ -237,6 +240,8 @@ test("npm package surface includes release files and excludes tests/local artifa
     "README.en.md",
     "README.zh-CN.md",
     "README.ja.md",
+    "install.sh",
+    "install.ps1",
     "readme-hero.png",
     "assets/readme/core-flow.png",
     "assets/readme/memory-lifecycle.png",
@@ -247,7 +252,8 @@ test("npm package surface includes release files and excludes tests/local artifa
     "SECURITY.md",
     "CITATION.cff",
     "scripts/check-readme-sync.js",
-    "docs/22_V1_STABILIZATION.md"
+    "docs/22_V1_STABILIZATION.md",
+    "docs/25_STANDALONE_DISTRIBUTION.md"
   ]) {
     assert.ok(files.includes(required), `package should include ${required}`);
   }
