@@ -1,31 +1,37 @@
 # v1 Stabilization Readiness
 
-Orange Hyper v1.0.0 is the first stable boundary release. Orange Hyper v1.0.1
-keeps that stable boundary and adds a README after-intro onboarding patch
-without adding a new CLI feature, runtime adapter, MCP runner, hook installer,
-role system, planner, LLM judge, or telemetry path. The purpose of the v1
-stable line is to make the v0.1 through v0.8 boundaries explicit, verified, and
+Orange Hyper v1.0.0 is the first stable boundary release. Orange Hyper
+v1.1.0-alpha.0 adds a read-only Identity HTML Knowledge Graph view, and
+v1.1.0-alpha.1 realigns the README product surface around the AI-first usage
+model without adding a new CLI feature, runtime adapter, MCP runner, hook
+installer, role system, planner, LLM judge, or telemetry path. The purpose of
+the v1 line is to keep the v0.1 through v0.8 boundaries explicit, verified, and
 publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.0.1`
-- README version: `1.0-doc.2`
+- package version: `1.1.0-alpha.1`
+- README version: `1.1-doc.1`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model
 
-v1.0.1 documents Orange Hyper as an AI-first workflow, not a CLI-first product
-experience.
+v1.1.0-alpha.1 documents Orange Hyper as an AI-first workflow, not a CLI-first
+product experience.
 
 - The user talks to an AI normally and does not need to memorize Orange CLI
   commands.
+- Installation appears immediately after the Orange Hyper introduction, but
+  the `npx ... orange --help` check is framed only as a quick package check.
 - The AI, skill, or adapter calls `orange ... --json` kernel commands when the
   task benefits from Quest capture, verification evidence, Memory Proposal,
   accepted memory graph reads, hook warnings, MCP suggestions, growth signals,
   eval summaries, or Identity HTML refresh.
 - CLI commands remain the kernel interface. Human-readable output is for people;
   adapters parse only `--json` output.
+- Long CLI examples live in `docs/23_MANUAL_FALLBACK.md`,
+  `docs/16_ADAPTER_CONTRACT.md`, and `docs/20_ADAPTER_LAYER.md`, not as the
+  main README product flow.
 - `.orange-hyper/` state is changed only through Orange Kernel commands, not by
   direct adapter file mutation.
 - Small questions and simple explanations should stay lightweight. Real work can
@@ -34,6 +40,10 @@ experience.
 - Hook, Growth, and Eval remain warning/summary surfaces. MCP remains a
   suggestion surface. None of them automatically repair, install, unlock, or
   mutate project memory/config.
+- Knowledge Graph is documented as an accepted project memory graph, not a code
+  dependency graph. Current Identity HTML remains a read-only Knowledge Graph
+  Preview, not a full graph editor or a completed brain-like full-screen graph
+  dashboard.
 
 ## v0.1-v0.8 Summary
 

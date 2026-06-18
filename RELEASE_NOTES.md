@@ -1,5 +1,102 @@
 # Release Notes
 
+## v1.1.0-alpha.1
+
+README Product Surface Realignment.
+
+- Package version is `1.1.0-alpha.1`.
+- README version is `1.1-doc.1`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha follows the active v1.1 line but does not add runtime behavior.
+  It realigns the README product surface around the AI-first usage model.
+- The README sections after "Orange Hyper 소개" now use this order:
+  installation, first prompt for the AI, real flow with the AI, quiet
+  artifacts left behind, Identity HTML / Knowledge Graph, detailed docs links,
+  and Manual fallback / Kernel command reference.
+- Installation now appears immediately after the Orange Hyper introduction.
+  The `npx -y --package orange-hyper@latest orange --help` command is framed
+  only as a quick package check, not as the continuing user workflow.
+- Added a copy-paste AI starter prompt that tells the AI to use Orange Hyper,
+  keep the user out of CLI management, call `orange ... --json` kernel commands
+  when needed, avoid turning small questions into Quests, record intent and
+  verification evidence for real work, propose memory without auto-accepting it,
+  avoid MCP auto-installation, keep Hook/Growth/Eval advisory, avoid direct
+  `.orange-hyper` edits, and refresh Identity HTML when useful.
+- Conversation examples now come before CLI references and show Quest capture,
+  Memory Proposal, Identity HTML plus Knowledge Graph/Growth/Eval review, and
+  MCP Advisor suggestions.
+- Reframed the feature list as artifacts Orange Hyper leaves behind: Quest,
+  Evidence, Memory Proposal, Accepted Memory, Knowledge Graph, Identity HTML,
+  Hook Warning, MCP Suggestion, Growth Signal, and Eval Report.
+- Clarified that the Knowledge Graph is an accepted project memory graph, not a
+  code dependency graph. It shows accepted decision, constraint, risk,
+  verification, and component memory, excludes pending/rejected proposals, and
+  the current Identity HTML surface is a read-only preview rather than a full
+  graph editor or completed brain-like full-screen dashboard.
+- Moved long manual CLI examples out of README into
+  `docs/23_MANUAL_FALLBACK.md`. README now links adapter authors to
+  `docs/20_ADAPTER_LAYER.md`, the kernel reference to
+  `docs/16_ADAPTER_CONTRACT.md`, and manual fallback to the new document.
+- Synced the same structure across Korean, English, Simplified Chinese, and
+  Japanese README files while keeping Korean README as the source of truth.
+- `docs/22_V1_STABILIZATION.md` records the AI-first usage model for the active
+  v1.1 alpha line.
+- Package metadata, package lock metadata, citation metadata, version tests,
+  and `src/core/origin.js` now target `1.1.0-alpha.1`.
+
+### Explicitly not included
+
+- new CLI command
+- runtime behavior change
+- Identity HTML renderer implementation
+- Knowledge Graph dashboard implementation
+- MCP, hook, or adapter runtime implementation
+- project memory/config automatic mutation
+- package feature expansion
+
+## v1.1.0-alpha.0
+
+Knowledge Graph Dashboard alpha for Identity HTML.
+
+- Package version is `1.1.0-alpha.0`.
+- README version is `1.1-doc.0`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- `identity build` now embeds a read-only Knowledge Graph Dashboard state with
+  accepted current-project memory nodes, dashboard-derived display edges, node
+  type, label, source Quest/Proposal, candidate memory summary, degree,
+  `project_id`, node type colors, and `readOnly: true`.
+- Identity HTML now includes a single-file vanilla SVG/JS graph view with a dark
+  canvas, colored nodes by type, labels, edge lines, node sizing by degree,
+  deterministic layout, click-to-detail panel, type filter, and search box.
+- The Knowledge Graph warning copy is explicit: it is read-only, built from
+  accepted memory nodes, not a code dependency graph, excludes
+  pending/rejected proposals, and does not support graph editing.
+- Empty accepted-memory state now renders a clear empty graph message while the
+  accepted-node table remains as the no-JS fallback.
+- README and Identity Dashboard docs now describe the v1.1 Dashboard boundary,
+  while `docs/02_MEMORY_GRAPH_SPEC.md` clarifies that dashboard edges are
+  visualization-only display relations, not persisted graph source edges.
+- Added identity dashboard tests for embedded graph state, accepted-only node
+  inclusion, pending/rejected proposal exclusion, SVG view scaffolding, node
+  type colors, read-only warning copy, no external script/dependency usage, no
+  graph editing controls, and table fallback.
+- Package metadata, package lock metadata, citation metadata, and
+  `src/core/origin.js` now target `1.1.0-alpha.0`.
+
+### Explicitly not included
+
+- graph editing
+- node/edge state mutation
+- external CDN or network fetch
+- D3, Cytoscape, Sigma, or other heavy graph dependency
+- code dependency automatic analysis
+- LLM graph clustering
+- pending/rejected proposal display in the graph
+- project memory automatic creation
+- MCP, hook, or subagent automatic execution
+
 ## v1.0.1
 
 README after-intro onboarding patch for Orange Hyper.

@@ -1009,15 +1009,31 @@ export interface IdentitySummary extends OriginMetadata {
   projectBoundaryActive: boolean;
   topProposalNodeTypes: Array<{ nodeType: string; count: number }>;
   graphPreview: {
+    schemaVersion: string;
     readOnly: true;
     editingSupported: false;
     acceptedMemoryNodes: number;
+    project_id: string | null;
+    nodeTypeColors: Partial<Record<MemoryNodeType, string>>;
     nodeTypeDistribution: Partial<Record<MemoryNodeType, number>>;
     nodes: Array<GraphIndexEntry & {
+      type: MemoryNodeType;
+      label: string;
+      candidate_memory_summary: string;
+      degree: number;
+      readOnly: true;
       kind?: string;
       confidence?: string;
       origin?: string;
       status?: string;
+    }>;
+    edges: Array<{
+      id: string;
+      from: string;
+      to: string;
+      relation: string;
+      source: string;
+      readOnly: true;
     }>;
     sourceLinks: Array<{
       node_id: string;

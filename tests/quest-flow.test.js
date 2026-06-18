@@ -1729,7 +1729,10 @@ test("identity build writes generated placeholder html", async () => {
   assert.match(html, new RegExp(`Project ID: ${escapeRegExp(config.project_id)}`));
   assert.match(html, /Level: Seed/);
   assert.match(html, /Memory Graph Preview/);
-  assert.match(html, /Graph preview is read-only\./);
+  assert.match(html, /This is a read-only Knowledge Graph\./);
+  assert.match(html, /It is built from accepted memory nodes\./);
+  assert.match(html, /It is not a code dependency graph\./);
+  assert.match(html, /Pending\/rejected proposals are not included\./);
   assert.match(html, /Graph editing is not supported\./);
   assert.match(html, /Growth Signal Preview/);
   assert.match(html, /Accepted memory nodes are candidate project memory\./);
@@ -1773,7 +1776,10 @@ test("identity build --json prints generated html path and summary", async () =>
   assert.equal(payload.data.summary.projectBoundaryActive, true);
   assert.deepEqual(payload.data.summary.statusMessages, [
     "Memory proposal review is active.",
-    "Graph preview is read-only.",
+    "This is a read-only Knowledge Graph.",
+    "It is built from accepted memory nodes.",
+    "It is not a code dependency graph.",
+    "Pending/rejected proposals are not included.",
     "Graph editing is not supported.",
     "Accepted memory nodes are candidate project memory."
   ]);

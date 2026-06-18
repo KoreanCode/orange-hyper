@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.2`
+- README version: `1.1-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -80,15 +80,21 @@ A user request becomes a Quest and a Route Contract. The result and verification
 
 The goal is not a giant automation system. The user keeps asking lightly. The project remembers only what it should and strengthens verification only to the level the work needs.
 
-## How Do You Use It?
+## Installation
 
-You do not need to memorize CLI commands to use Orange Hyper.
+```bash
+npm install -D orange-hyper
+```
 
-Talk to your AI the way you normally would. When Orange Hyper is useful, the AI calls `orange ... --json` kernel commands to handle intent, verification evidence, memory proposals, graph reads, hook warnings, MCP suggestions, growth signals, and eval summaries.
+To briefly check the package without installing it, use only this command:
 
-The CLI is not the main user experience. It is the kernel interface that skills, agents, and adapters use to talk to the Orange Kernel. Orange Hyper does not control your project; it stays beside it and cares for memory and verification.
+```bash
+npx -y --package orange-hyper@latest orange --help
+```
 
-## Starter Prompt For Your AI
+This command is not the primary UX you should keep using by hand. After installation, tell your AI to use Orange Hyper, and let the AI, agent, or adapter call `orange ... --json` kernel commands when they are needed.
+
+## First Prompt To Give Your AI
 
 Paste this into your AI when you want to use Orange Hyper in a new or existing repo.
 
@@ -108,7 +114,7 @@ Do not edit .orange-hyper files directly. Use Orange Kernel commands.
 When useful, refresh Identity HTML so I can view the Knowledge Graph.
 ```
 
-## Conversation Examples
+## Real Flow With Your AI
 
 Start with conversation before reaching for CLI commands.
 
@@ -136,7 +142,7 @@ User: I probably need the latest docs for this library.
 
 AI: I will use MCP Advisor to suggest an appropriate tool. I will not install it automatically.
 
-## What Orange Hyper Leaves Behind
+## What Orange Hyper Quietly Leaves Behind
 
 Orange Hyper is easier to understand by its artifacts than by a feature list.
 
@@ -151,15 +157,11 @@ Orange Hyper is easier to understand by its artifacts than by a feature list.
 - Growth Signal: a growth candidate without automatic unlock.
 - Eval Report: a local-only evaluation report.
 
-## What Is The Knowledge Graph?
+## Identity HTML / Knowledge Graph
 
 Orange Hyper's Knowledge Graph is not a code dependency graph. It is an accepted project memory graph.
 
 It shows user-approved decision, constraint, risk, verification, and component memory. Pending and rejected proposals are not included.
-
-Identity HTML contains a read-only Knowledge Graph Preview. It is not a full graph editor today; richer node-link visualization is a future dashboard direction.
-
-## Open Identity HTML
 
 If you tell the AI "refresh Identity HTML", the AI can use the Orange Kernel to update this file:
 
@@ -167,32 +169,32 @@ If you tell the AI "refresh Identity HTML", the AI can use the Orange Kernel to 
 .orange-hyper/identity/orange-hyper.html
 ```
 
-That HTML is a read-only dashboard for project memory, the accepted memory graph, growth signals, and eval summary.
+Identity HTML currently provides a read-only Knowledge Graph Preview. It can help you explore accepted memory nodes, but it is not a full graph editor, and the brain-like full-screen Knowledge Graph Dashboard is not a completed current feature. That larger brain-like dashboard remains the next dashboard direction.
 
-## Memory Lifecycle
+## Detailed Docs Links
 
-<p align="center">
-  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper memory lifecycle" width="860" />
-</p>
+- [Project Definition](docs/00_PROJECT_DEFINITION.md)
+- [Architecture](docs/01_ARCHITECTURE.md)
+- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
+- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
+- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
+- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
+- [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
+- [MCP Advisor](docs/18_MCP_ADVISOR.md)
+- [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
+- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
+- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
+- [Release Notes](RELEASE_NOTES.md)
 
-Orange Hyper does not store memory automatically. Only a user-accepted proposal becomes an accepted memory node candidate, and pending or rejected proposals are not graph nodes.
+## Manual fallback / Kernel command reference
 
-## Type Safety Foundation
+Most users do not run CLI commands directly. Use [Manual fallback](docs/23_MANUAL_FALLBACK.md) only when the AI has no tool access or a manual check is needed.
 
-In v0.3 stable, Type Safety Foundation does not mean Orange Hyper has been rewritten in TypeScript. It means the project now has a first safety check for the shapes it promises: `--json` output and the Quest, Proposal, Graph, Doctor, and Identity data.
+- For AI / Adapter authors: [Adapter Layer](docs/20_ADAPTER_LAYER.md)
+- Kernel command reference: [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- Manual fallback: [Manual Fallback](docs/23_MANUAL_FALLBACK.md)
 
-- Orange Hyper is still shipped as JavaScript.
-- TypeScript is used first as a quiet checker, so promised data shapes are easier to keep stable.
-- A full source migration remains a separate post-v1 TS Migration Review track.
-- Adapter JSON Contract still stays at `contract_version: "0.1"`.
-
-## For AI / Adapter authors
-
-v1.0.1 is a README onboarding patch, not a runtime feature release. The v1 stable command surface and Adapter JSON `contract_version: "0.1"` stay unchanged.
-
-AIs and adapters must parse `--json` output, not human-readable output. Do not edit `.orange-hyper/` files directly; call Orange Kernel commands.
-
-The v1 stable audited CLI command surface is:
+The list below is not a long usage guide. It is the top-level kernel surface for AI and adapter reference.
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -209,115 +211,3 @@ The v1 stable audited CLI command surface is:
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->
-
-`init` is the bootstrap command. The other commands cover Quest, route, capsule, proposal-first memory, accepted graph, hook warning, MCP advice, growth preview, adapter recipe, local eval, doctor, and identity surfaces.
-
-## Manual fallback
-
-Use `npx` with Node 20 or newer. The npm package name is `orange-hyper`; the primary CLI command is `orange`.
-
-Most users do not run these directly. Use them when the AI has no terminal access or you need to check something manually.
-
-Recommended:
-
-```bash
-npx -y --package orange-hyper@latest orange init
-npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
-```
-
-Stable latest channel:
-
-```bash
-npx -y --package orange-hyper@latest orange init
-```
-
-Source checkout:
-
-```bash
-node bin/orange.js init
-```
-
-Local linked development:
-
-```bash
-npm link
-orange init
-```
-
-## Kernel command reference
-
-Adapters must parse `--json` output, not human output.
-
-Common kernel commands:
-
-```bash
-npx -y --package orange-hyper@latest orange quest list
-npx -y --package orange-hyper@latest orange route "Find the cause of the search sorting bug"
-npx -y --package orange-hyper@latest orange capsule
-npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
-npx -y --package orange-hyper@latest orange doctor
-npx -y --package orange-hyper@latest orange hook preview --json
-npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
-npx -y --package orange-hyper@latest orange growth status --json
-npx -y --package orange-hyper@latest orange growth suggest --json
-npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
-npx -y --package orange-hyper@latest orange eval snapshot --json
-npx -y --package orange-hyper@latest orange eval report --json
-```
-
-When upgrading a v0.2.0 project to the v0.2.1 Project Boundary Guard, run:
-
-```bash
-orange doctor --json
-orange doctor --repair-project-id
-orange doctor
-```
-
-`--repair-project-id` fills only missing legacy project identity fields. It does not overwrite files that already belong to another project.
-
-## Roadmap
-
-See [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md) for details.
-
-- v0.1 Seed Kernel
-- v0.2 Memory Delta Proposal
-- v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview (stable)
-- v0.5 MCP Advisor (stable)
-- v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports (stable)
-- v1.0 First Stable Boundary Release (current stable)
-
-## Non-goals
-
-Orange Hyper is not trying to be:
-
-- a clone of any model or provider
-- an SDD framework that forces SPEC for every task
-- a workflow manager that forces branch, PR, and review loops for every task
-- automatic memory write
-- memory accept without user approval
-- a raw prompt archive
-- a role zoo, MCP bundle, hook system, or subagent orchestration enabled from day one
-- automatic MCP installation, execution, or config mutation
-- an auto planner or auto execution loop
-- a system that requires a graph DB or vector DB
-- a system that automatically treats external reports, clipboard content, or files as project memory
-
-## Docs Links
-
-- [Project Definition](docs/00_PROJECT_DEFINITION.md)
-- [Architecture](docs/01_ARCHITECTURE.md)
-- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
-- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
-- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
-- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
-- [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
-- [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
-- [MCP Advisor](docs/18_MCP_ADVISOR.md)
-- [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
-- [Adapter Layer](docs/20_ADAPTER_LAYER.md)
-- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
-- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
-- [Release Notes](RELEASE_NOTES.md)

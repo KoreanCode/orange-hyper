@@ -11,10 +11,25 @@ import { nowIso } from "./time.js";
 
 const IDENTITY_STATUS_MESSAGES = [
   "Memory proposal review is active.",
-  "Graph preview is read-only.",
+  "This is a read-only Knowledge Graph.",
+  "It is built from accepted memory nodes.",
+  "It is not a code dependency graph.",
+  "Pending/rejected proposals are not included.",
   "Graph editing is not supported.",
   "Accepted memory nodes are candidate project memory."
 ];
+
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.0";
+
+const NODE_TYPE_COLORS = {
+  decision: "#ffb454",
+  constraint: "#67e8f9",
+  component: "#a78bfa",
+  risk: "#fb7185",
+  verification: "#86efac"
+};
+
+const DEFAULT_NODE_COLOR = "#f8fafc";
 
 /**
  * @returns {import("./types.d.ts").IdentityBuildResult}
@@ -116,13 +131,20 @@ function buildGraphPreview(nodes) {
     source_proposal: node.source_proposal,
     accepted_at: node.accepted_at
   }));
+  const edges = buildGraphPreviewEdges(nodes);
+  const degreeByNode = degreeByNodeId(nodes, edges);
   return /** @type {import("./types.d.ts").IdentitySummary["graphPreview"]} */ ({
+    schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
     readOnly: true,
     editingSupported: false,
     acceptedMemoryNodes: nodes.length,
+    project_id: nodes[0]?.project_id || null,
+    nodeTypeColors: NODE_TYPE_COLORS,
     nodeTypeDistribution,
     nodes: nodes.map((node) => ({
       id: node.id,
+      type: node.node_type,
+      label: node.title || node.id,
       project_id: node.project_id,
       project_name: node.project_name,
       generated_by: node.generated_by,
@@ -136,12 +158,76 @@ function buildGraphPreview(nodes) {
       source_proposal: node.source_proposal,
       accepted_at: node.accepted_at,
       candidate_memory: node.candidate_memory,
+      candidate_memory_summary: node.candidate_memory || node.summary || node.title || node.id,
       summary: node.summary,
+      degree: degreeByNode.get(node.id) || 0,
+      readOnly: true,
       tags: node.tags,
       keywords: node.keywords
     })),
+    edges,
     sourceLinks
   });
+}
+
+function buildGraphPreviewEdges(nodes) {
+  const edgeKeys = new Set();
+  const edges = [];
+  const sorted = [...nodes].sort((left, right) => left.id.localeCompare(right.id));
+  addSequentialGroupEdges(edges, edgeKeys, groupByField(sorted, "source_quest"), "derived_from_source_quest");
+  addSequentialGroupEdges(edges, edgeKeys, groupByField(sorted, "node_type"), "same_node_type");
+  return edges
+    .map((edge, index) => ({ id: `edge-${String(index + 1).padStart(3, "0")}`, ...edge }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
+function addSequentialGroupEdges(edges, edgeKeys, groups, relation) {
+  for (const [source, group] of groups) {
+    if (!source || group.length < 2) {
+      continue;
+    }
+    for (let index = 1; index < group.length; index += 1) {
+      const from = group[index - 1].id;
+      const to = group[index].id;
+      const ordered = [from, to].sort();
+      const key = `${ordered[0]}|${ordered[1]}|${relation}|${source}`;
+      if (edgeKeys.has(key)) {
+        continue;
+      }
+      edgeKeys.add(key);
+      edges.push({
+        from,
+        to,
+        relation,
+        source,
+        readOnly: true
+      });
+    }
+  }
+}
+
+function groupByField(nodes, field) {
+  const groups = new Map();
+  for (const node of nodes) {
+    const value = String(node[field] || "");
+    const group = groups.get(value) || [];
+    group.push(node);
+    groups.set(value, group);
+  }
+  return groups;
+}
+
+function degreeByNodeId(nodes, edges) {
+  const degrees = new Map(nodes.map((node) => [node.id, 0]));
+  for (const edge of edges) {
+    if (degrees.has(edge.from)) {
+      degrees.set(edge.from, degrees.get(edge.from) + 1);
+    }
+    if (degrees.has(edge.to)) {
+      degrees.set(edge.to, degrees.get(edge.to) + 1);
+    }
+  }
+  return degrees;
 }
 
 /**
@@ -212,9 +298,9 @@ function renderIdentityHtml(model) {
     .join("\n");
   const graphTypes = graphTypeRows || "<tr><td>none</td><td>0</td></tr>";
   const graphRows = model.graphPreview.nodes
-    .map((node) => `<tr><td><a href="#${nodeAnchorId(node.id)}">${escapeHtml(node.id)}</a></td><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title)}</td><td>${escapeHtml(node.source_quest)}</td><td>${escapeHtml(node.source_proposal)}</td></tr>`)
+    .map((node) => `<tr><td><a href="#${nodeAnchorId(node.id)}">${escapeHtml(node.id)}</a></td><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title)}</td><td>${escapeHtml(node.source_quest)}</td><td>${escapeHtml(node.source_proposal)}</td><td>${node.degree}</td></tr>`)
     .join("\n");
-  const graphNodes = graphRows || "<tr><td>none</td><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td></tr>";
+  const graphNodes = graphRows || "<tr><td>none</td><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td><td>0</td></tr>";
   const nodeDetails = renderNodeDetails(model.graphPreview.nodes);
   const growthTypeRows = Object.entries(model.growthPreview.nodeTypeDistribution)
     .sort(([left], [right]) => left.localeCompare(right))
@@ -232,7 +318,7 @@ function renderIdentityHtml(model) {
     .map((message) => `<li>${escapeHtml(message)}</li>`)
     .join("\n");
   const stateJson = escapeScriptJson(JSON.stringify({
-    schemaVersion: "0.3.0",
+    schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
     project: {
       project_id: model.project_id || "",
       project_name: model.project_name || model.projectName || "",
@@ -242,11 +328,28 @@ function renderIdentityHtml(model) {
     acceptedMemoryNodes: model.acceptedMemoryNodes,
     projectBoundaryActive: model.projectBoundaryActive,
     nodeTypeDistribution: model.graphPreview.nodeTypeDistribution,
+    graph: {
+      readOnly: true,
+      nodes: model.graphPreview.nodes,
+      edges: model.graphPreview.edges,
+      nodeTypeColors: model.graphPreview.nodeTypeColors,
+      project_id: model.project_id || "",
+      project_name: model.project_name || model.projectName || ""
+    },
     graphPreview: model.graphPreview,
     growthPreview: model.growthPreview,
     readOnly: true,
     editingSupported: false
   }, null, 2));
+  const graphDashboardState = escapeScriptJson(JSON.stringify({
+    schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
+    project_id: model.project_id || "",
+    project_name: model.project_name || model.projectName || "",
+    readOnly: true,
+    nodes: model.graphPreview.nodes,
+    edges: model.graphPreview.edges,
+    nodeTypeColors: model.graphPreview.nodeTypeColors
+  }));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -276,10 +379,32 @@ function renderIdentityHtml(model) {
     .node-details { display: grid; gap: 10px; margin-top: 16px; }
     .node-detail { border: 1px solid #ddd5c8; background: #fffaf1; padding: 12px 14px; }
     .node-detail summary { cursor: pointer; font-weight: 700; }
+    .knowledge-graph { margin-top: 28px; }
+    .graph-boundary { margin: 12px 0 16px; padding: 14px 16px; border: 1px solid #c89443; background: #fff2d6; border-radius: 8px; }
+    .graph-boundary ul { margin: 0; padding-left: 20px; }
+    .graph-workbench { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 320px); gap: 16px; align-items: stretch; }
+    .graph-controls { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; }
+    .graph-controls label { display: grid; gap: 5px; color: #5f574c; font-size: 13px; }
+    .graph-controls input, .graph-controls select { border: 1px solid #cdbfaa; background: #fffaf1; color: #25211b; border-radius: 6px; padding: 8px 10px; min-width: 180px; }
+    .graph-canvas { position: relative; min-height: 430px; border: 1px solid #253449; border-radius: 8px; background: #08111f; overflow: hidden; }
+    .knowledge-graph-svg { display: block; width: 100%; height: 430px; background: radial-gradient(circle at 18% 12%, #132238 0, #08111f 38%, #050914 100%); }
+    .graph-empty-message { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; color: #cad7e7; text-align: center; }
+    .graph-edge { stroke: #516172; stroke-width: 1.8; opacity: .7; }
+    .graph-node { cursor: pointer; }
+    .graph-node circle { stroke: #f8fafc; stroke-width: 1.8; }
+    .graph-node text { fill: #edf5ff; font-size: 11px; paint-order: stroke; stroke: #08111f; stroke-width: 3px; stroke-linejoin: round; }
+    .graph-node[aria-selected="true"] circle { stroke: #ffffff; stroke-width: 3; }
+    .graph-detail-panel { min-height: 430px; border: 1px solid #ddd5c8; background: #fffaf1; padding: 16px; }
+    .graph-detail-panel h3 { margin-top: 0; }
+    .graph-meta { display: grid; gap: 8px; margin-top: 12px; }
+    .graph-meta div { border-top: 1px solid #e9e0d2; padding-top: 8px; }
+    .node-type-colors { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .swatch { display: inline-flex; align-items: center; gap: 6px; color: #5f574c; font-size: 12px; }
+    .swatch::before { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--node-color, #f8fafc); border: 1px solid rgba(0,0,0,.2); }
     a { color: #8b4a00; }
     .pill { display: inline-block; border: 1px solid #d6c6aa; border-radius: 999px; padding: 3px 8px; margin: 2px 4px 2px 0; font-size: 12px; color: #5f574c; }
     .notice { margin-top: 24px; padding: 16px; border-radius: 8px; background: #fff0d1; border: 1px solid #e4bf72; }
-    @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .split, .graph-workbench { grid-template-columns: 1fr; } .graph-controls input, .graph-controls select { min-width: 0; width: 100%; } }
   </style>
 </head>
 <body>
@@ -288,7 +413,7 @@ function renderIdentityHtml(model) {
     <h1>${escapeHtml(model.projectName)}</h1>
     <p class="subtle">Project ID: ${escapeHtml(model.project_id || "")}</p>
     <p class="subtle">Level: Seed</p>
-    <p class="subtle">Graph preview is read-only. Graph editing is not supported.</p>
+    <p class="subtle">This is a read-only Knowledge Graph. Graph editing is not supported.</p>
     <section class="grid" aria-label="Quest summary">
       <div class="card"><div class="label">Active Quests</div><div class="value">${model.activeCount}</div></div>
       <div class="card"><div class="label">Completed Quests</div><div class="value">${model.completedCount}</div></div>
@@ -366,14 +491,44 @@ ${growthTypes}
         </aside>
       </div>
     </section>
-    <section class="graph-preview" aria-label="Read-only graph preview">
-      <h2>Memory Graph Preview</h2>
-      <div class="split">
+    <section class="knowledge-graph" aria-label="Knowledge Graph Dashboard">
+      <h2>Knowledge Graph Dashboard</h2>
+      <p class="subtle">Memory Graph Preview</p>
+      <div class="graph-boundary" role="note">
+        <ul>
+          <li>This is a read-only Knowledge Graph.</li>
+          <li>It is built from accepted memory nodes.</li>
+          <li>It is not a code dependency graph.</li>
+          <li>Pending/rejected proposals are not included.</li>
+          <li>Graph editing is not supported.</li>
+        </ul>
+      </div>
+      <div class="graph-workbench" data-graph-dashboard>
         <div>
-          ${renderGraphSvg(model.graphPreview.nodes)}
+          <div class="graph-controls" aria-label="Knowledge Graph filters">
+            <label>Search
+              <input id="graph-search" type="search" autocomplete="off" placeholder="Search accepted memory">
+            </label>
+            <label>Type
+              <select id="graph-type-filter">
+                <option value="">All types</option>
+${renderNodeTypeOptions(model.graphPreview.nodeTypeDistribution)}
+              </select>
+            </label>
+          </div>
+          <div class="graph-canvas">
+            <svg id="knowledge-graph-svg" class="knowledge-graph-svg" role="img" aria-label="Read-only accepted memory Knowledge Graph" viewBox="0 0 920 430"></svg>
+            <div id="graph-empty-message" class="graph-empty-message" hidden>No accepted memory nodes yet. The Knowledge Graph will appear after memory proposals are accepted.</div>
+          </div>
+          <noscript>
+            <p class="subtle">JavaScript is disabled, so the read-only graph table below is the fallback view.</p>
+          </noscript>
+          <div class="node-type-colors" aria-label="Node type colors">
+${renderNodeTypeColorLegend(model.graphPreview.nodeTypeDistribution)}
+          </div>
           <h3>Accepted Memory Nodes</h3>
-          <table>
-            <thead><tr><th>Node ID</th><th>Node Type</th><th>Title</th><th>Source Quest</th><th>Source Proposal</th></tr></thead>
+          <table id="knowledge-graph-table">
+            <thead><tr><th>Node ID</th><th>Node Type</th><th>Title</th><th>Source Quest</th><th>Source Proposal</th><th>Degree</th></tr></thead>
             <tbody>
 ${graphNodes}
             </tbody>
@@ -382,9 +537,10 @@ ${graphNodes}
 ${nodeDetails}
           </div>
         </div>
-        <aside class="detail" aria-label="Selected node detail">
+        <aside id="graph-detail-panel" class="graph-detail-panel" aria-label="Selected node detail" aria-live="polite">
           <h3>Graph Summary</h3>
           <p>Accepted memory node count: ${model.acceptedMemoryNodes}</p>
+          <p>Edge count: ${model.graphPreview.edges.length}</p>
           <p>Project boundary active: ${model.projectBoundaryActive ? "yes" : "no"}</p>
           <h3>Node Type Distribution</h3>
           <table>
@@ -401,8 +557,174 @@ ${graphTypes}
 ${statusMessages}
       </ul>
     </div>
+    <script id="orange-knowledge-graph-state" type="application/json">
+${graphDashboardState}
+    </script>
     <script id="orange-hyper-state" type="application/json">
 ${stateJson}
+    </script>
+    <script>
+(() => {
+  const stateElement = document.getElementById("orange-knowledge-graph-state");
+  const svg = document.getElementById("knowledge-graph-svg");
+  const detail = document.getElementById("graph-detail-panel");
+  const search = document.getElementById("graph-search");
+  const typeFilter = document.getElementById("graph-type-filter");
+  const empty = document.getElementById("graph-empty-message");
+  if (!stateElement || !svg || !detail || !search || !typeFilter || !empty) return;
+  const state = JSON.parse(stateElement.textContent || "{}");
+  const allNodes = Array.isArray(state.nodes) ? state.nodes : [];
+  const allEdges = Array.isArray(state.edges) ? state.edges : [];
+  const colors = state.nodeTypeColors || {};
+  const namespace = "http://www.w3.org/2000/svg";
+  let selectedId = allNodes[0]?.id || null;
+
+  const render = () => {
+    const query = search.value.trim().toLowerCase();
+    const selectedType = typeFilter.value;
+    const nodes = allNodes.filter((node) => {
+      const typeMatch = !selectedType || node.node_type === selectedType;
+      const haystack = [
+        node.id,
+        node.label,
+        node.title,
+        node.node_type,
+        node.source_quest,
+        node.source_proposal,
+        node.candidate_memory_summary,
+        ...(node.tags || []),
+        ...(node.keywords || [])
+      ].join(" ").toLowerCase();
+      return typeMatch && (!query || haystack.includes(query));
+    });
+    const ids = new Set(nodes.map((node) => node.id));
+    const edges = allEdges.filter((edge) => ids.has(edge.from) && ids.has(edge.to));
+    if (!ids.has(selectedId)) selectedId = nodes[0]?.id || null;
+    draw(nodes, edges);
+    renderDetail(nodes.find((node) => node.id === selectedId) || null, edges.length);
+  };
+
+  const draw = (nodes, edges) => {
+    svg.replaceChildren();
+    empty.hidden = nodes.length !== 0;
+    if (!nodes.length) return;
+    const layout = computeLayout(nodes);
+    for (const edge of edges) {
+      const from = layout.get(edge.from);
+      const to = layout.get(edge.to);
+      if (!from || !to) continue;
+      const line = document.createElementNS(namespace, "line");
+      line.setAttribute("class", "graph-edge");
+      line.setAttribute("x1", from.x);
+      line.setAttribute("y1", from.y);
+      line.setAttribute("x2", to.x);
+      line.setAttribute("y2", to.y);
+      line.setAttribute("data-relation", edge.relation || "");
+      svg.appendChild(line);
+    }
+    for (const node of nodes) {
+      const point = layout.get(node.id);
+      if (!point) continue;
+      const group = document.createElementNS(namespace, "g");
+      group.setAttribute("class", "graph-node");
+      group.setAttribute("tabindex", "0");
+      group.setAttribute("role", "button");
+      group.setAttribute("aria-selected", node.id === selectedId ? "true" : "false");
+      group.setAttribute("aria-label", String(node.node_type || "") + ": " + String(node.label || node.id || ""));
+      group.addEventListener("click", () => {
+        selectedId = node.id;
+        render();
+      });
+      group.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectedId = node.id;
+          render();
+        }
+      });
+      const circle = document.createElementNS(namespace, "circle");
+      circle.setAttribute("cx", point.x);
+      circle.setAttribute("cy", point.y);
+      circle.setAttribute("r", String(14 + Math.min(14, Number(node.degree || 0) * 3)));
+      circle.setAttribute("fill", colors[node.node_type] || "${DEFAULT_NODE_COLOR}");
+      const text = document.createElementNS(namespace, "text");
+      text.setAttribute("x", point.x);
+      text.setAttribute("y", point.y + 31);
+      text.setAttribute("text-anchor", "middle");
+      text.textContent = trimLabel(node.label || node.id);
+      group.append(circle, text);
+      svg.appendChild(group);
+    }
+  };
+
+  const computeLayout = (nodes) => {
+    const width = 920;
+    const height = 430;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const sorted = [...nodes].sort((left, right) =>
+      Number(right.degree || 0) - Number(left.degree || 0) ||
+      String(left.id).localeCompare(String(right.id))
+    );
+    const points = new Map();
+    if (sorted.length === 1) {
+      points.set(sorted[0].id, { x: centerX, y: centerY });
+      return points;
+    }
+    if (sorted.length === 2) {
+      points.set(sorted[0].id, { x: centerX - 170, y: centerY });
+      points.set(sorted[1].id, { x: centerX + 170, y: centerY });
+      return points;
+    }
+    const radiusX = Math.min(350, 120 + sorted.length * 22);
+    const radiusY = Math.min(150, 80 + sorted.length * 8);
+    sorted.forEach((node, index) => {
+      const angle = (-Math.PI / 2) + (index * Math.PI * 2) / sorted.length;
+      const degreePull = Math.min(48, Number(node.degree || 0) * 10);
+      points.set(node.id, {
+        x: centerX + Math.cos(angle) * Math.max(70, radiusX - degreePull),
+        y: centerY + Math.sin(angle) * Math.max(50, radiusY - degreePull)
+      });
+    });
+    return points;
+  };
+
+  const renderDetail = (node, visibleEdgeCount) => {
+    if (!node) {
+      detail.innerHTML = '<h3>Graph Summary</h3><p>No accepted memory nodes match the current filter.</p><p>Visible edges: ' + visibleEdgeCount + '</p>';
+      return;
+    }
+    detail.innerHTML = [
+      '<h3>' + escapeHtml(node.label || node.id) + '</h3>',
+      '<p class="subtle">' + escapeHtml(node.id) + '</p>',
+      '<div class="graph-meta">',
+      '<div><strong>Type</strong><br>' + escapeHtml(node.node_type) + '</div>',
+      '<div><strong>Degree</strong><br>' + Number(node.degree || 0) + '</div>',
+      '<div><strong>Source Quest</strong><br>' + escapeHtml(node.source_quest || "none") + '</div>',
+      '<div><strong>Source Proposal</strong><br>' + escapeHtml(node.source_proposal || "none") + '</div>',
+      '<div><strong>Project ID</strong><br>' + escapeHtml(node.project_id || "") + '</div>',
+      '<div><strong>Candidate Memory</strong><br>' + escapeHtml(node.candidate_memory_summary || node.summary || "") + '</div>',
+      '</div>',
+      '<p class="subtle">Read-only: ' + (node.readOnly ? "true" : "false") + '</p>',
+      '<p class="subtle">Visible edges: ' + visibleEdgeCount + '</p>'
+    ].join('');
+  };
+
+  const trimLabel = (value) => {
+    const text = String(value || "");
+    return text.length > 32 ? text.slice(0, 29) + "..." : text;
+  };
+
+  const escapeHtml = (value) => String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+  search.addEventListener("input", render);
+  typeFilter.addEventListener("change", render);
+  render();
+})();
     </script>
   </main>
 </body>
@@ -435,6 +757,23 @@ function renderGraphSvg(nodes) {
 ${lines}
 ${circles}
     </svg>`;
+}
+
+function renderNodeTypeOptions(distribution) {
+  return Object.keys(distribution)
+    .sort((left, right) => left.localeCompare(right))
+    .map((nodeType) => `<option value="${escapeHtml(nodeType)}">${escapeHtml(nodeType)}</option>`)
+    .join("\n");
+}
+
+function renderNodeTypeColorLegend(distribution) {
+  const nodeTypes = Object.keys(distribution).sort((left, right) => left.localeCompare(right));
+  if (!nodeTypes.length) {
+    return "<span class=\"swatch\" style=\"--node-color: #f8fafc\">no node types yet</span>";
+  }
+  return nodeTypes
+    .map((nodeType) => `<span class="swatch" style="--node-color: ${escapeHtml(NODE_TYPE_COLORS[nodeType] || DEFAULT_NODE_COLOR)}">${escapeHtml(nodeType)}</span>`)
+    .join("\n");
 }
 
 function renderSelectedNodeDetail(node) {

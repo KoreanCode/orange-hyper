@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.0-doc.2`
+- README version: `1.1-doc.1`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -80,15 +80,21 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 目标不是巨大的自动化系统。用户继续轻松提出请求。项目只记住需要记住的内容，并按工作需要的 level 增强验证。
 
-## 如何使用？
+## 安装
 
-使用 Orange Hyper 不需要用户背 CLI 命令。
+```bash
+npm install -D orange-hyper
+```
 
-像平时一样和 AI 对话就可以。AI 认为需要 Orange Hyper 时，会调用 `orange ... --json` kernel command 来处理 intent、verification evidence、memory proposal、graph、hook warning、MCP suggestion、growth signal 和 eval summary。
+如果只想在不安装的情况下快速确认包是否可用，可以使用这条命令：
 
-CLI 不是用户的主要 UX。它是 skill、agent、adapter 与 Orange Kernel 对话时使用的 kernel interface。Orange Hyper 不控制项目，而是在旁边照料记忆和验证。
+```bash
+npx -y --package orange-hyper@latest orange --help
+```
 
-## 可以直接贴给 AI 的 Starter Prompt
+这条命令不是需要长期手动记住的主要 UX。安装之后，请告诉 AI 使用 Orange Hyper；在需要时，由 AI、agent 或 adapter 调用 `orange ... --json` kernel command。
+
+## 第一次告诉 AI 的 Prompt
 
 在新项目或已有 repo 里想使用 Orange Hyper 时，可以把下面这段直接贴给 AI。
 
@@ -108,7 +114,7 @@ CLI 不是用户的主要 UX。它是 skill、agent、adapter 与 Orange Kernel 
 需要时，请刷新 Identity HTML，让我可以查看 Knowledge Graph。
 ```
 
-## 对话示例
+## 和 AI 一起使用的实际流程
 
 先用对话开始，而不是先找 CLI 命令。
 
@@ -136,7 +142,7 @@ AI：我会刷新 Identity HTML，并查看 Knowledge Graph 与 Growth/Eval summ
 
 AI：我会用 MCP Advisor 建议合适的工具。不会自动安装。
 
-## Orange Hyper 会留下什么
+## Orange Hyper 会静静留下什么
 
 比起功能列表，用产物来理解 Orange Hyper 更容易。
 
@@ -151,15 +157,11 @@ AI：我会用 MCP Advisor 建议合适的工具。不会自动安装。
 - Growth Signal：不会自动 unlock 的成长候选。
 - Eval Report：local-only 评价报告。
 
-## Knowledge Graph 是什么？
+## Identity HTML / Knowledge Graph
 
 Orange Hyper 的 Knowledge Graph 不是 code dependency graph。它是 accepted project memory graph。
 
 它展示用户批准过的 decision、constraint、risk、verification、component memory。pending/rejected proposal 不会包含在内。
-
-Identity HTML 中有 read-only Knowledge Graph Preview。它目前不是 full graph editor；更丰富的 node-link 可视化属于 future dashboard 方向。
-
-## 打开 Identity HTML
 
 对 AI 说“刷新 Identity HTML”时，AI 可以通过 Orange Kernel 更新这个文件：
 
@@ -167,32 +169,32 @@ Identity HTML 中有 read-only Knowledge Graph Preview。它目前不是 full gr
 .orange-hyper/identity/orange-hyper.html
 ```
 
-这个 HTML 是一个 read-only dashboard，用来集中查看项目记忆、accepted memory graph、growth signal 和 eval summary。
+当前 Identity HTML 提供 read-only Knowledge Graph Preview。它可以帮助探索 accepted memory node，但不是 full graph editor，也不是已经完成的 brain-like full-screen Knowledge Graph Dashboard。更大的 brain-like dashboard 是下一步 dashboard 方向。
 
-## Memory Lifecycle
+## 详细文档链接
 
-<p align="center">
-  <img src="./assets/readme/memory-lifecycle.png" alt="Orange Hyper 记忆生命周期" width="860" />
-</p>
+- [Project Definition](docs/00_PROJECT_DEFINITION.md)
+- [Architecture](docs/01_ARCHITECTURE.md)
+- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
+- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
+- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
+- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
+- [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
+- [MCP Advisor](docs/18_MCP_ADVISOR.md)
+- [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
+- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
+- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
+- [Release Notes](RELEASE_NOTES.md)
 
-Orange Hyper 不会自动保存记忆。只有用户 accept 的 proposal 才会成为 accepted memory node candidate，pending 或 rejected proposal 不是 graph node。
+## Manual fallback / Kernel command reference
 
-## Type Safety Foundation（类型安全基础）
+普通用户通常不直接运行 CLI。只有在 AI 没有工具访问权限，或需要手动确认时，才参考 [Manual fallback](docs/23_MANUAL_FALLBACK.md)。
 
-在 v0.3 stable 中，Type Safety Foundation 并不是把 Orange Hyper 一次性改写成 TypeScript。它的意思是，项目先为自己承诺的数据形状加上一层检查：`--json` 输出，以及 Quest、Proposal、Graph、Doctor、Identity 之间传递的信息。
+- For AI / Adapter authors: [Adapter Layer](docs/20_ADAPTER_LAYER.md)
+- Kernel command reference: [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
+- Manual fallback: [Manual Fallback](docs/23_MANUAL_FALLBACK.md)
 
-- Orange Hyper 在这个阶段仍然以 JavaScript 包发布。
-- TypeScript 先作为安静的检查工具使用，帮助确认这些数据形状没有被不小心改坏。
-- 完整的 TypeScript 源码迁移会作为 v1 之后的 TS Migration Review track 单独评估。
-- Adapter JSON Contract 继续保持 `contract_version: "0.1"`。
-
-## For AI / Adapter authors
-
-v1.0.1 是 README onboarding patch，不是 runtime feature release。v1 stable command surface 和 Adapter JSON `contract_version: "0.1"` 保持不变。
-
-AI 和 adapter 必须解析 `--json` output，而不是 human-readable output。不要直接编辑 `.orange-hyper/` 文件；请调用 Orange Kernel command。
-
-v1 stable audit 的 CLI command surface 如下：
+下面不是长篇使用说明，而是供 AI 和 adapter 参考的 top-level kernel surface。
 
 <!-- orange-command-surface:start -->
 - `init`
@@ -209,115 +211,3 @@ v1 stable audit 的 CLI command surface 如下：
 - `doctor`
 - `identity`
 <!-- orange-command-surface:end -->
-
-`init` 是 bootstrap command。其他 command 分别覆盖 Quest、route、capsule、proposal-first memory、accepted graph、hook warning、MCP advice、growth preview、adapter recipe、local eval、doctor 和 identity surface。
-
-## Manual fallback
-
-Node 20 或更高版本可以直接用 `npx` 运行。npm package name 是 `orange-hyper`，primary CLI command 是 `orange`。
-
-普通用户通常不需要直接执行这些命令。只有在 AI 没有终端权限，或需要手动确认时才使用。
-
-推荐用法：
-
-```bash
-npx -y --package orange-hyper@latest orange init
-npx -y --package orange-hyper@latest orange quest new "README npm usage polish" --layer L2 --json
-```
-
-Stable latest channel:
-
-```bash
-npx -y --package orange-hyper@latest orange init
-```
-
-Source checkout:
-
-```bash
-node bin/orange.js init
-```
-
-Local linked development:
-
-```bash
-npm link
-orange init
-```
-
-## Kernel command reference
-
-adapter 必须解析 `--json` output，而不是 human output。
-
-常用 kernel command：
-
-```bash
-npx -y --package orange-hyper@latest orange quest list
-npx -y --package orange-hyper@latest orange route "查找搜索排序 bug 的原因"
-npx -y --package orange-hyper@latest orange capsule
-npx -y --package orange-hyper@latest orange quest done <quest-id> --evidence "npm test passed"
-npx -y --package orange-hyper@latest orange doctor
-npx -y --package orange-hyper@latest orange hook preview --json
-npx -y --package orange-hyper@latest orange mcp suggest --query "Need latest React API documentation before migration" --json
-npx -y --package orange-hyper@latest orange growth status --json
-npx -y --package orange-hyper@latest orange growth suggest --json
-npx -y --package orange-hyper@latest orange adapter dry-run project-status --json
-npx -y --package orange-hyper@latest orange eval snapshot --json
-npx -y --package orange-hyper@latest orange eval report --json
-```
-
-从 v0.2.0 项目升级到 v0.2.1 Project Boundary Guard 时，先运行：
-
-```bash
-orange doctor --json
-orange doctor --repair-project-id
-orange doctor
-```
-
-`--repair-project-id` 只填补缺失的 legacy project identity。它不会覆盖已经属于其他项目的文件。
-
-## Roadmap
-
-详情见 [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)。
-
-- v0.1 Seed Kernel
-- v0.2 Memory Delta Proposal
-- v0.3 Memory Graph Usability + Identity Graph Preview
-- v0.4 Minimal Hook Preview (stable)
-- v0.5 MCP Advisor (stable)
-- v0.6 Growth Signal Preview (stable)
-- v0.7 Adapter Invocation Contract (stable)
-- v0.8 Eval and Reports (stable)
-- v1.0 First Stable Boundary Release (current stable)
-
-## Non-goals
-
-Orange Hyper 不打算成为：
-
-- 某个模型或 provider 的 clone
-- 对所有任务强制 SPEC 的 SDD framework
-- 对所有任务强制 branch、PR、review loop 的 workflow manager
-- automatic memory write
-- 未经用户批准的 memory accept
-- raw prompt archive
-- 从第一天就启用的 role zoo、MCP bundle、hook system 或 subagent orchestration
-- MCP 自动安装、自动执行或 config 自动修改
-- auto planner 或 auto execution loop
-- 必须依赖 graph DB 或 vector DB 的系统
-- 自动把外部 report、clipboard、file 当作 project memory 的系统
-
-## Docs Links
-
-- [Project Definition](docs/00_PROJECT_DEFINITION.md)
-- [Architecture](docs/01_ARCHITECTURE.md)
-- [Memory Graph Spec](docs/02_MEMORY_GRAPH_SPEC.md)
-- [Route Level System](docs/04_ROUTE_LEVEL_SYSTEM.md)
-- [Development Roadmap](docs/10_DEVELOPMENT_ROADMAP.md)
-- [Identity Dashboard Spec](docs/14_IDENTITY_DASHBOARD_SPEC.md)
-- [Adapter JSON Contract](docs/16_ADAPTER_CONTRACT.md)
-- [Minimal Hook Preview](docs/17_MINIMAL_HOOK_PREVIEW.md)
-- [MCP Advisor](docs/18_MCP_ADVISOR.md)
-- [Growth Signal Preview](docs/19_GROWTH_SYSTEM.md)
-- [Adapter Layer](docs/20_ADAPTER_LAYER.md)
-- [Eval and Reports](docs/21_EVAL_AND_REPORTS.md)
-- [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
-- [Release Notes](RELEASE_NOTES.md)
