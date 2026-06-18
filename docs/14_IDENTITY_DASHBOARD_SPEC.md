@@ -25,6 +25,143 @@ single-HTML Knowledge Graph Dashboard로 확장한다. 이는 accepted memory no
 CDN, heavy graph dependency, LLM clustering, graph editing, MCP/hook/subagent
 automation은 포함하지 않는다.
 
+v1.1.0-alpha.2는 renderer 구현이 아니라 **Identity Graph Product Spec and
+Redesign Plan**이다. alpha.0 결과는 dependency-free read-only graph state와
+SVG preview를 증명했지만, 사용자가 기대한 brain-like full-screen Knowledge
+Graph Dashboard에는 아직 도달하지 않았다.
+
+현재 alpha 결과의 문제:
+
+```text
+1. HTML shell이 main max-width 중심의 document layout이다.
+2. graph canvas는 100vh full-screen stage가 아니라 내부 430px preview 영역이다.
+3. table/detail/report 정보가 본문에 항상 노출되어 graph-first 경험을 방해한다.
+4. accepted memory node 3개와 edge 1개만으로는 brain-like graph 밀도가 나오기 어렵다.
+5. 현재 결과는 graph preview이지 brain-like Knowledge Graph Dashboard가 아니다.
+```
+
+v1.1 product decision:
+
+```text
+Primary:
+  Single self-contained HTML Knowledge Graph Dashboard
+
+Secondary:
+  Export to Obsidian, JSON Canvas, orange graph JSON, or future apps
+
+v1.1 focus:
+  Single HTML brain-like Knowledge Graph Dashboard
+
+Deferred to v1.2+:
+  Explicit interoperability export commands and generated export artifacts
+```
+
+Identity HTML은 v1.1의 **primary product surface**다. Export는 generated
+interoperability artifact이며 product의 기본 경험이 아니다.
+
+v1.1 target UX:
+
+```text
+100vw x 100vh graph stage
+full-screen dark neural field
+hamburger sidebar
+node detail drawer
+search/filter drawer
+no document-style main content
+no always-visible table
+non-graph information hidden in sidebar/drawer
+graph first, report second
+```
+
+Source graph와 visual graph는 분리한다.
+
+```text
+sourceGraph:
+  accepted memory nodes only
+  persisted in .orange-hyper/graph
+  current-project scoped
+  excludes pending/rejected proposals
+
+visualGraph:
+  accepted memory nodes
+  + derived concept nodes
+  + derived source quest nodes
+  + derived source proposal nodes
+  + derived category/type nodes
+  generated only inside Identity HTML state
+```
+
+Derived visual node 규칙:
+
+```text
+displayOnly: true
+derived: true
+readOnly: true
+never written to .orange-hyper/graph
+exists only inside generated Identity HTML state
+```
+
+v1.1 visual node type 후보:
+
+```text
+memory
+concept
+sourceQuest
+sourceProposal
+category
+growthSignal optional
+evalSignal optional
+```
+
+초기 v1.1 구현 후보는 `memory`, `concept`, `sourceQuest`, `sourceProposal`,
+`category`까지만 포함한다. `growthSignal`과 `evalSignal`은 optional/future
+display node이며 source graph node가 아니다.
+
+Brain-like visual rules:
+
+```text
+- memory node는 더 크고 중심에 가깝다.
+- concept node는 cluster를 만든다.
+- source nodes는 작고 희미하다.
+- category/type node는 cluster anchor 역할을 한다.
+- edge strength는 shared source/type/keyword에 따라 달라진다.
+- node size는 degree/importance 기반이다.
+- node color는 semantic category 기반이다.
+- layout은 deterministic seed 기반이다.
+```
+
+v1.2+ export 후보:
+
+```text
+orange graph JSON
+Obsidian Markdown Vault
+JSON Canvas .canvas
+```
+
+Export 원칙:
+
+```text
+- export는 primary UX가 아니다.
+- export는 명시 명령에서만 생성한다.
+- export는 project memory를 수정하지 않는다.
+- export 산출물은 generated interoperability layer다.
+```
+
+v1.1 구현 전 acceptance criteria:
+
+```text
+1. first screen is full-screen graph
+2. graph stage uses 100vh
+3. sidebar hidden by default
+4. node detail opens on click
+5. table is fallback/sidebar only
+6. visualGraph has derived nodes
+7. sourceGraph remains accepted memory only
+8. no external CDN/dependency
+9. no editing controls
+10. pending/rejected proposals excluded
+```
+
 v1.1 Dashboard가 HTML에 embed하는 graph state:
 
 ```text
@@ -86,9 +223,10 @@ project memory나 config도 수정하지 않는다. 사용자가 직접 `orange 
 
 ## 2. 제품 원칙
 
-### 2.1 Single HTML first
+### 2.1 Single HTML primary surface
 
-초기 버전은 반드시 단일 HTML로 export한다.
+초기 버전은 반드시 단일 HTML로 생성한다. v1.1 기준에서 이 HTML은 보조 report가
+아니라 primary product surface다.
 
 ```text
 .orange-hyper/identity/orange-hyper.html
@@ -101,6 +239,12 @@ project memory나 config도 수정하지 않는다. 사용자가 직접 `orange 
 - 필요한 JSON data, CSS, JS를 HTML 안에 embed한다.
 - deterministic하게 생성되어야 한다.
 - private local memory는 기본 포함하지 않는다.
+- first screen은 graph여야 한다.
+- document-style report는 sidebar/drawer/fallback로 내려간다.
+
+Obsidian, JSON Canvas, orange graph JSON export는 secondary interoperability
+layer다. Export는 명시 명령에서만 생성하며, Identity HTML의 primary UX를
+대체하지 않는다.
 
 ### 2.2 Dashboard is identity, not analytics vanity
 
@@ -239,7 +383,63 @@ SVG view를 포함한다. 그래도 source input은 current-project accepted gra
 proposal은 graph node가 아니며, Identity Dashboard는 graph source state를 edit
 하지 않는다.
 
-## 5. Dashboard 화면 구조 (v0.3+ target)
+v1.1.0-alpha.2부터 구현 기준은 sourceGraph/visualGraph 분리를 전제로 한다.
+sourceGraph는 accepted memory node만 포함하고, visualGraph는 HTML 내부에서만
+존재하는 display-only derived node를 추가할 수 있다.
+
+## 5. Dashboard 화면 구조
+
+### 5.0 v1.1 Knowledge Graph Dashboard target
+
+v1.1의 첫 화면은 document가 아니라 full-screen graph stage다.
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│  full-screen dark neural field (100vw x 100vh)             │
+│                                                            │
+│  [hamburger]        memory / concept / source clusters     │
+│                                                            │
+│                         selected node -> detail drawer     │
+│                                                            │
+│                         search/filter drawer hidden        │
+└────────────────────────────────────────────────────────────┘
+```
+
+Target structure:
+
+```text
+Graph Stage:
+  primary full-screen surface
+  deterministic brain-like visualGraph
+  no document-style main content
+
+Hamburger Sidebar:
+  project summary
+  graph legend
+  non-graph report sections
+
+Node Detail Drawer:
+  opens on node click
+  shows memory detail, source quest/proposal, provenance, confidence
+
+Search/Filter Drawer:
+  hidden until requested
+  supports type/category/search filtering
+
+Fallback:
+  table remains available only in sidebar/fallback/no-JS mode
+```
+
+UX priority:
+
+```text
+graph first
+report second
+editing never
+export later
+```
+
+### 5.1 Legacy/future document dashboard sketch
 
 ```text
 ┌────────────────────────────────────────────────────────────┐
@@ -252,7 +452,10 @@ proposal은 graph node가 아니며, Identity Dashboard는 graph source state를
 └────────────────────────────────────────────────────────────┘
 ```
 
-### 5.1 Header
+이 sketch는 early document dashboard thinking이다. v1.1 target UX supersedes it
+for the Identity HTML primary surface.
+
+### 5.2 Header
 
 표시 항목:
 
@@ -266,9 +469,10 @@ Bias Alert Count
 Last Generated At
 ```
 
-### 5.2 Graph View
+### 5.3 Graph View
 
-Obsidian-like project graph.
+Future graph capabilities. These are not v1.1 acceptance criteria unless they
+fit the full-screen Identity HTML target without external dependencies.
 
 기능:
 
@@ -315,7 +519,7 @@ stale_after
 unlocks
 ```
 
-### 5.3 Insight Panel
+### 5.4 Insight Panel
 
 node 선택 시 오른쪽에 보여준다.
 
@@ -333,7 +537,7 @@ Staleness
 Suggested action
 ```
 
-### 5.4 Timeline
+### 5.5 Timeline
 
 프로젝트 성장 흐름을 보여준다.
 
@@ -348,7 +552,7 @@ Role proposed
 Verification failed
 ```
 
-### 5.5 Bias Radar
+### 5.6 Bias Radar
 
 프로젝트가 어디로 치우치는지 보여준다.
 
@@ -450,7 +654,39 @@ subagent_context_tokens
 trace_tokens_by_route
 ```
 
-## 7. HTML State Contract (future target)
+## 7. HTML State Contract
+
+### 7.1 Source graph vs visual graph
+
+The Identity HTML state must distinguish persisted graph source from generated
+display state.
+
+```text
+sourceGraph:
+  persisted project memory
+  accepted memory nodes only
+  no pending/rejected proposals
+  no derived visual-only nodes
+
+visualGraph:
+  render-time graph state
+  sourceGraph memory nodes
+  + display-only derived nodes
+  + display-only derived edges
+  never persisted back to .orange-hyper/graph
+```
+
+Derived visual nodes must carry:
+
+```json
+{
+  "displayOnly": true,
+  "derived": true,
+  "readOnly": true
+}
+```
+
+### 7.2 Legacy/future state sketch
 
 HTML 안에 다음 형태로 embed한다.
 
@@ -544,9 +780,21 @@ Vanilla HTML/CSS/SVG only read-only preview.
 - automatic memory write
 ```
 
-### 8.3 Future renderer candidates
+### 8.3 v1.1 renderer target and future candidates
 
-선택지:
+v1.1 renderer target:
+
+```text
+single self-contained HTML
+vanilla SVG/JS or canvas/SVG hybrid
+no external CDN
+no external dependency
+no D3/Cytoscape/Sigma
+no graph editing
+```
+
+Future candidates, only if graph scale and maintenance cost justify a later
+version:
 
 ```text
 D3 force: Obsidian-like force graph에 적합.
@@ -559,7 +807,9 @@ Sigma.js: 수천 node 이상 large graph가 필요할 때 적합.
 ```text
 v0.2: vanilla placeholder
 v0.3 stable: vanilla static read-only preview
-Future: hook preview 이후 graph가 커지면 bundled renderer 또는 Cytoscape.js/Sigma.js 검토
+v1.1: vanilla dependency-free full-screen Knowledge Graph Dashboard
+v1.2+: export/interoperability layer
+v1.3+: graph scale evidence가 충분할 때만 bundled renderer 검토
 ```
 
 CDN은 사용하지 말고 bundle해서 single HTML에 포함한다.
@@ -656,6 +906,29 @@ orange identity build --include-local
 10. current project_id와 다른 node는 preview node로 표시하지 않는다.
 ```
 
+### 10.4 v1.1 full-screen Knowledge Graph Dashboard 기준
+
+```text
+1. first screen is full-screen graph
+2. graph stage uses 100vh
+3. graph stage spans 100vw
+4. sidebar is hidden by default behind hamburger control
+5. node detail opens on click
+6. search/filter UI is hidden in a drawer until requested
+7. no document-style main content is visible on first screen
+8. no always-visible table is present in the main graph stage
+9. table is fallback/sidebar/no-JS only
+10. visualGraph includes display-only derived nodes
+11. sourceGraph remains accepted memory nodes only
+12. derived nodes have displayOnly, derived, and readOnly flags
+13. derived nodes are never written to .orange-hyper/graph
+14. pending/rejected proposals are excluded
+15. no external CDN or dependency is introduced
+16. D3/Cytoscape/Sigma are not introduced
+17. no graph editing controls are present
+18. export controls are absent from v1.1 primary UX
+```
+
 ## 11. 구현 단계
 
 ### Phase 0: v0.2 Seed Placeholder
@@ -681,14 +954,18 @@ orange identity build --include-local
 - no force simulation
 ```
 
-### Phase 2: Obsidian-like Graph
+### Phase 2: Full-screen Knowledge Graph Stage
 
 ```text
-- force graph
-- local depth view
-- filters
-- search
-- node detail panel
+- 100vw x 100vh graph stage
+- dark neural field
+- sourceGraph / visualGraph split
+- derived display-only nodes
+- hamburger sidebar
+- node detail drawer
+- search/filter drawer
+- table only as fallback/sidebar
+- no external dependencies
 ```
 
 ### Phase 3: Bias and Health
@@ -710,13 +987,16 @@ orange identity build --include-local
 - project growth timeline
 ```
 
-### Phase 5: Shareable Report
+### Phase 5: Interoperability Export
+
+v1.2+ 후보이며 v1.1 primary UX가 아니다.
 
 ```text
-- redacted export
-- static docs embed
-- CI artifact mode
-- release report mode
+- orange graph JSON
+- Obsidian Markdown Vault
+- JSON Canvas .canvas
+- explicit command only
+- no project memory mutation
 ```
 
 ## 12. Non-goals
@@ -731,8 +1011,14 @@ Identity Dashboard는 다음을 하지 않는다.
 - cloud sync
 - telemetry upload
 - full raw conversation archive
+- Obsidian/JSON Canvas export as default UX
+- export command execution during identity build
+- D3/Cytoscape/Sigma dependency for v1.1
+- graph editing controls
 ```
 
 ## 13. 한 줄 요약
 
-Identity Dashboard는 `orange-hyper`의 얼굴이다. 프로젝트가 어떤 지식으로 자라고 있고, 어디에 치우치고 있으며, 어떤 검증 부채를 갖고 있는지 단일 HTML로 보여준다.
+Identity Dashboard는 `orange-hyper`의 얼굴이다. v1.1의 목표는 프로젝트가 어떤
+지식으로 자라고 있는지 full-screen brain-like Knowledge Graph로 먼저 보여주고,
+report와 export는 그 다음 계층으로 미루는 single HTML primary surface다.

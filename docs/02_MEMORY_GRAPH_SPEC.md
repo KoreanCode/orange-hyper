@@ -262,6 +262,73 @@ SVG/vanilla JS로 보여주는 소비자일 뿐이며, graph node Markdown,
 edge는 visualization용 display relation이며 persisted Memory Graph source edge가
 아니다.
 
+### 2.2.1 sourceGraph vs visualGraph
+
+v1.1 Identity HTML은 persisted graph source와 generated display graph를 분리한다.
+
+`sourceGraph`는 Memory Graph의 source of truth를 뜻한다.
+
+```text
+sourceGraph:
+  accepted memory nodes only
+  current-project scoped
+  backed by .orange-hyper/graph node Markdown and index read model
+  excludes pending/rejected proposals
+  excludes display-only concept/source/category nodes
+```
+
+`visualGraph`는 Identity HTML 안에서만 존재하는 render-time graph state다.
+
+```text
+visualGraph:
+  sourceGraph memory nodes
+  + derived concept nodes
+  + derived sourceQuest nodes
+  + derived sourceProposal nodes
+  + derived category/type nodes
+  + derived display edges
+```
+
+Derived visual nodes must be marked as display-only:
+
+```json
+{
+  "displayOnly": true,
+  "derived": true,
+  "readOnly": true
+}
+```
+
+Derived visual node rules:
+
+- Derived nodes are never written to `.orange-hyper/graph`.
+- Derived nodes never become accepted memory by being displayed.
+- Derived nodes exist only inside generated Identity HTML state.
+- Derived display edges do not update `edges.jsonl`.
+- Pending/rejected proposals remain excluded from both sourceGraph and
+  visualGraph.
+
+Initial v1.1 visual node type candidates:
+
+```text
+memory
+concept
+sourceQuest
+sourceProposal
+category
+```
+
+Optional future visual node types:
+
+```text
+growthSignal
+evalSignal
+```
+
+These optional signal nodes are display affordances only. They do not change the
+Memory Graph source schema and do not grant permission for automatic growth,
+eval, hook, MCP, role, or subagent behavior.
+
 포함:
 
 ```text

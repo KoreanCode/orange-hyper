@@ -1,5 +1,55 @@
 # Release Notes
 
+## v1.1.0-alpha.2
+
+Identity Graph Product Spec and Redesign Plan.
+
+- Package version is `1.1.0-alpha.2`.
+- README version is `1.1-doc.2`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- This alpha does not add runtime behavior. It fixes the v1.1 product direction
+  for Identity HTML before renderer work continues.
+- `docs/14_IDENTITY_DASHBOARD_SPEC.md` now records the current alpha problem:
+  the HTML is still a max-width document layout, the graph canvas is an
+  internal 430px preview rather than a 100vh stage, table/detail information is
+  visible in the document body, and the current 3-node/1-edge accepted-memory
+  sample cannot produce a brain-like graph by itself.
+- Identity HTML is now documented as the primary product surface for Orange
+  Hyper Identity. Obsidian, JSON Canvas, orange graph JSON, and future app
+  exports are secondary interoperability artifacts, not the default product
+  experience.
+- v1.1 target UX is fixed as a 100vw x 100vh graph-first dark neural field with
+  hamburger sidebar, node detail drawer, search/filter drawer, no
+  document-style main content, no always-visible table, and non-graph report
+  information hidden until requested.
+- `docs/02_MEMORY_GRAPH_SPEC.md` now separates `sourceGraph` from
+  `visualGraph`: sourceGraph remains accepted current-project memory nodes
+  only, while visualGraph may add display-only derived concept, source quest,
+  source proposal, and category/type nodes inside generated Identity HTML state.
+- Derived visual nodes must be marked `displayOnly: true`, `derived: true`, and
+  `readOnly: true`; they are never written to `.orange-hyper/graph` and never
+  mutate project memory.
+- Future export candidates are documented for v1.2+: orange graph JSON,
+  Obsidian Markdown Vault, and JSON Canvas `.canvas`, all explicit-command-only
+  and non-mutating.
+- README Identity copy now states that the full-screen Knowledge Graph
+  Dashboard is the Identity target and that export is future interoperability,
+  not the primary UX.
+- Package metadata, package lock metadata, citation metadata, version tests,
+  and `src/core/origin.js` now target `1.1.0-alpha.2`.
+
+### Explicitly not included
+
+- Identity HTML renderer implementation
+- export command implementation
+- Obsidian vault export
+- JSON Canvas export
+- graph editing
+- project memory mutation
+- external dependency addition
+- D3, Cytoscape, Sigma, or other graph library adoption
+
 ## v1.1.0-alpha.1
 
 README Product Surface Realignment.

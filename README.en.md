@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.1`
+- README version: `1.1-doc.2`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -169,7 +169,9 @@ If you tell the AI "refresh Identity HTML", the AI can use the Orange Kernel to 
 .orange-hyper/identity/orange-hyper.html
 ```
 
-Identity HTML currently provides a read-only Knowledge Graph Preview. It can help you explore accepted memory nodes, but it is not a full graph editor, and the brain-like full-screen Knowledge Graph Dashboard is not a completed current feature. That larger brain-like dashboard remains the next dashboard direction.
+Identity HTML is the primary product surface for Orange Hyper Identity. The v1.1 target is a first screen that is a full-screen Knowledge Graph Dashboard, not a document-style report.
+
+Identity HTML currently provides a read-only Knowledge Graph Preview. It can help you explore accepted memory nodes, but it is not a full graph editor, and the brain-like full-screen Knowledge Graph Dashboard is not a completed current feature. Obsidian/JSON Canvas export is a future interoperability layer, not the default product experience.
 
 ## Detailed Docs Links
 
