@@ -1,5 +1,48 @@
 # Release Notes
 
+## v1.1.0-alpha.3
+
+Brain-like Identity Graph Implementation.
+
+- Package version is `1.1.0-alpha.3`.
+- README version is `1.1-doc.3`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- Identity HTML now opens on a graph-first `100vw` x `100vh` dark SVG stage
+  instead of a document-style max-width report.
+- The generated HTML embeds separate `sourceGraph` and `visualGraph` state.
+  `sourceGraph` remains current-project accepted memory only, while
+  `visualGraph` adds display-only concept, source quest, source proposal, and
+  category nodes for a denser brain-like view.
+- Derived visual nodes carry `displayOnly: true`, `derived: true`, and
+  `readOnly: true`; they are never written to `.orange-hyper/graph` or
+  `edges.jsonl`.
+- The visual graph uses dependency-free vanilla SVG/JS with deterministic
+  seed-based force-like layout, node glow, translucent neural links, search,
+  type filtering, derived-node and label toggles, reset, fit-to-view, pan, and
+  wheel zoom.
+- Project summary, growth preview, eval note, node type distribution, accepted
+  memory table, source quest/proposal links, boundary text, and raw debug state
+  now live in sidebar/drawer surfaces. The default screen stays graph-first.
+- Node click opens a read-only detail drawer. Empty accepted-memory state and
+  JavaScript-disabled fallback table paths remain intact.
+- Added Identity tests for full-screen graph-first layout, sourceGraph and
+  visualGraph boundaries, derived node flags, sidebar/drawer markup, fallback
+  placement, external-script/dependency bans, and editing-control exclusion.
+
+### Explicitly not included
+
+- graph editing
+- source node or edge mutation
+- external CDN or network fetch
+- heavy graph dependencies such as D3, Cytoscape, or Sigma
+- code dependency analysis
+- LLM graph clustering
+- pending/rejected proposal display
+- project memory auto-generation
+- MCP, hook, or subagent auto-run
+- Obsidian or JSON Canvas export
+
 ## v1.1.0-alpha.2
 
 Identity Graph Product Spec and Redesign Plan.

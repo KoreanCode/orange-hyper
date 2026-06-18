@@ -255,12 +255,17 @@ Graph는 source state를 수정하지 않는다. `graph rebuild-index`는 재생
 read model인 `graph/index.json`만 다시 쓴다. v0.3 stable에는 MCP, hooks,
 subagents, role system, graph editing, semantic/vector search가 없다.
 
-v1.1.0-alpha.0 Identity Knowledge Graph Dashboard는 이 v0.3 read-only boundary를
+v1.1 Identity Knowledge Graph Dashboard는 이 v0.3 read-only boundary를
 유지한다. Dashboard는 current-project accepted memory nodes를 단일 HTML에 embed해
 SVG/vanilla JS로 보여주는 소비자일 뿐이며, graph node Markdown,
 `graph/index.json`, `edges.jsonl`, proposal status를 수정하지 않는다. Dashboard
 edge는 visualization용 display relation이며 persisted Memory Graph source edge가
 아니다.
+
+v1.1.0-alpha.3의 Identity HTML runtime state는 이 경계를 `sourceGraph`와
+`visualGraph`로 구현한다. `sourceGraph`는 accepted memory node와 persisted accepted
+edge만 포함하고, `visualGraph`는 HTML 내부에서만 derived concept/source/category
+node와 display edge를 더한다.
 
 ### 2.2.1 sourceGraph vs visualGraph
 
@@ -273,6 +278,7 @@ sourceGraph:
   accepted memory nodes only
   current-project scoped
   backed by .orange-hyper/graph node Markdown and index read model
+  persisted accepted memory edges only
   excludes pending/rejected proposals
   excludes display-only concept/source/category nodes
 ```
@@ -307,6 +313,8 @@ Derived visual node rules:
 - Derived display edges do not update `edges.jsonl`.
 - Pending/rejected proposals remain excluded from both sourceGraph and
   visualGraph.
+- Identity HTML may hide derived nodes through UI filters, but hiding them does
+  not mutate project memory or source graph files.
 
 Initial v1.1 visual node type candidates:
 

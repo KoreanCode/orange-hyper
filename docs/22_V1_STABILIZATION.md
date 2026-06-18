@@ -3,15 +3,17 @@
 Orange Hyper v1.0.0 is the first stable boundary release. Orange Hyper
 v1.1.0-alpha.0 adds a read-only Identity HTML Knowledge Graph view, and
 v1.1.0-alpha.1 realigns the README product surface around the AI-first usage
-model without adding a new CLI feature, runtime adapter, MCP runner, hook
-installer, role system, planner, LLM judge, or telemetry path. The purpose of
-the v1 line is to keep the v0.1 through v0.8 boundaries explicit, verified, and
-publish-ready while making the user-facing usage model clearer.
+model, v1.1.0-alpha.2 fixes the Identity Graph product spec, and
+v1.1.0-alpha.3 implements the full-screen read-only brain-like Identity Graph.
+None of these alphas add a runtime adapter, MCP runner, hook installer, role
+system, planner, LLM judge, telemetry path, or graph editing surface. The
+purpose of the v1 line is to keep the v0.1 through v0.8 boundaries explicit,
+verified, and publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.1`
-- README version: `1.1-doc.1`
+- package version: `1.1.0-alpha.3`
+- README version: `1.1-doc.3`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model

@@ -990,6 +990,82 @@ export interface EvalExplainResult extends OriginMetadata {
   notes: string[];
 }
 
+export interface IdentitySourceGraphNode extends GraphIndexEntry {
+  type: MemoryNodeType;
+  label: string;
+  generated_by: string;
+  generator_package: string;
+  generator_version: string;
+  source_repository: string;
+  official_package: string;
+  candidate_memory_summary: string;
+  degree: number;
+  readOnly: true;
+  sourceOfTruth: true;
+  displayOnly: false;
+  derived: false;
+  graphKind: "memory";
+  kind?: string;
+  confidence?: string;
+  origin?: string;
+  status?: string;
+}
+
+export interface IdentitySourceGraphEdge {
+  id: string;
+  from: string;
+  to: string;
+  relation: string;
+  confidence: number | null;
+  readOnly: true;
+  sourceOfTruth: true;
+  displayOnly: false;
+  derived: false;
+}
+
+export type IdentityVisualNodeType = "memory" | "concept" | "sourceQuest" | "sourceProposal" | "category";
+
+export interface IdentityVisualGraphNode {
+  id: string;
+  type: IdentityVisualNodeType;
+  visualType: IdentityVisualNodeType;
+  graphKind: string;
+  label: string;
+  color: string;
+  displayOnly: boolean;
+  derived: boolean;
+  readOnly: true;
+  sourceMemoryIds: string[];
+  importance: number;
+  degree: number;
+  node_type?: MemoryNodeType;
+  title?: string;
+  project_id?: string | null;
+  project_name?: string;
+  candidate_memory?: string;
+  candidate_memory_summary?: string;
+  summary?: string;
+  tags?: string[];
+  keywords?: string[];
+  concept?: string;
+  category?: string;
+  source_quest?: string;
+  source_proposal?: string;
+}
+
+export interface IdentityVisualGraphEdge {
+  id: string;
+  from: string;
+  to: string;
+  relation: string;
+  source: string;
+  strength: number;
+  distance: number;
+  displayOnly: true;
+  derived: true;
+  readOnly: true;
+}
+
 export interface IdentitySummary extends OriginMetadata {
   project_id: string;
   project_name: string;
@@ -1043,6 +1119,35 @@ export interface IdentitySummary extends OriginMetadata {
       source_proposal: string;
       accepted_at: string;
     }>;
+  };
+  sourceGraph: {
+    schemaVersion: string;
+    readOnly: true;
+    editingSupported: false;
+    project_id: string | null;
+    project_name: string;
+    source: ".orange-hyper/graph";
+    nodeBoundary: "accepted-memory-nodes-only";
+    edgeBoundary: "persisted-accepted-memory-edges-only";
+    nodeTypeColors: Partial<Record<MemoryNodeType, string>>;
+    nodeTypeDistribution: Partial<Record<MemoryNodeType, number>>;
+    acceptedMemoryNodes: number;
+    nodes: IdentitySourceGraphNode[];
+    edges: IdentitySourceGraphEdge[];
+  };
+  visualGraph: {
+    schemaVersion: string;
+    readOnly: true;
+    editingSupported: false;
+    displayOnly: true;
+    source: "identity-html-visual-only";
+    project_id: string | null;
+    project_name: string;
+    seed: string;
+    layout: "deterministic-seeded-force";
+    nodeTypeColors: Record<string, string>;
+    nodes: IdentityVisualGraphNode[];
+    edges: IdentityVisualGraphEdge[];
   };
   growthPreview: {
     readOnly: true;
