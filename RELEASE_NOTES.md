@@ -1,5 +1,44 @@
 # Release Notes
 
+## v1.1.0-alpha.6
+
+Identity Graph Renderer and Responsive Hardening.
+
+- Package version is `1.1.0-alpha.6`.
+- README version is `1.1-doc.6`.
+- Release date is `2026-06-18`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- The Identity HTML graph surface now uses a single-file Canvas renderer with
+  inline JavaScript and CSS only. It does not fetch, load a CDN, or require a
+  local server at runtime.
+- Renderer baseline: the previous SVG force-layout path measured about 32ms for
+  100 nodes, 529ms for 500 nodes, and 2395ms for 1000 nodes in the layout step.
+  The new renderer stores deterministic build-time `x`/`y` coordinates on
+  `identityGraph.nodes` and does not recalculate layout during search or view
+  filtering.
+- Identity HTML now provides `Combined`, `Structure`, and `Memory` modes.
+  Combined is the default and shows generated structure, accepted memory, and
+  mapping edges. Structure shows generated Project Sync structure only. Memory
+  shows accepted memory only.
+- The first screen is reduced to the graph, project name, search, layer/view
+  selector, hamburger, and fit/reset controls. Sidebar content is split into
+  Overview, Structure, Memory, and Diagnostics tabs; raw JSON is collapsed under
+  Diagnostics.
+- Mobile drawers are constrained to `100dvw` and `100dvh`, hide horizontal
+  overflow, and force long ids and paths to wrap.
+- The HTML runtime state now embeds `structureGraph`, `memoryGraph`,
+  `identityGraph`, mapping summary, `state_revision`,
+  `identity_built_from_revision`, and `identity_status` in
+  `orange-knowledge-graph-state`; legacy duplicate runtime payloads are not
+  embedded. Summary JSON keeps compatibility aliases where needed.
+- Added tests for project.root center coordinates, view mode controls, no
+  keyword concept nodes, mobile drawer width, long-id overflow defense, no
+  external fetch/CDN, no graph editing controls, 500+ node fixture generation,
+  and source-state-preserving search/view filtering.
+- Non-goals remain explicit: no Project Sync schema redesign, Obsidian/JSON
+  Canvas export, full AST/call graph, graph editing, project memory mutation,
+  MCP/hook/subagent automatic execution, or keyword concept node reactivation.
+
 ## v1.1.0-alpha.5
 
 AI-first Bootstrap and Sync Quality Hardening.

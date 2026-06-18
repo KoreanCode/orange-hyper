@@ -38,14 +38,23 @@ document-style report 정보는 sidebar/drawer/fallback으로 내려간다. HTML
 `structureGraph`, `memoryGraph`, `identityGraph`를 분리한다. 기존 `sourceGraph`
 는 호환 alias로 남을 수 있지만 accepted memory만 뜻한다.
 
-현재 alpha 결과의 문제:
+v1.1.0-alpha.6은 Identity Graph Renderer and Responsive Hardening이다. 기존
+SVG renderer는 100/500/1000 node 기준 layout CPU가 약 32ms/529ms/2395ms로
+증가했고, 검색/필터마다 layout을 다시 계산하는 구조라 500+ node 탐색 UI를 막을
+수 있었다. alpha.6은 graph surface를 single-file Canvas renderer로 전환하고,
+좌표는 `identityGraph.nodes[*].x/y`에 build-time deterministic layout으로 저장한다.
+HTML runtime은 pan/zoom/search/view filtering만 수행하며 source state를 수정하지
+않는다.
+
+alpha.6 기본 화면:
 
 ```text
-1. HTML shell이 main max-width 중심의 document layout이다.
-2. graph canvas는 100vh full-screen stage가 아니라 내부 430px preview 영역이다.
-3. table/detail/report 정보가 본문에 항상 노출되어 graph-first 경험을 방해한다.
-4. accepted memory node만으로는 기존 repo의 첫 sync 경험을 설명하기 어렵다.
-5. keyword concept 확장은 저품질 token node를 만들 수 있으므로 alpha.5 기본값이 아니다.
+1. graph stage
+2. project name
+3. search
+4. Structure / Memory / Combined selector
+5. hamburger
+6. fit/reset controls
 ```
 
 v1.1 product decision:
@@ -71,10 +80,11 @@ v1.1 target UX:
 
 ```text
 100vw x 100vh graph stage
-full-screen dark neural field
+full-screen Canvas graph surface
 hamburger sidebar
 node detail drawer
-search/filter drawer
+search and view selector on the top bar
+mobile overflow controls in drawer
 no document-style main content
 no always-visible table
 non-graph information hidden in sidebar/drawer
@@ -100,7 +110,10 @@ memoryGraph:
 identityGraph:
   structureGraph + memoryGraph composition
   project root stays central
+  module/domain are first-level cluster anchors
+  component/test/document/infrastructure/datastore stay near their cluster
   memory nodes connect by scope_paths or source path
+  mapped memory appears near the mapped structure node
   unmapped memory goes to unmapped-memory cluster
   orphaned memory goes to orphaned-memory cluster
 ```
@@ -202,6 +215,33 @@ Export 원칙:
 - export는 명시 명령에서만 생성한다.
 - export는 project memory를 수정하지 않는다.
 - export 산출물은 generated interoperability layer다.
+```
+
+v1.1.0-alpha.6 acceptance criteria:
+
+```text
+1. first screen is full-screen graph
+2. graph stage uses 100vh
+3. graph stage uses 100vw
+4. project.root is visually central on reset/default layout
+5. module/domain/component clusters are visually separated
+6. mapped memory is placed near related structure nodes
+7. sidebar hidden by default
+8. sidebar tabs are Overview, Structure, Memory, Diagnostics
+9. mobile drawer width is 100dvw and height is 100dvh
+10. long ID/path text wraps with overflow-wrap:anywhere
+11. Structure mode shows generated project structure
+12. Memory mode shows accepted memory only
+13. Combined mode shows structure + memory + mapping edges and is default
+14. search/filter does not recalculate layout or mutate source state
+15. 500+ node fixture generates renderable Canvas HTML state
+16. no external CDN/fetch/runtime dependency
+17. no editing controls
+18. pending/rejected proposals excluded
+19. low-quality keyword concept nodes are absent
+20. sync apply refreshes Identity HTML
+21. Identity summary reports mapped/unmapped/orphaned accepted memory counts
+22. Identity build failure leaves source state intact and reports stale diagnostics
 ```
 
 v1.1.0-alpha.5 acceptance criteria:
@@ -734,25 +774,45 @@ trace_tokens_by_route
 
 ## 7. HTML State Contract
 
-### 7.1 Source graph vs visual graph
+### 7.1 Structure, memory, and identity graph state
 
-The Identity HTML state must distinguish persisted graph source from generated
-display state.
+The Identity HTML runtime state is embedded once in
+`orange-knowledge-graph-state`. It keeps the three active graph layers needed by
+the renderer and avoids duplicating legacy preview payloads.
 
 ```text
-sourceGraph:
-  persisted project memory
-  accepted memory nodes only
-  no pending/rejected proposals
-  no derived visual-only nodes
+structureGraph:
+  generated project structure
+  project.root
+  module/domain/component/test/document/infrastructure/datastore
 
-visualGraph:
-  render-time graph state
-  sourceGraph memory nodes
-  + display-only derived nodes
-  + display-only derived edges
-  never persisted back to .orange-hyper/graph
+memoryGraph:
+  accepted memory nodes only
+  accepted persisted memory edges only
+  no pending/rejected proposals
+
+identityGraph:
+  structureGraph + memoryGraph composition
+  build-time deterministic x/y coordinates
+  mapping edges from memory to structure
+  unmapped/orphaned display-only memory clusters
 ```
+
+HTML state also carries:
+
+```text
+mappingSummary / memory_mapping
+state_revision
+identity_built_from_revision
+identity_status
+renderer.surface = canvas
+renderer.layoutComputedAt = build-time
+```
+
+The generated `.orange-hyper/identity/summary.json` may retain `sourceGraph` and
+`visualGraph` as compatibility aliases. The HTML runtime state should not embed
+both aliases when `memoryGraph` and `identityGraph` already contain the active
+data.
 
 Derived visual nodes must carry:
 
@@ -766,42 +826,32 @@ Derived visual nodes must carry:
 
 ### 7.2 Legacy/future state sketch
 
-HTML 안에 다음 형태로 embed한다.
+Earlier HTML used `orange-hyper-state`. v1.1.0-alpha.6 uses
+`orange-knowledge-graph-state`.
 
 ```html
-<script id="orange-hyper-state" type="application/json">
+<script id="orange-knowledge-graph-state" type="application/json">
 {
-  "schemaVersion": "0.3.0",
+  "schemaVersion": "1.1.0-alpha.6",
   "project": {
-    "name": "example-project",
-    "generatedAt": "2026-06-16T00:00:00+09:00",
-    "orangeLevel": 2,
-    "dominantClass": "backend/auth"
+    "project_id": "project_...",
+    "project_name": "example-project",
+    "generatedAt": "2026-06-18T00:00:00.000Z"
   },
-  "nodes": [
-    {
-      "id": "decision.auth.signup-rejoin-policy",
-      "type": "Decision",
-      "title": "탈퇴 이메일 재가입 허용 정책",
-      "status": "accepted",
-      "tags": ["auth", "signup"],
-      "summary": "Soft-deleted users may rejoin with the same email."
-    }
-  ],
-  "edges": [
-    {
-      "source": "decision.auth.signup-rejoin-policy",
-      "target": "component.UserService",
-      "type": "touches"
-    }
-  ],
-  "metrics": {
-    "memoryHealth": {},
-    "verificationHealth": {},
-    "bias": {},
-    "tokenCost": {}
-  },
-  "timeline": []
+  "structureGraph": {},
+  "memoryGraph": {},
+  "identityGraph": {},
+  "mappingSummary": {},
+  "state_revision": "struct_...",
+  "identity_built_from_revision": "struct_...",
+  "identity_status": "current",
+  "renderer": {
+    "surface": "canvas",
+    "layoutComputedAt": "build-time",
+    "runtimeFetch": false,
+    "cdn": false,
+    "graphEditing": false
+  }
 }
 </script>
 ```
@@ -864,11 +914,14 @@ v1.1 renderer target:
 
 ```text
 single self-contained HTML
-vanilla SVG/JS or canvas/SVG hybrid
+Canvas graph surface + vanilla DOM controls
 no external CDN
 no external dependency
 no D3/Cytoscape/Sigma
 no graph editing
+build-time deterministic layout coordinates
+no runtime force simulation
+no runtime fetch
 ```
 
 Future candidates, only if graph scale and maintenance cost justify a later
@@ -992,7 +1045,7 @@ orange identity build --include-local
 3. graph stage spans 100vw
 4. sidebar is hidden by default behind hamburger control
 5. node detail opens on click
-6. search/filter UI is hidden in a drawer until requested
+6. search and Structure/Memory/Combined view selector are visible on the top bar
 7. no document-style main content is visible on first screen
 8. no always-visible table is present in the main graph stage
 9. table is fallback/sidebar/no-JS only
@@ -1002,10 +1055,12 @@ orange identity build --include-local
 13. low-quality keyword concept nodes are absent by default
 14. pending/rejected proposals are excluded
 15. no external CDN or dependency is introduced
-16. D3/Cytoscape/Sigma are not introduced
+16. Canvas renderer uses build-time coordinates instead of runtime force layout
 17. no graph editing controls are present
 18. export controls are absent from v1.1 primary UX
 19. sync apply refreshes Identity HTML
+20. mobile drawers stay within 100dvw/100dvh
+21. long IDs and paths wrap inside drawer panels
 ```
 
 ## 11. 구현 단계

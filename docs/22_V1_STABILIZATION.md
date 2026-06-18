@@ -8,6 +8,9 @@ v1.1.0-alpha.3 implements the full-screen read-only brain-like Identity Graph,
 v1.1.0-alpha.4 adds Project Sync plus generated Structure Graph state, and
 v1.1.0-alpha.5 hardens AI-first bootstrap, sync diff quality, semantic
 Structure Graph roles, accepted-memory mapping, and stale Identity diagnostics.
+v1.1.0-alpha.6 hardens Identity HTML rendering with Canvas, build-time graph
+layout coordinates, Structure/Memory/Combined views, responsive drawers, and
+500+ node fixture coverage.
 None of these alphas add a runtime adapter, MCP runner, hook installer, role
 system, planner, LLM judge, telemetry path, or graph editing surface. The
 purpose of the v1 line is to keep the v0.1 through v0.8 boundaries explicit,
@@ -15,8 +18,8 @@ verified, and publish-ready while making the user-facing usage model clearer.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.5`
-- README version: `1.1-doc.5`
+- package version: `1.1.0-alpha.6`
+- README version: `1.1-doc.6`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model

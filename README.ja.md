@@ -13,7 +13,7 @@
 <summary>Version metadata の詳細</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.5`
+- README version: `1.1-doc.6`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -171,7 +171,7 @@ AI に「Identity HTML を更新して」と言うと、AI は Orange Kernel を
 
 Identity HTML は Orange Hyper Identity の primary product surface です。v1.1 の目標は、最初の画面を document-style report ではなく full-screen Knowledge Graph Dashboard にすることです。
 
-現在の Identity HTML は read-only Knowledge Graph Preview を提供します。accepted memory node を探索できますが、full graph editor ではなく、brain-like full-screen Knowledge Graph Dashboard がすでに完成しているわけでもありません。Obsidian/JSON Canvas export は future interoperability layer であり、デフォルトの製品体験ではありません。
+現在の Identity HTML は read-only full-screen Knowledge Graph Dashboard を提供します。最初の画面は Canvas graph stage で、generated Structure Graph と accepted memory を合成し、Combined、Structure、Memory の表示を選べます。layout 座標は build 時に決まるため、同じ revision は同じ初期位置になります。search/view filter は source state を変更しません。これは graph editor ではなく、Obsidian/JSON Canvas export は future interoperability layer であり、デフォルトの製品体験ではありません。
 
 ## 詳細ドキュメントリンク
 

@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.5`
+- README version: `1.1-doc.6`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -182,7 +182,7 @@ AI에게 "Identity HTML을 갱신해줘"라고 말하면, AI는 Orange Kernel을
 
 Identity HTML은 Orange Hyper Identity의 primary product surface입니다. v1.1의 목표는 첫 화면이 문서형 report가 아니라 full-screen Knowledge Graph Dashboard가 되는 것입니다.
 
-현재 Identity HTML은 read-only full-screen Knowledge Graph Dashboard를 제공합니다. 첫 화면은 generated Structure Graph와 accepted memory를 합성한 graph stage입니다. keyword concept node를 기본으로 만들지 않고, pending/rejected proposal도 포함하지 않습니다. Graph editor가 아니고, Obsidian/JSON Canvas export는 future interoperability layer이며 기본 제품 경험이 아닙니다.
+현재 Identity HTML은 read-only full-screen Knowledge Graph Dashboard를 제공합니다. 첫 화면은 generated Structure Graph와 accepted memory를 합성한 Canvas graph stage이며, 기본 보기인 Combined 외에 Structure와 Memory 모드를 선택할 수 있습니다. layout은 build 시 결정되어 같은 revision은 같은 좌표를 갖고, search/view filter는 source state를 수정하지 않습니다. keyword concept node를 기본으로 만들지 않고, pending/rejected proposal도 포함하지 않습니다. Graph editor가 아니고, Obsidian/JSON Canvas export는 future interoperability layer이며 기본 제품 경험이 아닙니다.
 
 ## 자세한 문서 링크
 

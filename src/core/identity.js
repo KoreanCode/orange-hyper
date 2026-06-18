@@ -19,13 +19,14 @@ const IDENTITY_STATUS_MESSAGES = [
   "Memory proposal review is active.",
   "This is a read-only Knowledge Graph.",
   "It is built from generated structure state plus accepted memory nodes.",
+  "Structure, Memory, and Combined views share one deterministic layout.",
   "It is not a code dependency graph.",
   "Pending/rejected proposals are not included.",
   "Graph editing is not supported.",
   "Accepted memory nodes are candidate project memory."
 ];
 
-const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.5";
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-alpha.6";
 
 const NODE_TYPE_COLORS = {
   decision: "#ffb454",
@@ -268,6 +269,9 @@ function buildIdentityGraph(project, structureGraph, memoryGraph) {
   for (const structureEdge of structureGraph.edges || []) {
     addEdge(identityGraphEdge(structureEdge.from, structureEdge.to, structureEdge.relation, 0.82, distanceForRelation(structureEdge.relation), structureEdge.source || "structure"));
   }
+  for (const memoryEdge of memoryGraph.edges || []) {
+    addEdge(identityGraphEdge(memoryEdge.from, memoryEdge.to, memoryEdge.relation, 0.58, 170, "memory-graph"));
+  }
 
   let unmappedNodeAdded = false;
   let orphanedNodeAdded = false;
@@ -305,6 +309,8 @@ function buildIdentityGraph(project, structureGraph, memoryGraph) {
       typeRank(left.type) - typeRank(right.type) ||
       String(left.id).localeCompare(String(right.id))
     );
+  const seed = stableHash(`${project.project_id || ""}|${visualNodes.map((node) => node.id).join("|")}`);
+  const layoutNodes = applyDeterministicIdentityLayout(visualNodes, edges, seed);
 
   return /** @type {import("./types.d.ts").IdentityGraph} */ ({
     schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
@@ -314,13 +320,13 @@ function buildIdentityGraph(project, structureGraph, memoryGraph) {
     source: "structure-plus-accepted-memory",
     project_id: project.project_id || structureGraph.project_id || memoryGraph.project_id || null,
     project_name: project.project_name || structureGraph.project_name || memoryGraph.project_name || "",
-    seed: stableHash(`${project.project_id || ""}|${visualNodes.map((node) => node.id).join("|")}`),
-    layout: "deterministic-seeded-force",
+    seed,
+    layout: "deterministic-radial-cluster-v2",
     nodeTypeColors: {
       ...VISUAL_NODE_COLORS,
       ...memoryGraph.nodeTypeColors
     },
-    nodes: visualNodes,
+    nodes: layoutNodes,
     edges: edges.map((edge, index) => ({
       id: edge.id || `visual-edge-${String(index + 1).padStart(3, "0")}`,
       ...edge
@@ -787,6 +793,20 @@ function stableHash(value) {
   return (hash >>> 0).toString(36);
 }
 
+function stableHashNumber(value) {
+  let hash = 2166136261;
+  const text = String(value || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function hashUnit(value) {
+  return stableHashNumber(value) / 4294967295;
+}
+
 function intersection(left, right) {
   const rightSet = new Set(right);
   return left.filter((item) => rightSet.has(item));
@@ -819,6 +839,178 @@ function typeRank(type) {
     memoryCluster: 9
   };
   return ranks[type] ?? 9;
+}
+
+function applyDeterministicIdentityLayout(nodes, edges, seed) {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const containsParentByChild = new Map();
+  for (const edge of edges) {
+    if (edge.relation === "contains" && nodeById.has(edge.from) && nodeById.has(edge.to)) {
+      containsParentByChild.set(edge.to, edge.from);
+    }
+  }
+
+  const structureAnchors = nodes
+    .filter((node) => node.graphKind === "structure" && (node.type === "module" || node.type === "domain"))
+    .sort((left, right) =>
+      typeRank(left.type) - typeRank(right.type) ||
+      String(left.structurePath || left.id).localeCompare(String(right.structurePath || right.id))
+    );
+  const anchorIds = new Set(structureAnchors.map((node) => node.id));
+  const anchorPoints = new Map();
+  const positions = new Map([["project.root", {
+    x: 0,
+    y: 0,
+    cluster: "project.root",
+    clusterLabel: "Project Root"
+  }]]);
+
+  structureAnchors.forEach((node, index) => {
+    const parent = nearestStructureCluster(containsParentByChild, nodeById, node.id);
+    const parentPoint = parent && anchorPoints.has(parent) ? anchorPoints.get(parent) : null;
+    const angle = clusterAngle(seed, node.id, index, structureAnchors.length);
+    const parentBias = parentPoint ? 0.45 : 1;
+    const radius = node.type === "module" ? 320 : parentPoint ? 210 : 430;
+    const baseX = parentPoint ? parentPoint.x : 0;
+    const baseY = parentPoint ? parentPoint.y : 0;
+    const point = {
+      x: roundCoord(baseX + Math.cos(angle) * radius * parentBias + layoutJitter(seed, node.id, "x", 24)),
+      y: roundCoord(baseY + Math.sin(angle) * radius * 0.72 * parentBias + layoutJitter(seed, node.id, "y", 18)),
+      cluster: node.id,
+      clusterLabel: node.label || node.id
+    };
+    anchorPoints.set(node.id, point);
+    positions.set(node.id, point);
+  });
+
+  const structureGroups = new Map();
+  for (const node of nodes) {
+    if (node.id === "project.root" || node.graphKind !== "structure" || anchorIds.has(node.id)) {
+      continue;
+    }
+    const cluster = nearestStructureCluster(containsParentByChild, nodeById, node.id) || "project.root";
+    const group = structureGroups.get(cluster) || [];
+    group.push(node);
+    structureGroups.set(cluster, group);
+  }
+  for (const [cluster, group] of structureGroups) {
+    const anchor = positions.get(cluster) || positions.get("project.root");
+    const sorted = group.sort((left, right) =>
+      typeRank(left.type) - typeRank(right.type) ||
+      String(left.structurePath || left.id).localeCompare(String(right.structurePath || right.id))
+    );
+    sorted.forEach((node, index) => {
+      const angle = clusterAngle(seed, node.id, index, sorted.length);
+      const ring = structureRingRadius(node.type, index);
+      positions.set(node.id, {
+        x: roundCoord(anchor.x + Math.cos(angle) * ring + layoutJitter(seed, node.id, "x", 18)),
+        y: roundCoord(anchor.y + Math.sin(angle) * ring * 0.68 + layoutJitter(seed, node.id, "y", 14)),
+        cluster,
+        clusterLabel: nodeById.get(cluster)?.label || "Project Root"
+      });
+    });
+  }
+
+  const memoryGroups = new Map();
+  for (const node of nodes.filter((item) => item.type === "memory")) {
+    const targetId = node.mapped_structure_node_id && positions.has(node.mapped_structure_node_id)
+      ? node.mapped_structure_node_id
+      : node.mapping_status === "orphaned"
+        ? "orphaned-memory"
+        : "unmapped-memory";
+    const group = memoryGroups.get(targetId) || [];
+    group.push(node);
+    memoryGroups.set(targetId, group);
+  }
+
+  const clusterNodes = nodes.filter((node) => node.type === "memoryCluster");
+  for (const node of clusterNodes) {
+    const angle = node.id === "orphaned-memory" ? Math.PI * 0.18 : Math.PI * 0.82;
+    positions.set(node.id, {
+      x: roundCoord(Math.cos(angle) * 720),
+      y: roundCoord(Math.sin(angle) * 430),
+      cluster: node.id,
+      clusterLabel: node.label || node.id
+    });
+  }
+
+  for (const [targetId, group] of memoryGroups) {
+    const target = positions.get(targetId) || positions.get("project.root");
+    const sorted = group.sort((left, right) => String(left.id).localeCompare(String(right.id)));
+    sorted.forEach((node, index) => {
+      const angle = clusterAngle(seed, node.id, index, sorted.length);
+      const ring = targetId === "unmapped-memory" || targetId === "orphaned-memory"
+        ? 118 + (index % 4) * 22
+        : 72 + (index % 5) * 16;
+      positions.set(node.id, {
+        x: roundCoord(target.x + Math.cos(angle) * ring + layoutJitter(seed, node.id, "x", 10)),
+        y: roundCoord(target.y + Math.sin(angle) * ring * 0.76 + layoutJitter(seed, node.id, "y", 9)),
+        cluster: targetId,
+        clusterLabel: nodeById.get(targetId)?.label || nodeById.get(node.mapped_structure_node_id)?.label || "Mapped Memory"
+      });
+    });
+  }
+
+  return nodes.map((node) => {
+    const point = positions.get(node.id) || fallbackPoint(seed, node.id);
+    return {
+      ...node,
+      x: point.x,
+      y: point.y,
+      layoutCluster: point.cluster,
+      layoutClusterLabel: point.clusterLabel,
+      layoutComputedAt: "build-time"
+    };
+  });
+}
+
+function nearestStructureCluster(parentByChild, nodeById, nodeId) {
+  let current = parentByChild.get(nodeId);
+  const visited = new Set();
+  while (current && !visited.has(current)) {
+    visited.add(current);
+    const node = nodeById.get(current);
+    if (node && (node.type === "module" || node.type === "domain")) {
+      return current;
+    }
+    current = parentByChild.get(current);
+  }
+  return null;
+}
+
+function clusterAngle(seed, id, index, count) {
+  const evenAngle = (-Math.PI / 2) + (index * Math.PI * 2) / Math.max(count, 1);
+  return evenAngle + (hashUnit(`${seed}:${id}:angle`) - 0.5) * Math.min(0.5, Math.PI / Math.max(count, 4));
+}
+
+function layoutJitter(seed, id, axis, amount) {
+  return (hashUnit(`${seed}:${id}:${axis}`) - 0.5) * amount;
+}
+
+function roundCoord(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function structureRingRadius(type, index) {
+  const base = {
+    component: 112,
+    datastore: 132,
+    test: 154,
+    document: 188,
+    infrastructure: 214
+  }[type] || 150;
+  return base + (index % 6) * 18;
+}
+
+function fallbackPoint(seed, id) {
+  const angle = hashUnit(`${seed}:${id}:fallback-angle`) * Math.PI * 2;
+  const radius = 560 + hashUnit(`${seed}:${id}:fallback-radius`) * 180;
+  return {
+    x: roundCoord(Math.cos(angle) * radius),
+    y: roundCoord(Math.sin(angle) * radius * 0.72),
+    cluster: "fallback",
+    clusterLabel: "Fallback"
+  };
 }
 
 /**
@@ -874,43 +1066,25 @@ function growthConfidenceSummary(candidates) {
 }
 
 function renderIdentityHtml(model) {
-  const sourceGraph = model.sourceGraph;
-  const visualGraph = model.visualGraph;
-  const routeRows = renderCountRows(model.routeDistribution, "Route Layer");
-  const proposalRows = model.topProposalNodeTypes
-    .map((item) => `<tr><td>${escapeHtml(item.nodeType)}</td><td>${item.count}</td></tr>`)
-    .join("\n") || "<tr><td>none</td><td>0</td></tr>";
-  const graphTypeRows = renderCountRows(sourceGraph.nodeTypeDistribution, "Node Type");
-  const sourceLinkRows = sourceGraph.nodes
-    .map((node) => `<tr><td>${escapeHtml(node.id)}</td><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.source_quest || "none")}</td><td>${escapeHtml(node.source_proposal || "none")}</td></tr>`)
-    .join("\n") || "<tr><td>none</td><td>none</td><td>none</td><td>none</td></tr>";
-  const acceptedMemoryRows = sourceGraph.nodes
-    .map((node) => `<tr><td><a href="#${nodeAnchorId(node.id)}">${escapeHtml(node.id)}</a></td><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title)}</td><td>${escapeHtml(node.source_quest)}</td><td>${escapeHtml(node.source_proposal)}</td><td>${node.degree}</td></tr>`)
-    .join("\n") || "<tr><td>none</td><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td><td>0</td></tr>";
+  const memoryGraph = model.memoryGraph;
+  const identityGraph = model.identityGraph;
+  const mapping = model.memoryMapping || model.memory_mapping || { total: 0, mapped: 0, unmapped: 0, orphaned: 0, entries: [] };
+  const boundaryItems = [
+    "Read-only Knowledge Graph",
+    "Structure Graph and Memory Graph stay separate before composition",
+    "Combined view shows mapping edges",
+    "Pending/rejected proposals excluded",
+    "Graph editing is not supported"
+  ];
+  const acceptedMemoryRows = memoryGraph.nodes
+    .map((node) => `<tr><td>${escapeHtml(node.node_type)}</td><td>${escapeHtml(node.title || node.label || node.id)}</td><td>${escapeHtml(node.mapping_status || "unmapped")}</td><td>${escapeHtml(node.mapped_structure_node_path || "none")}</td></tr>`)
+    .join("\n") || "<tr><td>none</td><td>No accepted memory nodes</td><td>none</td><td>none</td></tr>";
   const fallbackTable = `<table id="knowledge-graph-table" class="data-table" data-fallback-table>
-    <thead><tr><th>Node ID</th><th>Node Type</th><th>Title</th><th>Source Quest</th><th>Source Proposal</th><th>Degree</th></tr></thead>
+    <thead><tr><th>Type</th><th>Title</th><th>Mapping</th><th>Structure Path</th></tr></thead>
     <tbody>
 ${acceptedMemoryRows}
     </tbody>
   </table>`;
-  const nodeDetails = renderNodeDetails(sourceGraph.nodes);
-  const growthTypes = renderCountRows(model.growthPreview.nodeTypeDistribution, "Node Type");
-  const growthCandidateRows = model.growthPreview.topCandidates
-    .map((candidate) => `<tr><td>${escapeHtml(candidate.id)}</td><td>${candidate.score}</td><td>${candidate.evidence_count}</td><td>${escapeHtml(candidate.confidence)}</td></tr>`)
-    .join("\n") || "<tr><td>none</td><td>0</td><td>0</td><td>none</td></tr>";
-  const growthCandidateDetails = model.growthPreview.topCandidates.length
-    ? `<ul>${model.growthPreview.topCandidates.map((candidate) => `<li><strong>${escapeHtml(candidate.title)}</strong>: ${escapeHtml(candidate.suggested_next_step)}</li>`).join("\n")}</ul>`
-    : "<p class=\"muted\">No growth candidates met the evidence threshold.</p>";
-  const statusMessages = model.statusMessages
-    .map((message) => `<li>${escapeHtml(message)}</li>`)
-    .join("\n");
-  const boundaryItems = [
-    "Read-only Knowledge Graph",
-    "Built from generated project structure plus accepted memory",
-    "Structure Graph and Memory Graph stay separate before composition",
-    "Not a code dependency graph",
-    "Pending/rejected proposals excluded"
-  ];
   const dashboardState = {
     schemaVersion: GRAPH_DASHBOARD_SCHEMA_VERSION,
     project: {
@@ -919,49 +1093,67 @@ ${acceptedMemoryRows}
       generatedAt: model.generatedAt
     },
     origin: model.origin || originMetadata(),
-    acceptedMemoryNodes: model.acceptedMemoryNodes,
-    projectBoundaryActive: model.projectBoundaryActive,
-    nodeTypeDistribution: sourceGraph.nodeTypeDistribution,
-    graph: {
-      readOnly: true,
-      nodes: model.graphPreview.nodes,
-      edges: model.graphPreview.edges,
-      nodeTypeColors: model.graphPreview.nodeTypeColors,
-      project_id: model.project_id || "",
-      project_name: model.project_name || model.projectName || ""
+    summary: {
+      activeCount: model.activeCount,
+      completedCount: model.completedCount,
+      verifiedCount: model.verifiedCount,
+      unverifiedCount: model.unverifiedCount,
+      acceptedMemoryNodes: model.acceptedMemoryNodes,
+      projectBoundaryActive: model.projectBoundaryActive
     },
-    graphPreview: model.graphPreview,
     structureGraph: model.structureGraph,
-    memoryGraph: model.memoryGraph,
-    identityGraph: model.identityGraph,
-    sourceGraph,
-    visualGraph,
-    memoryMapping: model.memoryMapping || model.memory_mapping || null,
-    memory_mapping: model.memory_mapping || model.memoryMapping || null,
+    memoryGraph,
+    identityGraph,
+    mappingSummary: mapping,
+    memoryMapping: mapping,
+    memory_mapping: mapping,
     growthPreview: model.growthPreview,
+    graphWarnings: model.graphWarnings || [],
+    routeDistribution: model.routeDistribution,
     state_revision: model.state_revision || null,
     identity_built_from_revision: model.identity_built_from_revision || null,
     identity_status: model.identity_status || "current",
+    renderer: {
+      surface: "canvas",
+      layout: identityGraph.layout,
+      layoutComputedAt: "build-time",
+      runtimeFetch: false,
+      cdn: false,
+      graphEditing: false
+    },
     boundary: boundaryItems,
     readOnly: true,
     editingSupported: false
   };
-  const stateJson = escapeScriptJson(JSON.stringify(dashboardState, null, 2));
   const graphDashboardState = escapeScriptJson(JSON.stringify(dashboardState, null, 2));
   const rawDetails = escapeHtml(JSON.stringify({
     structureGraph: model.structureGraph,
-    memoryGraph: model.memoryGraph,
-    identityGraph: model.identityGraph,
-    sourceGraph,
-    visualGraph,
-    memoryMapping: model.memoryMapping,
-    memory_mapping: model.memory_mapping,
-    graphPreview: model.graphPreview,
+    memoryGraph,
+    identityGraph,
+    memoryMapping: mapping,
     growthPreview: model.growthPreview,
     graphWarnings: model.graphWarnings
   }, null, 2));
-  const visualTypeOptions = renderVisualTypeOptions(visualGraph.nodes);
-  const visualLegend = renderVisualLegend(visualGraph.nodes, visualGraph.nodeTypeColors);
+  const visualLegend = renderVisualLegend(identityGraph.nodes, identityGraph.nodeTypeColors);
+  const structureRows = renderCountRows(model.structureGraph.summary?.nodes_by_type || {}, "Structure Type");
+  const memoryRows = renderCountRows(memoryGraph.nodeTypeDistribution || {}, "Memory Type");
+  const routeRows = renderCountRows(model.routeDistribution, "Route Layer");
+  const statusMessages = model.statusMessages.map((message) => `<li>${escapeHtml(message)}</li>`).join("\n");
+  const growthPreview = model.growthPreview || {};
+  const topGrowthCandidates = Array.isArray(growthPreview.topCandidates) ? growthPreview.topCandidates.slice(0, 3) : [];
+  const growthCandidateRows = topGrowthCandidates
+    .map((candidate) => `<li>${escapeHtml(candidate.title || candidate.id || "candidate")} · ${escapeHtml(candidate.confidence || "unknown")}</li>`)
+    .join("\n") || "<li>No candidates</li>";
+  const growthPreviewPanel = `<section class="panel-section" aria-label="Growth Signal Preview">
+            <h3>Growth Signal Preview</h3>
+            <ul class="detail-list">
+              <li>Growth Level: ${escapeHtml(growthPreview.growthLevel || "seed")}</li>
+              <li>Growth Level Reason: ${escapeHtml(growthPreview.growthLevelReason || "preview only")}</li>
+              <li>${escapeHtml(growthPreview.noAutomaticUnlocks || "No automatic unlocks")} · preview only</li>
+            </ul>
+            <h3>Top Candidates</h3>
+            <ul>${growthCandidateRows}</ul>
+          </section>`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -969,723 +1161,602 @@ ${acceptedMemoryRows}
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="generator" content="${escapeHtml(model.generated_by || "Orange Hyper")} ${escapeHtml(model.generator_version || "")}">
   <meta name="source-repository" content="${escapeHtml(model.source_repository || "")}">
-  <title>Orange Hyper Identity - ${escapeHtml(model.projectName)}</title>
+  <title>Orange Hyper Identity - ${escapeHtml(model.projectName)} Knowledge Graph Dashboard</title>
   <style>
-    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #04060c; color: #eef6ff; }
+    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0a0c10; color: #f4f7fb; }
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; }
-    body { margin: 0; overflow: hidden; background: #04060c; color: #eef6ff; }
+    body { margin: 0; overflow: hidden; background: #0a0c10; color: #f4f7fb; }
     button, input, select { font: inherit; letter-spacing: 0; }
-    button { min-height: 36px; border: 1px solid rgba(226, 232, 240, .18); border-radius: 8px; background: rgba(9, 14, 25, .72); color: #eef6ff; cursor: pointer; }
-    button:hover, button:focus-visible { border-color: rgba(255, 180, 84, .76); outline: 0; }
+    button { min-height: 38px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(17, 19, 24, .86); color: #f4f7fb; cursor: pointer; }
+    button:hover, button:focus-visible, input:focus-visible, select:focus-visible { border-color: rgba(255, 180, 84, .82); outline: 0; }
     a { color: #ffcf8a; }
-    .identity-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #04060c; }
-    .graph-stage { position: absolute; inset: 0; width: 100vw; height: 100vh; overflow: hidden; background:
-      linear-gradient(115deg, rgba(103, 232, 249, .08), transparent 30%),
-      linear-gradient(245deg, rgba(255, 180, 84, .08), transparent 34%),
-      radial-gradient(circle at 48% 44%, rgba(52, 211, 153, .13), transparent 26%),
-      #04060c; }
-    .graph-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .34; background-image:
-      linear-gradient(rgba(148, 163, 184, .08) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, .06) 1px, transparent 1px);
+    .identity-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #0a0c10; }
+    .graph-stage { position: absolute; inset: 0; width: 100vw; height: 100vh; overflow: hidden; background: #0a0c10; }
+    .graph-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .35; background-image:
+      linear-gradient(rgba(244, 247, 251, .07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244, 247, 251, .05) 1px, transparent 1px);
       background-size: 64px 64px, 64px 64px; }
-    .knowledge-graph-svg { position: absolute; inset: 0; display: block; width: 100vw; height: 100vh; cursor: grab; touch-action: none; }
-    .knowledge-graph-svg.is-panning { cursor: grabbing; }
-    .topbar { position: absolute; z-index: 4; top: 16px; left: 16px; right: 16px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; pointer-events: none; }
+    .knowledge-graph-canvas { position: absolute; inset: 0; display: block; width: 100vw; height: 100vh; cursor: grab; touch-action: none; }
+    .knowledge-graph-canvas.is-panning { cursor: grabbing; }
+    .topbar { position: absolute; z-index: 4; top: 14px; left: 14px; right: 14px; display: grid; grid-template-columns: 42px minmax(120px, .8fr) minmax(160px, 1fr) 132px auto; gap: 10px; align-items: center; pointer-events: none; }
     .topbar > * { pointer-events: auto; }
     .icon-button { width: 42px; height: 42px; display: inline-grid; place-items: center; padding: 0; }
     .hamburger-lines { width: 18px; display: grid; gap: 4px; }
-    .hamburger-lines span { display: block; height: 2px; border-radius: 999px; background: #eef6ff; }
-    .project-chip { min-width: 0; justify-self: start; max-width: min(680px, 58vw); padding: 9px 12px; border: 1px solid rgba(148, 163, 184, .22); border-radius: 8px; background: rgba(5, 8, 16, .68); backdrop-filter: blur(12px); }
+    .hamburger-lines span { display: block; height: 2px; border-radius: 999px; background: #f4f7fb; }
+    .project-chip { min-width: 0; padding: 9px 12px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(10, 12, 16, .72); backdrop-filter: blur(12px); }
     .project-chip strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; letter-spacing: 0; }
-    .project-chip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; color: #aebbd0; font-size: 12px; }
-    .stage-button { padding: 0 12px; }
-    .boundary-ribbon { position: absolute; z-index: 3; left: 16px; right: 16px; bottom: 50px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
-    .boundary-ribbon span { border: 1px solid rgba(148, 163, 184, .16); border-radius: 999px; padding: 5px 9px; background: rgba(4, 6, 12, .58); color: #cbd8e8; font-size: 12px; }
-    .bottom-status-bar { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid rgba(148, 163, 184, .16); background: rgba(4, 6, 12, .74); color: #b9c7db; font-size: 12px; }
+    .graph-search, .view-select { width: 100%; min-height: 42px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(10, 12, 16, .72); color: #f4f7fb; padding: 9px 11px; backdrop-filter: blur(12px); }
+    .desktop-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .stage-button { min-width: 64px; padding: 0 12px; background: rgba(10, 12, 16, .72); backdrop-filter: blur(12px); }
+    .mobile-menu-button { display: none; }
     .graph-empty-message { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; padding: 24px; color: #d7e4f5; text-align: center; }
     .graph-empty-message[hidden] { display: none; }
-    .side-drawer, .filter-drawer, .node-detail-drawer { position: absolute; z-index: 6; top: 0; height: 100vh; overflow: auto; border-color: rgba(148, 163, 184, .18); background: rgba(6, 10, 20, .94); color: #eef6ff; backdrop-filter: blur(18px); transition: transform .18s ease; }
-    .side-drawer { left: 0; width: min(440px, calc(100vw - 40px)); border-right: 1px solid rgba(148, 163, 184, .18); transform: translateX(-102%); }
-    .side-drawer[data-open="true"] { transform: translateX(0); }
-    .filter-drawer { right: 0; width: min(360px, calc(100vw - 40px)); border-left: 1px solid rgba(148, 163, 184, .18); transform: translateX(102%); padding: 18px; }
-    .filter-drawer[data-open="true"] { transform: translateX(0); }
-    .node-detail-drawer { right: 0; width: min(420px, calc(100vw - 40px)); border-left: 1px solid rgba(148, 163, 184, .18); transform: translateX(102%); padding: 18px; }
-    .node-detail-drawer[data-open="true"] { transform: translateX(0); }
-    .drawer-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(148, 163, 184, .14); background: rgba(6, 10, 20, .96); }
+    .side-drawer, .control-drawer, .node-detail-drawer { position: fixed; z-index: 6; top: 0; height: 100dvh; max-height: 100dvh; overflow: auto; overflow-x: hidden; border-color: rgba(244, 247, 251, .16); background: rgba(12, 14, 18, .96); color: #f4f7fb; backdrop-filter: blur(18px); transition: left .18s ease, right .18s ease; overflow-wrap: anywhere; word-break: break-word; pointer-events: none; }
+    .side-drawer { left: max(-460px, -100dvw); width: min(460px, 100dvw); max-width: 100dvw; border-right: 1px solid rgba(244, 247, 251, .16); }
+    .side-drawer[data-open="false"] { left: max(-460px, -100dvw); pointer-events: none; }
+    .side-drawer[data-open="true"] { left: 0; pointer-events: auto; }
+    .control-drawer, .node-detail-drawer { right: max(-420px, -100dvw); width: min(420px, 100dvw); max-width: 100dvw; border-left: 1px solid rgba(244, 247, 251, .16); }
+    .control-drawer[data-open="false"], .node-detail-drawer[data-open="false"] { right: max(-420px, -100dvw); pointer-events: none; }
+    .control-drawer[data-open="true"], .node-detail-drawer[data-open="true"] { right: 0; pointer-events: auto; }
+    .drawer-header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid rgba(244, 247, 251, .14); background: rgba(12, 14, 18, .98); }
     .drawer-header h2, .drawer-header h3 { margin: 0; font-size: 16px; letter-spacing: 0; }
     .drawer-body { padding: 18px; display: grid; gap: 18px; }
+    .drawer-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 12px 12px 0; }
+    .drawer-tab { min-width: 0; min-height: 36px; padding: 0 8px; color: #cfd8e5; }
+    .drawer-tab[aria-selected="true"] { border-color: rgba(255, 180, 84, .82); color: #fff7ed; background: rgba(255, 180, 84, .13); }
+    .tab-panel { display: none; gap: 16px; }
+    .tab-panel[data-active="true"] { display: grid; }
     .panel-section { display: grid; gap: 10px; }
     .panel-section h3 { margin: 0; font-size: 14px; color: #f7c779; letter-spacing: 0; }
     .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-    .metric { border: 1px solid rgba(148, 163, 184, .16); border-radius: 8px; padding: 10px; background: rgba(15, 23, 42, .52); }
-    .metric .label { color: #aebbd0; font-size: 12px; }
-    .metric .value { margin-top: 4px; font-size: 20px; font-weight: 700; color: #eef6ff; }
-    .data-table { width: 100%; border-collapse: collapse; border: 1px solid rgba(148, 163, 184, .16); background: rgba(15, 23, 42, .36); }
-    .data-table th, .data-table td { text-align: left; padding: 8px 9px; border-bottom: 1px solid rgba(148, 163, 184, .12); vertical-align: top; font-size: 12px; }
-    .data-table th { color: #c9d6e6; background: rgba(15, 23, 42, .7); }
-    .muted { color: #aebbd0; }
-    .field { display: grid; gap: 6px; margin-bottom: 12px; color: #cbd8e8; font-size: 13px; }
-    .field input, .field select { width: 100%; min-height: 38px; border: 1px solid rgba(148, 163, 184, .22); border-radius: 8px; background: rgba(4, 6, 12, .72); color: #eef6ff; padding: 8px 10px; }
-    .check-field { display: flex; align-items: center; gap: 8px; min-height: 34px; color: #cbd8e8; font-size: 13px; }
-    .check-field input { width: 16px; height: 16px; }
+    .metric { border: 1px solid rgba(244, 247, 251, .14); border-radius: 8px; padding: 10px; background: rgba(28, 30, 35, .58); min-width: 0; }
+    .metric .label { color: #b9c4d3; font-size: 12px; }
+    .metric .value { margin-top: 4px; font-size: 20px; font-weight: 700; color: #f4f7fb; overflow-wrap: anywhere; }
+    .data-table { width: 100%; border-collapse: collapse; border: 1px solid rgba(244, 247, 251, .14); background: rgba(28, 30, 35, .42); table-layout: fixed; }
+    .data-table th, .data-table td { text-align: left; padding: 8px 9px; border-bottom: 1px solid rgba(244, 247, 251, .1); vertical-align: top; font-size: 12px; overflow-wrap: anywhere; word-break: break-word; }
+    .data-table th { color: #d4dbe6; background: rgba(38, 40, 46, .74); }
+    .muted { color: #b9c4d3; }
     .drawer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .swatch-list { display: flex; flex-wrap: wrap; gap: 8px; }
-    .swatch { display: inline-flex; align-items: center; gap: 6px; color: #cbd8e8; font-size: 12px; }
-    .swatch::before { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--node-color, #f8fafc); box-shadow: 0 0 12px var(--node-color, #f8fafc); }
-    .node-details { display: grid; gap: 10px; }
-    .node-detail { border: 1px solid rgba(148, 163, 184, .16); border-radius: 8px; padding: 10px; background: rgba(15, 23, 42, .42); }
-    .node-detail summary { cursor: pointer; font-weight: 700; }
-    .pill { display: inline-block; border: 1px solid rgba(148, 163, 184, .22); border-radius: 999px; padding: 3px 8px; margin: 2px 4px 2px 0; font-size: 12px; color: #cbd8e8; }
-    .raw-json { max-height: 360px; overflow: auto; margin: 0; padding: 12px; border: 1px solid rgba(148, 163, 184, .16); border-radius: 8px; background: rgba(2, 6, 23, .72); color: #cbd8e8; font-size: 11px; white-space: pre-wrap; }
-    .graph-edge { stroke: rgba(164, 183, 205, .56); stroke-linecap: round; }
-    .graph-node { cursor: pointer; }
-    .graph-node circle { stroke: rgba(255, 255, 255, .72); stroke-width: 1.4; }
-    .graph-node text { fill: #edf5ff; font-size: 12px; paint-order: stroke; stroke: #04060c; stroke-width: 4px; stroke-linejoin: round; pointer-events: none; }
-    .graph-node[data-type="project"] text, .graph-node[data-type="module"] text, .graph-node[data-type="domain"] text { font-size: 11px; fill: #d9e6f7; }
-    .graph-node[aria-selected="true"] circle { stroke: #ffffff; stroke-width: 2.8; }
-    .noscript-fallback { position: fixed; z-index: 20; inset: 18px; overflow: auto; border: 1px solid rgba(148, 163, 184, .28); border-radius: 8px; padding: 18px; background: #060a14; color: #eef6ff; }
+    .swatch { display: inline-flex; align-items: center; gap: 6px; color: #cfd8e5; font-size: 12px; }
+    .swatch::before { content: ""; width: 10px; height: 10px; border-radius: 999px; background: var(--node-color, #f8fafc); box-shadow: 0 0 10px var(--node-color, #f8fafc); }
+    .raw-json { max-height: 360px; overflow: auto; overflow-x: hidden; margin: 0; padding: 12px; border: 1px solid rgba(244, 247, 251, .14); border-radius: 8px; background: rgba(8, 9, 12, .82); color: #d4dbe6; font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+    .detail-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .detail-list li { border: 1px solid rgba(244, 247, 251, .12); border-radius: 8px; padding: 9px; background: rgba(28, 30, 35, .42); }
+    .noscript-fallback { position: fixed; z-index: 20; inset: 18px; overflow: auto; border: 1px solid rgba(244, 247, 251, .24); border-radius: 8px; padding: 18px; background: #0c0e12; color: #f4f7fb; }
     .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     @media (max-width: 760px) {
-      .topbar { grid-template-columns: auto minmax(0, 1fr) auto; }
-      .topbar .stage-button:nth-of-type(n+3) { display: none; }
-      .project-chip { max-width: 46vw; }
-      .boundary-ribbon { bottom: 72px; }
-      .bottom-status-bar { align-items: flex-start; flex-direction: column; }
+      .topbar { top: 10px; left: 10px; right: 10px; grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 8px; }
+      .project-chip { grid-column: 2 / 3; }
+      .graph-search { grid-column: 1 / 4; grid-row: 2; }
+      .view-select { grid-column: 1 / 3; grid-row: 3; }
+      .desktop-actions { display: none; }
+      .mobile-menu-button { display: inline-grid; grid-column: 3; grid-row: 3; min-width: 42px; }
+      .side-drawer, .control-drawer, .node-detail-drawer { width: 100dvw; max-width: 100dvw; height: 100dvh; max-height: 100dvh; }
+      .drawer-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
 <body>
   <main class="identity-shell" data-identity-dashboard>
     <section class="graph-stage" aria-label="Read-only Knowledge Graph Dashboard">
-      <svg id="knowledge-graph-svg" class="knowledge-graph-svg" role="img" aria-label="Full-screen read-only project memory Knowledge Graph" viewBox="0 0 1200 800"></svg>
-      <div id="graph-empty-message" class="graph-empty-message" hidden>No accepted memory nodes yet. The Knowledge Graph will appear after memory proposals are accepted.</div>
+      <canvas id="knowledge-graph-canvas" class="knowledge-graph-canvas" role="img" aria-label="Full-screen read-only Identity Graph"></canvas>
+      <div id="graph-empty-message" class="graph-empty-message" hidden>No graph nodes match the current view. No accepted memory nodes yet.</div>
       <div class="topbar" aria-label="Graph controls">
         <button id="sidebar-toggle" class="icon-button" type="button" aria-label="Open sidebar" aria-controls="identity-sidebar" aria-expanded="false"><span class="hamburger-lines" aria-hidden="true"><span></span><span></span><span></span></span></button>
-        <div class="project-chip">
-          <strong>${escapeHtml(model.projectName)}</strong>
-          <span>Project ID: ${escapeHtml(model.project_id || "")} · Generated ${escapeHtml(model.generatedAt)}</span>
+        <div class="project-chip"><strong>${escapeHtml(model.projectName)}</strong></div>
+        <input id="graph-search" class="graph-search" type="search" autocomplete="off" placeholder="Search">
+        <select id="graph-view-mode" class="view-select" aria-label="Layer view">
+          <option value="combined" selected>Combined</option>
+          <option value="structure">Structure</option>
+          <option value="memory">Memory</option>
+        </select>
+        <div class="desktop-actions">
+          <button id="fit-view" class="stage-button" type="button">Fit</button>
+          <button id="reset-view" class="stage-button" type="button">Reset</button>
         </div>
-        <button id="filter-toggle" class="stage-button" type="button" aria-controls="filter-drawer" aria-expanded="false">Filters</button>
-        <button id="fit-view" class="stage-button" type="button">Fit</button>
-        <button id="reset-view" class="stage-button" type="button">Reset</button>
+        <button id="mobile-menu-toggle" class="icon-button mobile-menu-button" type="button" aria-label="Open graph controls" aria-controls="control-drawer" aria-expanded="false">...</button>
       </div>
-      <div class="boundary-ribbon" role="note">
-${boundaryItems.map((item) => `        <span>${escapeHtml(item)}</span>`).join("\n")}
-      </div>
-      <div class="bottom-status-bar" aria-live="polite">
-        <span id="graph-status-counts">Structure nodes: ${model.structureGraph.nodes.length} · Memory nodes: ${sourceGraph.nodes.length} · Identity nodes: ${visualGraph.nodes.length}</span>
-        <span>Read-only local HTML · no network fetch · no graph source mutation</span>
-      </div>
+      <p id="graph-live-status" class="visually-hidden" aria-live="polite"></p>
     </section>
     <aside id="identity-sidebar" class="side-drawer" data-open="false" aria-hidden="true" aria-label="Identity sidebar">
       <div class="drawer-header">
         <h2>Identity</h2>
         <button id="sidebar-close" type="button">Close</button>
       </div>
+      <div class="drawer-tabs" role="tablist" aria-label="Identity sections">
+        <button class="drawer-tab" id="tab-overview" data-tab="overview" role="tab" aria-selected="true" aria-controls="panel-overview">Overview</button>
+        <button class="drawer-tab" id="tab-structure" data-tab="structure" role="tab" aria-selected="false" aria-controls="panel-structure">Structure</button>
+        <button class="drawer-tab" id="tab-memory" data-tab="memory" role="tab" aria-selected="false" aria-controls="panel-memory">Memory</button>
+        <button class="drawer-tab" id="tab-diagnostics" data-tab="diagnostics" role="tab" aria-selected="false" aria-controls="panel-diagnostics">Diagnostics</button>
+      </div>
       <div class="drawer-body">
-        <section class="panel-section" aria-label="Project summary">
-          <h3>Project Summary</h3>
+        <section id="panel-overview" class="tab-panel" data-active="true" role="tabpanel" aria-labelledby="tab-overview">
           <div class="metric-grid">
-            <div class="metric"><div class="label">Active Quests</div><div class="value">${model.activeCount}</div></div>
-            <div class="metric"><div class="label">Completed Quests</div><div class="value">${model.completedCount}</div></div>
-            <div class="metric"><div class="label">Verified</div><div class="value">${model.verifiedCount}</div></div>
-            <div class="metric"><div class="label">Unverified</div><div class="value">${model.unverifiedCount}</div></div>
+            <div class="metric"><div class="label">Structure Nodes</div><div class="value">${model.structureGraph.nodes.length}</div></div>
             <div class="metric"><div class="label">Accepted Memory</div><div class="value">${model.acceptedMemoryNodes}</div></div>
-            <div class="metric"><div class="label">Project Boundary</div><div class="value">${model.projectBoundaryActive ? "Yes" : "No"}</div></div>
+            <div class="metric"><div class="label">Mapped</div><div class="value">${mapping.mapped}</div></div>
+            <div class="metric"><div class="label">Identity Status</div><div class="value">${escapeHtml(model.identity_status || "current")}</div></div>
           </div>
+          ${growthPreviewPanel}
+          <section class="panel-section" aria-label="Visual legend"><h3>Legend</h3><div class="swatch-list">${visualLegend}</div></section>
+          <section class="panel-section" aria-label="Boundary"><h3>Boundary</h3><ul>${boundaryItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("\n")}</ul></section>
         </section>
-        <section class="panel-section" aria-label="Visual legend">
-          <h3>Visual Legend</h3>
-          <div class="swatch-list">
-${visualLegend}
-          </div>
+        <section id="panel-structure" class="tab-panel" data-active="false" role="tabpanel" aria-labelledby="tab-structure">
+          <section class="panel-section"><h3>Structure</h3><table class="data-table"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${structureRows}</tbody></table></section>
+          <section class="panel-section"><h3>Revision</h3><ul class="detail-list"><li>state_revision: ${escapeHtml(model.state_revision || "none")}</li><li>identity_built_from_revision: ${escapeHtml(model.identity_built_from_revision || "none")}</li></ul></section>
         </section>
-        <section class="panel-section" aria-label="Boundary text">
-          <h3>Boundary</h3>
-          <ul>
-${boundaryItems.map((item) => `            <li>${escapeHtml(item)}</li>`).join("\n")}
-            <li>Graph editing is not supported.</li>
-          </ul>
+        <section id="panel-memory" class="tab-panel" data-active="false" role="tabpanel" aria-labelledby="tab-memory">
+          <section class="panel-section"><h3>Memory Mapping</h3><div class="metric-grid"><div class="metric"><div class="label">Mapped</div><div class="value">${mapping.mapped}</div></div><div class="metric"><div class="label">Unmapped</div><div class="value">${mapping.unmapped}</div></div><div class="metric"><div class="label">Orphaned</div><div class="value">${mapping.orphaned}</div></div><div class="metric"><div class="label">Total</div><div class="value">${mapping.total}</div></div></div></section>
+          <section class="panel-section"><h3>Memory Types</h3><table class="data-table"><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>${memoryRows}</tbody></table></section>
+          <details><summary>Accepted memory rows</summary>${fallbackTable}</details>
         </section>
-        <section class="panel-section" aria-label="Growth preview">
-          <h3>Growth Signal Preview</h3>
-          <table class="data-table">
-            <thead><tr><th>Signal</th><th>Value</th></tr></thead>
-            <tbody>
-              <tr><td>Growth Level</td><td>${escapeHtml(model.growthPreview.growthLevel)} (preview only)</td></tr>
-              <tr><td>Growth Level Reason</td><td>${escapeHtml(model.growthPreview.growthLevelReason)}</td></tr>
-              <tr><td>Accepted Memory Nodes</td><td>${model.growthPreview.acceptedMemoryNodes}</td></tr>
-              <tr><td>Node Type Diversity</td><td>${model.growthPreview.nodeTypeDiversity}</td></tr>
-              <tr><td>Pending Memory Proposals</td><td>${model.growthPreview.pendingMemoryProposals}</td></tr>
-              <tr><td>Verified Quest Ratio</td><td>${formatRatio(model.growthPreview.questVerification.verifiedRatio)}</td></tr>
-              <tr><td>Hook Warnings</td><td>${model.growthPreview.hookWarningCount}</td></tr>
-              <tr><td>MCP Advisor Signals</td><td>${model.growthPreview.mcpAdvisorSignalCount}</td></tr>
-              <tr><td>Candidate Count</td><td>${model.growthPreview.candidateCount}</td></tr>
-              <tr><td>Automatic Unlocks</td><td>${escapeHtml(model.growthPreview.noAutomaticUnlocks)}</td></tr>
-              <tr><td>Suggested Command</td><td><code>${escapeHtml(model.growthPreview.suggestedCommand)}</code></td></tr>
-            </tbody>
-          </table>
-          ${growthCandidateDetails}
-        </section>
-        <section class="panel-section" aria-label="Eval summary">
-          <h3>Eval Summary</h3>
-          <p class="muted">Eval reports remain separate explicit local reports. Identity HTML reads local summary signals only and does not run eval commands.</p>
-        </section>
-        <section class="panel-section" aria-label="Route distribution">
-          <h3>Route Distribution</h3>
-          <table class="data-table">
-            <thead><tr><th>Route Layer</th><th>Count</th></tr></thead>
-            <tbody>
-${routeRows}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Memory proposal node types">
-          <h3>Memory Proposal Node Types</h3>
-          <table class="data-table">
-            <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
-            <tbody>
-${proposalRows}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Node type distribution">
-          <h3>Node Type Distribution</h3>
-          <table class="data-table">
-            <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
-            <tbody>
-${graphTypeRows}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Growth node type distribution">
-          <h3>Growth Node Types</h3>
-          <table class="data-table">
-            <thead><tr><th>Node Type</th><th>Count</th></tr></thead>
-            <tbody>
-${growthTypes}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Growth candidates">
-          <h3>Top Candidates</h3>
-          <table class="data-table">
-            <thead><tr><th>Candidate</th><th>Score</th><th>Evidence</th><th>Confidence</th></tr></thead>
-            <tbody>
-${growthCandidateRows}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Accepted memory table">
-          <h3>Accepted Memory Table</h3>
-          ${fallbackTable}
-        </section>
-        <section class="panel-section" aria-label="Source quest and proposal links">
-          <h3>Source Quest / Proposal Links</h3>
-          <table class="data-table">
-            <thead><tr><th>Node</th><th>Type</th><th>Source Quest</th><th>Source Proposal</th></tr></thead>
-            <tbody>
-${sourceLinkRows}
-            </tbody>
-          </table>
-        </section>
-        <section class="panel-section" aria-label="Accepted memory node details">
-          <h3>Accepted Memory Node Details</h3>
-          <div class="node-details">
-${nodeDetails}
-          </div>
-        </section>
-        <section class="panel-section" aria-label="Status messages">
-          <h3>Status Messages</h3>
-          <ul>
-${statusMessages}
-          </ul>
-        </section>
-        <section class="panel-section" aria-label="Debug raw details">
-          <h3>Debug / Raw Details</h3>
-          <pre class="raw-json">${rawDetails}</pre>
+        <section id="panel-diagnostics" class="tab-panel" data-active="false" role="tabpanel" aria-labelledby="tab-diagnostics">
+          <section class="panel-section"><h3>Status Messages</h3><ul>${statusMessages}</ul></section>
+          <section class="panel-section"><h3>Route Distribution</h3><table class="data-table"><thead><tr><th>Layer</th><th>Count</th></tr></thead><tbody>${routeRows}</tbody></table></section>
+          <details><summary>Raw JSON</summary><pre class="raw-json">${rawDetails}</pre></details>
         </section>
       </div>
     </aside>
-    <aside id="filter-drawer" class="filter-drawer" data-open="false" aria-hidden="true" aria-label="Search and filters">
-      <div class="drawer-header">
-        <h3>Search / Filter</h3>
-        <button id="filter-close" type="button">Close</button>
-      </div>
-      <div class="drawer-body">
-        <label class="field">Search
-          <input id="graph-search" type="search" autocomplete="off" placeholder="Search visual graph">
-        </label>
-        <label class="field">Type
-          <select id="graph-type-filter">
-            <option value="">All types</option>
-${visualTypeOptions}
-          </select>
-        </label>
-        <label class="check-field"><input id="toggle-derived" type="checkbox" checked> Show derived visual nodes</label>
-        <label class="check-field"><input id="toggle-labels" type="checkbox" checked> Show labels</label>
-        <div class="drawer-actions">
-          <button id="drawer-fit-view" type="button">Fit</button>
-          <button id="drawer-reset-view" type="button">Reset</button>
-        </div>
-      </div>
+    <aside id="control-drawer" class="control-drawer" data-open="false" aria-hidden="true" aria-label="Graph controls drawer">
+      <div class="drawer-header"><h3>Controls</h3><button id="control-close" type="button">Close</button></div>
+      <div class="drawer-body"><div class="drawer-actions"><button id="drawer-fit-view" type="button">Fit</button><button id="drawer-reset-view" type="button">Reset</button></div></div>
     </aside>
     <aside id="node-detail-drawer" class="node-detail-drawer" data-open="false" aria-hidden="true" aria-label="Node detail drawer">
-      <div class="drawer-header">
-        <h3>Node Detail</h3>
-        <button id="detail-close" type="button">Close</button>
-      </div>
-      <div id="node-detail-body" class="drawer-body">
-        <p class="muted">Select a node to inspect structure, accepted memory, source scope, and provenance.</p>
-      </div>
+      <div class="drawer-header"><h3>Node Detail</h3><button id="detail-close" type="button">Close</button></div>
+      <div id="node-detail-body" class="drawer-body"><p class="muted">Select a node to inspect structure, accepted memory, source scope, and provenance.</p></div>
     </aside>
   </main>
   <noscript>
     <section class="noscript-fallback" aria-label="JavaScript disabled fallback">
       <h1>${escapeHtml(model.projectName)} Knowledge Graph Fallback</h1>
-      <p>JavaScript is disabled, so this read-only accepted memory table is shown instead of the SVG graph.</p>
+      <p>JavaScript is disabled, so this read-only accepted memory table is shown instead of the canvas graph.</p>
       ${fallbackTable}
     </section>
   </noscript>
-    <script id="orange-knowledge-graph-state" type="application/json">
+  <script id="orange-knowledge-graph-state" type="application/json">
 ${graphDashboardState}
-    </script>
-    <script id="orange-hyper-state" type="application/json">
-${stateJson}
-    </script>
-    <script>
+  </script>
+  <script>
 (() => {
+  const startTime = performance.now();
   const stateElement = document.getElementById("orange-knowledge-graph-state");
-  const svg = document.getElementById("knowledge-graph-svg");
+  const canvas = document.getElementById("knowledge-graph-canvas");
   const sidebar = document.getElementById("identity-sidebar");
-  const filterDrawer = document.getElementById("filter-drawer");
+  const controls = document.getElementById("control-drawer");
   const detailDrawer = document.getElementById("node-detail-drawer");
   const detailBody = document.getElementById("node-detail-body");
-  const search = document.getElementById("graph-search");
-  const typeFilter = document.getElementById("graph-type-filter");
-  const toggleDerived = document.getElementById("toggle-derived");
-  const toggleLabels = document.getElementById("toggle-labels");
   const empty = document.getElementById("graph-empty-message");
-  const statusCounts = document.getElementById("graph-status-counts");
-  if (!stateElement || !svg || !sidebar || !filterDrawer || !detailDrawer || !detailBody || !search || !typeFilter || !toggleDerived || !toggleLabels || !empty) return;
+  const liveStatus = document.getElementById("graph-live-status");
+  const search = document.getElementById("graph-search");
+  const modeSelect = document.getElementById("graph-view-mode");
+  if (!stateElement || !canvas || !sidebar || !controls || !detailDrawer || !detailBody || !search || !modeSelect) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
   const state = JSON.parse(stateElement.textContent || "{}");
-  const graph = state.visualGraph || {};
+  const graph = state.identityGraph || {};
   const allNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
   const allEdges = Array.isArray(graph.edges) ? graph.edges : [];
   const colors = graph.nodeTypeColors || {};
-  const namespace = "http://www.w3.org/2000/svg";
-  let selectedId = (allNodes.find((node) => node.type === "memory") || allNodes[0] || {}).id || null;
-  let viewportRoot = null;
-  let visiblePositions = new Map();
+  const nodeById = new Map(allNodes.map((node) => [node.id, node]));
   let visibleNodes = [];
   let visibleEdges = [];
-  const stage = { width: 1200, height: 800 };
-  const view = { x: 0, y: 0, scale: 1 };
+  let selectedId = (allNodes.find((node) => node.id === "project.root") || allNodes[0] || {}).id || null;
+  let hoveredId = null;
   let dragging = null;
+  let frame = 0;
+  let frameFallback = 0;
+  const view = { x: 0, y: 0, scale: 1 };
 
-  const setDrawer = (drawer, open, button) => {
+  function setDrawer(drawer, open, button) {
     drawer.dataset.open = open ? "true" : "false";
     drawer.setAttribute("aria-hidden", open ? "false" : "true");
-    if (button) {
-      button.setAttribute("aria-expanded", open ? "true" : "false");
+    drawer.style.pointerEvents = open ? "auto" : "none";
+    const width = Math.max(1, Math.round(drawer.getBoundingClientRect().width || drawer.offsetWidth || window.innerWidth));
+    if (drawer.classList.contains("side-drawer")) {
+      drawer.style.left = open ? "0px" : "-" + width + "px";
+    } else {
+      drawer.style.right = open ? "0px" : "-" + width + "px";
     }
-  };
+    if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
+  }
 
   const sidebarToggle = document.getElementById("sidebar-toggle");
-  const filterToggle = document.getElementById("filter-toggle");
-  const sidebarClose = document.getElementById("sidebar-close");
-  const filterClose = document.getElementById("filter-close");
-  const detailClose = document.getElementById("detail-close");
+  const mobileMenuToggle = document.getElementById("mobile-menu-toggle");
   const fitButtons = [document.getElementById("fit-view"), document.getElementById("drawer-fit-view")].filter(Boolean);
   const resetButtons = [document.getElementById("reset-view"), document.getElementById("drawer-reset-view")].filter(Boolean);
   sidebarToggle.addEventListener("click", () => setDrawer(sidebar, sidebar.dataset.open !== "true", sidebarToggle));
-  filterToggle.addEventListener("click", () => setDrawer(filterDrawer, filterDrawer.dataset.open !== "true", filterToggle));
-  sidebarClose.addEventListener("click", () => setDrawer(sidebar, false, sidebarToggle));
-  filterClose.addEventListener("click", () => setDrawer(filterDrawer, false, filterToggle));
-  detailClose.addEventListener("click", () => setDrawer(detailDrawer, false));
+  document.getElementById("sidebar-close").addEventListener("click", () => setDrawer(sidebar, false, sidebarToggle));
+  mobileMenuToggle.addEventListener("click", () => setDrawer(controls, controls.dataset.open !== "true", mobileMenuToggle));
+  document.getElementById("control-close").addEventListener("click", () => setDrawer(controls, false, mobileMenuToggle));
+  document.getElementById("detail-close").addEventListener("click", () => setDrawer(detailDrawer, false));
   for (const button of fitButtons) button.addEventListener("click", fitToView);
   for (const button of resetButtons) button.addEventListener("click", resetView);
-
-  const render = () => {
-    const query = search.value.trim().toLowerCase();
-    const selectedType = typeFilter.value;
-    const nodes = allNodes.filter((node) => {
-      if (!toggleDerived.checked && node.derived) return false;
-      const typeMatch = !selectedType || filterType(node) === selectedType;
-      const haystack = [
-        node.id,
-        node.label,
-        node.title,
-        node.type,
-        node.node_type,
-        node.concept,
-        node.graphKind,
-        node.structurePath,
-        node.structureRole,
-        node.source_quest,
-        node.source_proposal,
-        node.candidate_memory_summary,
-        ...(node.sourceMemoryIds || []),
-        ...(node.tags || []),
-        ...(node.keywords || [])
-      ].join(" ").toLowerCase();
-      return typeMatch && (!query || haystack.includes(query));
+  for (const tab of document.querySelectorAll(".drawer-tab")) {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      for (const item of document.querySelectorAll(".drawer-tab")) item.setAttribute("aria-selected", item.dataset.tab === target ? "true" : "false");
+      for (const panel of document.querySelectorAll(".tab-panel")) panel.dataset.active = panel.id === "panel-" + target ? "true" : "false";
     });
-    const ids = new Set(nodes.map((node) => node.id));
-    const edges = allEdges.filter((edge) => ids.has(edge.from) && ids.has(edge.to));
-    if (!ids.has(selectedId)) selectedId = nodes[0]?.id || null;
-    draw(nodes, edges);
-    renderDetail(nodes.find((node) => node.id === selectedId) || null, edges.length, nodes.length);
-    if (statusCounts) {
-      statusCounts.textContent = "Structure nodes: " + ((state.structureGraph && state.structureGraph.nodes) || []).length + " · Memory nodes: " + ((state.memoryGraph && state.memoryGraph.nodes) || []).length + " · Identity nodes: " + nodes.length + " / " + allNodes.length + " · Edges: " + edges.length;
-    }
-  };
+  }
 
-  const draw = (nodes, edges) => {
-    svg.replaceChildren();
-    empty.hidden = nodes.length !== 0;
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const ratio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    resetView();
+  }
+
+  function updateVisible() {
+    const query = search.value.trim().toLowerCase();
+    const mode = modeSelect.value || "combined";
+    const nodes = allNodes.filter((node) => modeMatch(node, mode) && queryMatch(node, query));
+    const ids = new Set(nodes.map((node) => node.id));
+    const edges = allEdges.filter((edge) => ids.has(edge.from) && ids.has(edge.to) && edgeModeMatch(edge, mode));
     visibleNodes = nodes;
     visibleEdges = edges;
-    visiblePositions = computeLayout(nodes, edges);
-    appendDefs(svg);
-    const field = document.createElementNS(namespace, "g");
-    field.setAttribute("opacity", "0.34");
-    drawField(field, graph.seed || "orange-hyper");
-    svg.appendChild(field);
-    viewportRoot = document.createElementNS(namespace, "g");
-    viewportRoot.setAttribute("id", "graph-viewport");
-    svg.appendChild(viewportRoot);
-    applyView();
-    if (!nodes.length) return;
-    for (const edge of edges) {
-      const from = visiblePositions.get(edge.from);
-      const to = visiblePositions.get(edge.to);
-      if (!from || !to) continue;
-      const line = document.createElementNS(namespace, "line");
-      line.setAttribute("class", "graph-edge");
-      line.setAttribute("x1", from.x);
-      line.setAttribute("y1", from.y);
-      line.setAttribute("x2", to.x);
-      line.setAttribute("y2", to.y);
-      line.setAttribute("data-relation", edge.relation || "");
-      line.setAttribute("stroke-width", String(0.7 + Number(edge.strength || 0.4) * 1.7));
-      line.setAttribute("opacity", String(Math.min(0.82, 0.22 + Number(edge.strength || 0.4) * 0.48)));
-      viewportRoot.appendChild(line);
-    }
-    for (const node of nodes) {
-      const point = visiblePositions.get(node.id);
-      if (!point) continue;
-      const group = document.createElementNS(namespace, "g");
-      group.setAttribute("class", "graph-node");
-      group.setAttribute("data-type", node.type || "");
-      group.setAttribute("tabindex", "0");
-      group.setAttribute("role", "button");
-      group.setAttribute("aria-selected", node.id === selectedId ? "true" : "false");
-      group.setAttribute("aria-label", String(node.node_type || "") + ": " + String(node.label || node.id || ""));
-      group.addEventListener("click", () => {
-        selectNode(node.id);
-      });
-      group.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          selectNode(node.id);
-        }
-      });
-      const circle = document.createElementNS(namespace, "circle");
-      circle.setAttribute("cx", point.x);
-      circle.setAttribute("cy", point.y);
-      circle.setAttribute("r", String(radiusForNode(node)));
-      circle.setAttribute("fill", node.color || colors[node.node_type] || colors[node.type] || "${DEFAULT_NODE_COLOR}");
-      circle.setAttribute("filter", "url(#node-glow)");
-      group.appendChild(circle);
-      if (toggleLabels.checked) {
-        const text = document.createElementNS(namespace, "text");
-        text.setAttribute("x", point.x);
-        text.setAttribute("y", point.y + radiusForNode(node) + 16);
-        text.setAttribute("text-anchor", "middle");
-        text.textContent = trimLabel(node.label || node.id);
-        group.appendChild(text);
-      }
-      viewportRoot.appendChild(group);
-    }
-  };
+    if (!ids.has(selectedId)) selectedId = nodes.find((node) => node.id === "project.root")?.id || nodes[0]?.id || null;
+    empty.hidden = nodes.length !== 0;
+    renderDetail(nodeById.get(selectedId) || null);
+    if (liveStatus) liveStatus.textContent = mode + " view, " + nodes.length + " nodes, " + edges.length + " edges.";
+    scheduleDraw();
+  }
 
-  const computeLayout = (nodes, edges) => {
-    const width = stage.width;
-    const height = stage.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    const sorted = [...nodes].sort((left, right) =>
-      Number(right.importance || right.degree || 0) - Number(left.importance || left.degree || 0) ||
-      String(left.id).localeCompare(String(right.id))
-    );
-    const points = new Map();
-    const velocity = new Map();
-    if (sorted.length === 0) {
-      return points;
-    }
-    if (sorted.length === 1) {
-      points.set(sorted[0].id, { x: centerX, y: centerY });
-      return points;
-    }
-    const types = Array.from(new Set(sorted.map(filterType))).sort((left, right) => left.localeCompare(right));
-    sorted.forEach((node) => {
-      const typeIndex = Math.max(0, types.indexOf(filterType(node)));
-      const angle = (-Math.PI / 2) + (typeIndex * Math.PI * 2) / Math.max(types.length, 1);
-      if (node.layoutRole === "center") {
-        points.set(node.id, { x: centerX, y: centerY });
-        velocity.set(node.id, { x: 0, y: 0 });
-        return;
+  function modeMatch(node, mode) {
+    if (mode === "structure") return node.graphKind === "structure";
+    if (mode === "memory") return node.type === "memory";
+    return true;
+  }
+
+  function edgeModeMatch(edge, mode) {
+    if (mode === "combined") return true;
+    const from = nodeById.get(edge.from);
+    const to = nodeById.get(edge.to);
+    if (!from || !to) return false;
+    if (mode === "structure") return from.graphKind === "structure" && to.graphKind === "structure";
+    if (mode === "memory") return from.type === "memory" && to.type === "memory";
+    return true;
+  }
+
+  function queryMatch(node, query) {
+    if (!query) return true;
+    const haystack = [
+      node.id,
+      node.label,
+      node.title,
+      node.type,
+      node.node_type,
+      node.graphKind,
+      node.structurePath,
+      node.structureRole,
+      node.layoutClusterLabel,
+      node.source_quest,
+      node.source_proposal,
+      node.candidate_memory_summary,
+      node.mapped_structure_node_path,
+      ...(node.sourceMemoryIds || []),
+      ...(node.tags || []),
+      ...(node.keywords || [])
+    ].join(" ").toLowerCase();
+    return haystack.includes(query);
+  }
+
+  function scheduleDraw() {
+    if (frame || frameFallback) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      if (frameFallback) {
+        clearTimeout(frameFallback);
+        frameFallback = 0;
       }
-      const baseRadius = node.type === "memory" ? 185 : node.type === "module" || node.type === "domain" ? 250 : 315;
-      const jitterX = (hashUnit((graph.seed || "") + node.id + "x") - 0.5) * 150;
-      const jitterY = (hashUnit((graph.seed || "") + node.id + "y") - 0.5) * 110;
-      points.set(node.id, {
-        x: centerX + Math.cos(angle) * baseRadius + jitterX,
-        y: centerY + Math.sin(angle) * baseRadius * 0.64 + jitterY
-      });
-      velocity.set(node.id, { x: 0, y: 0 });
+      draw();
     });
-    for (let iteration = 0; iteration < 150; iteration += 1) {
-      for (let leftIndex = 0; leftIndex < sorted.length; leftIndex += 1) {
-        for (let rightIndex = leftIndex + 1; rightIndex < sorted.length; rightIndex += 1) {
-          const left = sorted[leftIndex];
-          const right = sorted[rightIndex];
-          const leftPoint = points.get(left.id);
-          const rightPoint = points.get(right.id);
-          const dx = rightPoint.x - leftPoint.x || 0.01;
-          const dy = rightPoint.y - leftPoint.y || 0.01;
-          const distSq = Math.max(80, dx * dx + dy * dy);
-          const force = 7600 / distSq;
-          const dist = Math.sqrt(distSq);
-          const fx = dx / dist * force;
-          const fy = dy / dist * force;
-          velocity.get(left.id).x -= fx;
-          velocity.get(left.id).y -= fy;
-          velocity.get(right.id).x += fx;
-          velocity.get(right.id).y += fy;
-        }
+    frameFallback = setTimeout(() => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
       }
-      for (const edge of edges) {
-        const from = points.get(edge.from);
-        const to = points.get(edge.to);
-        if (!from || !to) continue;
-        const dx = to.x - from.x || 0.01;
-        const dy = to.y - from.y || 0.01;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const target = Number(edge.distance || 140);
-        const strength = Number(edge.strength || 0.55);
-        const force = (dist - target) * 0.008 * strength;
-        const fx = dx / dist * force;
-        const fy = dy / dist * force;
-        velocity.get(edge.from).x += fx;
-        velocity.get(edge.from).y += fy;
-        velocity.get(edge.to).x -= fx;
-        velocity.get(edge.to).y -= fy;
-      }
-      for (const node of sorted) {
-        const point = points.get(node.id);
-        const vel = velocity.get(node.id);
-        if (node.layoutRole === "center") {
-          point.x = centerX;
-          point.y = centerY;
-          vel.x = 0;
-          vel.y = 0;
-          continue;
-        }
-        const typeIndex = Math.max(0, types.indexOf(filterType(node)));
-        const angle = (-Math.PI / 2) + (typeIndex * Math.PI * 2) / Math.max(types.length, 1);
-        const anchorRadius = node.type === "memory" ? 165 : node.type === "module" || node.type === "domain" ? 245 : 285;
-        const anchorX = centerX + Math.cos(angle) * anchorRadius;
-        const anchorY = centerY + Math.sin(angle) * anchorRadius * 0.62;
-        const anchorStrength = node.type === "memory" ? 0.008 : node.type === "module" || node.type === "domain" ? 0.014 : 0.011;
-        vel.x += (anchorX - point.x) * anchorStrength;
-        vel.y += (anchorY - point.y) * anchorStrength;
-        point.x = clamp(point.x + vel.x, 44, width - 44);
-        point.y = clamp(point.y + vel.y, 54, height - 54);
-        vel.x *= 0.72;
-        vel.y *= 0.72;
-      }
-    }
-    return points;
-  };
+      frameFallback = 0;
+      draw();
+    }, 120);
+  }
 
-  const renderDetail = (node, visibleEdgeCount, visibleNodeCount) => {
+  function draw() {
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    ctx.clearRect(0, 0, width, height);
+    drawGrid(width, height);
+    drawClusters();
+    for (const edge of visibleEdges) drawEdge(edge);
+    const sorted = [...visibleNodes].sort((left, right) => nodeDrawRank(left) - nodeDrawRank(right));
+    for (const node of sorted) drawNode(node);
+    window.__orangeHyperRendererStats = {
+      renderer: "canvas",
+      mode: modeSelect.value || "combined",
+      visibleNodes: visibleNodes.length,
+      visibleEdges: visibleEdges.length,
+      domNodes: document.querySelectorAll("*").length,
+      layoutMs: 0,
+      sourceStateUnmodified: true
+    };
+    if (!window.__orangeHyperInitialRender) {
+      window.__orangeHyperInitialRender = {
+        renderer: "canvas",
+        firstDrawMs: Math.round((performance.now() - startTime) * 10) / 10,
+        layoutMs: 0,
+        layout: graph.layout || ""
+      };
+    }
+  }
+
+  function drawGrid(width, height) {
+    ctx.save();
+    ctx.strokeStyle = "rgba(244,247,251,.045)";
+    ctx.lineWidth = 1;
+    const step = 64 * view.scale;
+    const offsetX = ((width / 2 + view.x) % step + step) % step;
+    const offsetY = ((height / 2 + view.y) % step + step) % step;
+    for (let x = offsetX; x < width; x += step) line(x, 0, x, height);
+    for (let y = offsetY; y < height; y += step) line(0, y, width, y);
+    ctx.restore();
+  }
+
+  function drawClusters() {
+    if (modeSelect.value === "memory") return;
+    const anchors = visibleNodes.filter((node) => node.type === "module" || node.type === "domain");
+    ctx.save();
+    for (const node of anchors) {
+      const p = toScreen(node);
+      const radius = Math.max(54, (node.type === "module" ? 120 : 88) * view.scale);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = node.type === "module" ? "rgba(103,232,249,.045)" : "rgba(56,189,248,.052)";
+      ctx.strokeStyle = node.type === "module" ? "rgba(103,232,249,.16)" : "rgba(56,189,248,.18)";
+      ctx.lineWidth = 1;
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawEdge(edge) {
+    const from = nodeById.get(edge.from);
+    const to = nodeById.get(edge.to);
+    if (!from || !to) return;
+    const a = toScreen(from);
+    const b = toScreen(to);
+    ctx.save();
+    ctx.globalAlpha = edge.source === "memory-scope" ? 0.72 : 0.48;
+    ctx.strokeStyle = edge.source === "memory-scope" ? "#ffb454" : edge.source === "memory-graph" ? "#c084fc" : "#9aa6b2";
+    ctx.lineWidth = Math.max(0.7, Number(edge.strength || 0.5) * 1.8);
+    if (edge.source === "memory-scope") ctx.setLineDash([6, 5]);
+    line(a.x, a.y, b.x, b.y);
+    ctx.restore();
+  }
+
+  function drawNode(node) {
+    const p = toScreen(node);
+    const radius = radiusForNode(node);
+    const selected = node.id === selectedId;
+    const hovered = node.id === hoveredId;
+    ctx.save();
+    ctx.globalAlpha = node.derived ? 0.82 : 1;
+    ctx.fillStyle = node.color || colors[node.node_type] || colors[node.type] || "${DEFAULT_NODE_COLOR}";
+    ctx.strokeStyle = selected ? "#ffffff" : hovered ? "#ffcf8a" : "rgba(255,255,255,.64)";
+    ctx.lineWidth = selected || hovered ? 2.6 : 1.2;
+    if (node.type === "module" || node.type === "domain") {
+      roundRect(p.x - radius, p.y - radius, radius * 2, radius * 2, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    if (shouldLabel(node, selected, hovered)) drawLabel(node, p, radius);
+    ctx.restore();
+  }
+
+  function drawLabel(node, p, radius) {
+    const text = trimLabel(node.label || node.id, node.type === "project" ? 34 : 28);
+    ctx.font = (node.type === "project" ? "700 14px " : "600 12px ") + "ui-sans-serif, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "#0a0c10";
+    ctx.fillStyle = "#f4f7fb";
+    ctx.strokeText(text, p.x, p.y + radius + 7);
+    ctx.fillText(text, p.x, p.y + radius + 7);
+  }
+
+  function shouldLabel(node, selected, hovered) {
+    if (selected || hovered || node.id === "project.root") return true;
+    if (visibleNodes.length > 320) return node.type === "module" || node.type === "domain";
+    if (visibleNodes.length > 120) return node.type === "module" || node.type === "domain" || node.type === "memory";
+    return node.type !== "document" && node.type !== "infrastructure";
+  }
+
+  function toScreen(node) {
+    return {
+      x: canvas.clientWidth / 2 + view.x + Number(node.x || 0) * view.scale,
+      y: canvas.clientHeight / 2 + view.y + Number(node.y || 0) * view.scale
+    };
+  }
+
+  function toWorld(event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left - rect.width / 2 - view.x) / view.scale,
+      y: (event.clientY - rect.top - rect.height / 2 - view.y) / view.scale
+    };
+  }
+
+  function hitTest(event) {
+    const world = toWorld(event);
+    for (let index = visibleNodes.length - 1; index >= 0; index -= 1) {
+      const node = visibleNodes[index];
+      const dx = world.x - Number(node.x || 0);
+      const dy = world.y - Number(node.y || 0);
+      const r = radiusForNode(node) / Math.max(view.scale, 0.2) + 8;
+      if (dx * dx + dy * dy <= r * r) return node;
+    }
+    return null;
+  }
+
+  function selectNode(node) {
+    if (!node) return;
+    selectedId = node.id;
+    renderDetail(node);
+    setDrawer(detailDrawer, true);
+    scheduleDraw();
+  }
+
+  function renderDetail(node) {
     if (!node) {
-      detailBody.innerHTML = '<p class="muted">No graph nodes match the current filter.</p><p>Visible nodes: ' + visibleNodeCount + '</p><p>Visible edges: ' + visibleEdgeCount + '</p>';
+      detailBody.innerHTML = '<p class="muted">No graph nodes match the current view.</p>';
       return;
     }
     detailBody.innerHTML = [
-      '<div class="panel-section"><h3>' + escapeHtml(node.label || node.id) + '</h3>',
-      '<p class="subtle">' + escapeHtml(node.id) + '</p>',
-      '<table class="data-table"><tbody>',
-      '<tr><th>Visual Type</th><td>' + escapeHtml(node.type || "") + '</td></tr>',
-      '<tr><th>Graph Kind</th><td>' + escapeHtml(node.graphKind || "") + '</td></tr>',
-      '<tr><th>Structure Path</th><td>' + escapeHtml(node.structurePath || "none") + '</td></tr>',
-      '<tr><th>Memory Type</th><td>' + escapeHtml(node.node_type || node.category || "") + '</td></tr>',
-      '<tr><th>Derived</th><td>' + Boolean(node.derived) + '</td></tr>',
-      '<tr><th>Display-only</th><td>' + Boolean(node.displayOnly) + '</td></tr>',
-      '<tr><th>Read-only</th><td>' + Boolean(node.readOnly) + '</td></tr>',
-      '<tr><th>Degree</th><td>' + Number(node.degree || 0) + '</td></tr>',
-      '<tr><th>Source Quest</th><td>' + escapeHtml(node.source_quest || "none") + '</td></tr>',
-      '<tr><th>Source Proposal</th><td>' + escapeHtml(node.source_proposal || "none") + '</td></tr>',
-      '<tr><th>Source Memory IDs</th><td>' + escapeHtml((node.sourceMemoryIds || []).join(", ") || "none") + '</td></tr>',
-      '<tr><th>Candidate Memory</th><td>' + escapeHtml(node.candidate_memory_summary || node.candidate_memory || node.summary || "") + '</td></tr>',
-      '</tbody></table>',
-      '<p class="muted">Visible nodes: ' + visibleNodeCount + ' · Visible edges: ' + visibleEdgeCount + '</p></div>'
-    ].join('');
-  };
-
-  const selectNode = (id) => {
-    selectedId = id;
-    setDrawer(detailDrawer, true);
-    render();
-  };
-
-  const appendDefs = (target) => {
-    const defs = document.createElementNS(namespace, "defs");
-    defs.innerHTML = '<filter id="node-glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="5" result="blur"></feGaussianBlur><feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>';
-    target.appendChild(defs);
-  };
-
-  const drawField = (target, seed) => {
-    for (let index = 0; index < 52; index += 1) {
-      const x1 = hashUnit(seed + "field-x1-" + index) * stage.width;
-      const y1 = hashUnit(seed + "field-y1-" + index) * stage.height;
-      const x2 = x1 + (hashUnit(seed + "field-x2-" + index) - 0.5) * 180;
-      const y2 = y1 + (hashUnit(seed + "field-y2-" + index) - 0.5) * 120;
-      const line = document.createElementNS(namespace, "line");
-      line.setAttribute("x1", String(x1));
-      line.setAttribute("y1", String(y1));
-      line.setAttribute("x2", String(clamp(x2, 0, stage.width)));
-      line.setAttribute("y2", String(clamp(y2, 0, stage.height)));
-      line.setAttribute("stroke", "rgba(125, 211, 252, .16)");
-      line.setAttribute("stroke-width", "1");
-      target.appendChild(line);
-    }
-  };
-
-  const applyView = () => {
-    if (viewportRoot) {
-      viewportRoot.setAttribute("transform", "translate(" + view.x + " " + view.y + ") scale(" + view.scale + ")");
-    }
-  };
-
-  function fitToView() {
-    if (!visibleNodes.length || !visiblePositions.size) return;
-    const points = visibleNodes.map((node) => visiblePositions.get(node.id)).filter(Boolean);
-    const minX = Math.min(...points.map((point) => point.x));
-    const maxX = Math.max(...points.map((point) => point.x));
-    const minY = Math.min(...points.map((point) => point.y));
-    const maxY = Math.max(...points.map((point) => point.y));
-    const scale = Math.min(1.9, Math.max(0.6, Math.min(stage.width / Math.max(260, maxX - minX + 220), stage.height / Math.max(220, maxY - minY + 180))));
-    view.scale = scale;
-    view.x = (stage.width - (minX + maxX) * scale) / 2;
-    view.y = (stage.height - (minY + maxY) * scale) / 2;
-    applyView();
+      '<section class="panel-section"><h3>' + escapeHtml(node.label || node.id) + '</h3>',
+      '<ul class="detail-list">',
+      '<li>ID: ' + escapeHtml(node.id) + '</li>',
+      '<li>Type: ' + escapeHtml(node.type || "") + '</li>',
+      '<li>Graph: ' + escapeHtml(node.graphKind || "") + '</li>',
+      '<li>Cluster: ' + escapeHtml(node.layoutClusterLabel || node.layoutCluster || "none") + '</li>',
+      '<li>Path: ' + escapeHtml(node.structurePath || node.mapped_structure_node_path || "none") + '</li>',
+      '<li>Memory: ' + escapeHtml(node.candidate_memory_summary || node.candidate_memory || node.summary || "none") + '</li>',
+      '<li>Source Quest: ' + escapeHtml(node.source_quest || "none") + '</li>',
+      '<li>Source Proposal: ' + escapeHtml(node.source_proposal || "none") + '</li>',
+      '</ul></section>'
+    ].join("");
   }
 
   function resetView() {
+    const width = canvas.clientWidth || 1200;
+    const height = canvas.clientHeight || 800;
     view.x = 0;
     view.y = 0;
-    view.scale = 1;
-    applyView();
+    view.scale = clamp(Math.min((width - 80) / 1650, (height - 120) / 1050), 0.22, 1.1);
+    scheduleDraw();
   }
 
-  const radiusForNode = (node) => {
+  function fitToView() {
+    if (!visibleNodes.length) return;
+    const xs = visibleNodes.map((node) => Number(node.x || 0));
+    const ys = visibleNodes.map((node) => Number(node.y || 0));
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const width = canvas.clientWidth || 1200;
+    const height = canvas.clientHeight || 800;
+    view.scale = clamp(Math.min((width - 96) / Math.max(320, maxX - minX + 260), (height - 120) / Math.max(260, maxY - minY + 220)), 0.2, 1.8);
+    view.x = -((minX + maxX) / 2) * view.scale;
+    view.y = -((minY + maxY) / 2) * view.scale;
+    scheduleDraw();
+  }
+
+  function radiusForNode(node) {
     const degree = Number(node.degree || 0);
-    if (node.type === "project") return 23 + Math.min(12, degree * 1.2);
-    if (node.type === "module" || node.type === "domain") return 14 + Math.min(12, degree * 0.9);
-    if (node.type === "memory") return 16 + Math.min(18, degree * 1.6);
-    if (node.type === "component") return 10 + Math.min(9, degree * 0.65);
-    return 6 + Math.min(6, degree * 0.45);
-  };
+    const scale = Math.sqrt(Math.max(view.scale, 0.35));
+    if (node.type === "project") return (24 + Math.min(10, degree)) * scale;
+    if (node.type === "module" || node.type === "domain") return (14 + Math.min(8, degree * 0.7)) * scale;
+    if (node.type === "memory") return (13 + Math.min(10, degree * 1.2)) * scale;
+    if (node.type === "component" || node.type === "datastore") return (8 + Math.min(6, degree * 0.5)) * scale;
+    return (5 + Math.min(4, degree * 0.35)) * scale;
+  }
 
-  const filterType = (node) => node.type === "memory" ? "memory:" + (node.node_type || "unknown") : String(node.type || "unknown");
+  function nodeDrawRank(node) {
+    const ranks = { document: 0, infrastructure: 1, test: 2, datastore: 3, component: 4, module: 5, domain: 6, memoryCluster: 7, memory: 8, project: 9 };
+    return ranks[node.type] || 0;
+  }
 
-  const hashNumber = (value) => {
-    let hash = 2166136261;
+  function line(x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function roundRect(x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function trimLabel(value, max) {
     const text = String(value || "");
-    for (let index = 0; index < text.length; index += 1) {
-      hash ^= text.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-  };
+    return text.length > max ? text.slice(0, max - 3) + "..." : text;
+  }
 
-  const hashUnit = (value) => hashNumber(value) / 4294967295;
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
 
-  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-  const svgPoint = (event) => {
-    const rect = svg.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) * (stage.width / Math.max(1, rect.width)),
-      y: (event.clientY - rect.top) * (stage.height / Math.max(1, rect.height))
-    };
-  };
-
-  svg.addEventListener("pointerdown", (event) => {
+  canvas.addEventListener("pointerdown", (event) => {
     if (event.button !== 0) return;
-    dragging = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y };
-    svg.classList.add("is-panning");
-    svg.setPointerCapture(event.pointerId);
+    const hit = hitTest(event);
+    dragging = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y, node: hit };
+    canvas.classList.add("is-panning");
+    canvas.setPointerCapture(event.pointerId);
   });
-  svg.addEventListener("pointermove", (event) => {
-    if (!dragging) return;
-    const rect = svg.getBoundingClientRect();
-    const dx = (event.clientX - dragging.x) * (stage.width / Math.max(1, rect.width));
-    const dy = (event.clientY - dragging.y) * (stage.height / Math.max(1, rect.height));
-    view.x = dragging.viewX + dx;
-    view.y = dragging.viewY + dy;
-    applyView();
+  canvas.addEventListener("pointermove", (event) => {
+    const hit = hitTest(event);
+    hoveredId = hit?.id || null;
+    if (dragging) {
+      view.x = dragging.viewX + (event.clientX - dragging.x);
+      view.y = dragging.viewY + (event.clientY - dragging.y);
+    }
+    scheduleDraw();
   });
-  svg.addEventListener("pointerup", (event) => {
+  canvas.addEventListener("pointerup", (event) => {
+    const moved = dragging ? Math.abs(event.clientX - dragging.x) + Math.abs(event.clientY - dragging.y) : 0;
+    const node = dragging?.node || hitTest(event);
     dragging = null;
-    svg.classList.remove("is-panning");
-    try { svg.releasePointerCapture(event.pointerId); } catch {}
+    canvas.classList.remove("is-panning");
+    try { canvas.releasePointerCapture(event.pointerId); } catch {}
+    if (node && moved < 6) selectNode(node);
   });
-  svg.addEventListener("wheel", (event) => {
+  canvas.addEventListener("wheel", (event) => {
     event.preventDefault();
-    const point = svgPoint(event);
-    const beforeX = (point.x - view.x) / view.scale;
-    const beforeY = (point.y - view.y) / view.scale;
+    const rect = canvas.getBoundingClientRect();
+    const sx = event.clientX - rect.left - rect.width / 2;
+    const sy = event.clientY - rect.top - rect.height / 2;
+    const beforeX = (sx - view.x) / view.scale;
+    const beforeY = (sy - view.y) / view.scale;
     const factor = event.deltaY < 0 ? 1.12 : 0.9;
-    view.scale = clamp(view.scale * factor, 0.42, 3.4);
-    view.x = point.x - beforeX * view.scale;
-    view.y = point.y - beforeY * view.scale;
-    applyView();
+    view.scale = clamp(view.scale * factor, 0.16, 3.5);
+    view.x = sx - beforeX * view.scale;
+    view.y = sy - beforeY * view.scale;
+    scheduleDraw();
   }, { passive: false });
-
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       setDrawer(sidebar, false, sidebarToggle);
-      setDrawer(filterDrawer, false, filterToggle);
+      setDrawer(controls, false, mobileMenuToggle);
       setDrawer(detailDrawer, false);
     }
   });
-
-  const trimLabel = (value) => {
-    const text = String(value || "");
-    return text.length > 34 ? text.slice(0, 31) + "..." : text;
-  };
-
-  const escapeHtml = (value) => String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-
-  search.addEventListener("input", render);
-  typeFilter.addEventListener("change", render);
-  toggleDerived.addEventListener("change", render);
-  toggleLabels.addEventListener("change", render);
-  render();
-  fitToView();
+  search.addEventListener("input", updateVisible);
+  modeSelect.addEventListener("change", updateVisible);
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+  updateVisible();
 })();
-    </script>
-  </body>
+  </script>
+</body>
 </html>
 `;
 }

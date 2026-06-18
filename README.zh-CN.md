@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.5`
+- README version: `1.1-doc.6`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -171,7 +171,7 @@ Orange Hyper 的 Knowledge Graph 不是 code dependency graph。它是 accepted 
 
 Identity HTML 是 Orange Hyper Identity 的 primary product surface。v1.1 的目标是让第一屏成为 full-screen Knowledge Graph Dashboard，而不是 document-style report。
 
-当前 Identity HTML 提供 read-only Knowledge Graph Preview。它可以帮助探索 accepted memory node，但不是 full graph editor，也不是已经完成的 brain-like full-screen Knowledge Graph Dashboard。Obsidian/JSON Canvas export 是 future interoperability layer，不是默认产品体验。
+当前 Identity HTML 提供 read-only full-screen Knowledge Graph Dashboard。第一屏是 Canvas graph stage，把 generated Structure Graph 和 accepted memory 合成在一起，并提供 Combined、Structure、Memory 视图。layout 坐标在 build 时确定，所以同一 revision 会保持同一初始位置，search/view filter 不会修改 source state。它不是 graph editor；Obsidian/JSON Canvas export 是 future interoperability layer，不是默认产品体验。
 
 ## 详细文档链接
 

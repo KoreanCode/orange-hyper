@@ -1317,6 +1317,11 @@ export interface IdentityVisualGraphNode {
   structureRole?: string;
   source?: string;
   layoutRole?: string;
+  x?: number;
+  y?: number;
+  layoutCluster?: string;
+  layoutClusterLabel?: string;
+  layoutComputedAt?: "build-time";
 }
 
 export interface IdentityVisualGraphEdge {
@@ -1341,7 +1346,7 @@ export interface IdentityGraph {
   project_id: string | null;
   project_name: string;
   seed: string;
-  layout: "deterministic-seeded-force";
+  layout: "deterministic-seeded-force" | "deterministic-radial-cluster-v2";
   nodeTypeColors: Record<string, string>;
   nodes: IdentityVisualGraphNode[];
   edges: IdentityVisualGraphEdge[];
@@ -1448,7 +1453,7 @@ export interface IdentitySummary extends OriginMetadata {
     project_id: string | null;
     project_name: string;
     seed: string;
-    layout: "deterministic-seeded-force";
+    layout: "deterministic-seeded-force" | "deterministic-radial-cluster-v2";
     nodeTypeColors: Record<string, string>;
     nodes: IdentityVisualGraphNode[];
     edges: IdentityVisualGraphEdge[];

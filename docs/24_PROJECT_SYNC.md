@@ -67,6 +67,10 @@ After a successful apply, Orange Kernel attempts to rebuild Identity HTML. If th
 identity build fails, the structure state remains written and status records a
 stale identity warning.
 
+The refreshed Identity HTML remains a single self-contained file. Its runtime
+uses a Canvas graph surface with inline JavaScript and CSS only; it does not
+fetch, load a CDN, or require a local server.
+
 `sync status` is read-only. It reports the last sync, currently applied
 revision, planned scan revision, freshness, changed state, diff fields, and
 identity freshness.
@@ -159,9 +163,9 @@ The scanner should not create a default node for every source file. It should
 prefer project/module/domain/component/test/document/infrastructure/datastore
 structure over a flat file list.
 
-Not implemented in alpha.5:
+Not implemented in alpha.6:
 
-- React/Sigma renderer migration
+- React/Sigma runtime renderer migration
 - Obsidian or JSON Canvas export
 - full AST/class/function/call graph analysis
 - LLM-generated structure
@@ -218,21 +222,35 @@ identityGraph  = structureGraph + memoryGraph composition
 ```
 
 `sourceGraph` may remain as a compatibility alias for `memoryGraph`.
+The generated summary may also retain `visualGraph` as a compatibility alias for
+the composed Identity graph, but the HTML runtime state embeds
+`structureGraph`, `memoryGraph`, and `identityGraph` once.
 
 Composition rules:
 
 - `project.root` is the central node.
-- module/domain/component/test/document/infrastructure/datastore nodes cluster
-  around the project root.
+- module/domain nodes are first-level cluster anchors around `project.root`.
+- component/test/document/infrastructure/datastore nodes are placed near their
+  module/domain cluster.
 - accepted memory connects to structure nodes through Quest `scope_paths` or a
   source path when available.
+- mapped memory is placed near the related structure node in Combined view.
 - accepted memory with an explicit path whose target disappeared is marked
   `orphaned`.
 - accepted memory without a usable structure target is marked `unmapped`.
 - Identity summary includes `memory_mapping.mapped`, `memory_mapping.unmapped`,
   and `memory_mapping.orphaned` counts.
 - pending/rejected proposals are excluded.
-- keyword concept expansion is disabled by default in alpha.5.
+- keyword concept expansion is disabled by default in alpha.6.
+
+Identity HTML view modes:
+
+- Structure: generated project structure only.
+- Memory: accepted memory only.
+- Combined: structure, accepted memory, and mapping edges. This is the default.
+
+Search and view filtering do not recalculate layout. The same state revision
+uses the same build-time coordinates.
 
 ## Revision And Freshness
 
