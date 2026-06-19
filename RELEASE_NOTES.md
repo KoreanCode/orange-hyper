@@ -33,6 +33,31 @@ Standalone Distribution Foundation.
   installer idempotence, checksum mismatch blocking, and fresh non-Node project
   smoke with no npm project files created.
 
+Backfill closeout, recorded on 2026-06-19:
+
+- Current Blocking Issue is resolved for the existing `v1.1.0-alpha.7` GitHub
+  Release. The Release was backfilled through the single Release workflow
+  without recreating the tag, creating a new version tag, or making manual
+  `gh release upload` part of routine release operations.
+- GitHub CLI confirmed successful Actions run `27802310416` on head SHA
+  `7acbd71bae6c27c35240b5d2473cb16e97bf1df9`.
+- GitHub CLI confirmed PR #1, PR #2, and PR #3 merge commits:
+  `65a57e2e7f5e8faa43157852fede1b6876706149`,
+  `7eee9187c0804e3780d705350af536011478a9be`, and
+  `7acbd71bae6c27c35240b5d2473cb16e97bf1df9`.
+- GitHub CLI confirmed the required Release assets: `install.sh`,
+  `install.ps1`, `checksums.txt`, `release-manifest.json`,
+  `orange-macos-arm64`, `orange-macos-x64`, `orange-linux-x64`, and
+  `orange-windows-x64.exe`.
+- The hosted smoke jobs succeeded for Linux x64, macOS arm64, macOS x64, and
+  Windows x64.
+- Local macOS arm64 dogfooding used the actual hosted `install.sh` from the
+  Release URL in a clean non-Node temp project. With `node` and `npm` absent
+  from the restricted PATH, standalone Orange reported
+  `distribution: "standalone"` and passed `init`, `sync plan`, approved
+  `sync apply`, `sync status`, `identity build`, and `doctor --json` without
+  creating `package.json`, `package-lock.json`, or `node_modules`.
+
 ## v1.1.0-alpha.6
 
 Identity Graph Renderer and Responsive Hardening.
