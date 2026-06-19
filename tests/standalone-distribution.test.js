@@ -85,6 +85,7 @@ test("release manifest records platform assets and checksums", () => {
 
 test("release asset gate requires installers, metadata, and all supported binaries", () => {
   const assetsDir = fs.mkdtempSync(path.join(os.tmpdir(), "orange-release-gate-"));
+  const manifestPath = path.join(assetsDir, "release-manifest.json");
   for (const filename of [
     "orange-linux-x64",
     "orange-macos-arm64",
@@ -96,39 +97,90 @@ test("release asset gate requires installers, metadata, and all supported binari
   ]) {
     fs.writeFileSync(path.join(assetsDir, filename), filename);
   }
-  fs.writeFileSync(path.join(assetsDir, "release-manifest.json"), `${JSON.stringify({
-    version: VERSION,
-    assets: [
-      "orange-linux-x64",
-      "orange-macos-arm64",
-      "orange-macos-x64",
-      "orange-windows-x64.exe"
-    ].map((filename) => ({
+
+  /**
+   * @param {(manifest: { version: string, assets: Array<{ version: string, platform: string, arch: string, filename: string, sha256: string, download_url: string, signed: boolean, experimental: boolean }> }) => void} [mutate]
+   */
+  const writeManifest = (mutate) => {
+    const manifest = {
       version: VERSION,
-      platform: filename.includes("windows") ? "windows" : filename.includes("linux") ? "linux" : "macos",
-      arch: filename.includes("arm64") ? "arm64" : "x64",
-      filename,
-      sha256: "0".repeat(64),
-      download_url: `https://example.test/releases/v1.1.0-alpha.7/${filename}`,
-      signed: false,
-      experimental: filename === "orange-macos-x64"
-    }))
-  })}\n`);
+      assets: [
+        "orange-linux-x64",
+        "orange-macos-arm64",
+        "orange-macos-x64",
+        "orange-windows-x64.exe"
+      ].map((filename) => ({
+        version: VERSION,
+        platform: filename.includes("windows") ? "windows" : filename.includes("linux") ? "linux" : "macos",
+        arch: filename.includes("arm64") ? "arm64" : "x64",
+        filename,
+        sha256: "0".repeat(64),
+        download_url: `https://example.test/releases/v1.1.0-alpha.7/${filename}`,
+        signed: false,
+        experimental: filename === "orange-macos-x64"
+      }))
+    };
+    if (mutate) {
+      mutate(manifest);
+    }
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest)}\n`);
+  };
+
+  writeManifest();
 
   const ok = spawnSync(process.execPath, [
     path.join(ROOT, "scripts", "check-release-assets.js"),
     "--dir",
     assetsDir,
     "--manifest",
-    path.join(assetsDir, "release-manifest.json"),
+    manifestPath,
     "--release-url",
-    "https://example.test/releases/v1.1.0-alpha.7"
+    "https://example.test/releases/v1.1.0-alpha.7",
+    "--version",
+    VERSION
   ], {
     cwd: ROOT,
     encoding: "utf8"
   });
   assert.equal(ok.status, 0, ok.stderr || ok.stdout);
 
+  writeManifest((manifest) => {
+    manifest.version = "1.1.0-alpha.6";
+  });
+  const wrongVersion = spawnSync(process.execPath, [
+    path.join(ROOT, "scripts", "check-release-assets.js"),
+    "--dir",
+    assetsDir,
+    "--manifest",
+    manifestPath,
+    "--version",
+    VERSION
+  ], {
+    cwd: ROOT,
+    encoding: "utf8"
+  });
+  assert.notEqual(wrongVersion.status, 0);
+  assert.match(wrongVersion.stderr, /release-manifest\.json version must be 1\.1\.0-alpha\.7/);
+
+  writeManifest((manifest) => {
+    manifest.assets[0].sha256 = "";
+  });
+  const missingSha = spawnSync(process.execPath, [
+    path.join(ROOT, "scripts", "check-release-assets.js"),
+    "--dir",
+    assetsDir,
+    "--manifest",
+    manifestPath,
+    "--version",
+    VERSION
+  ], {
+    cwd: ROOT,
+    encoding: "utf8"
+  });
+  assert.notEqual(missingSha.status, 0);
+  assert.match(missingSha.stderr, /must include a sha256 hex digest/);
+
+  writeManifest();
   fs.rmSync(path.join(assetsDir, "install.ps1"));
   const missing = spawnSync(process.execPath, [
     path.join(ROOT, "scripts", "check-release-assets.js"),

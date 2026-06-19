@@ -14,6 +14,11 @@ on:
 permissions:
   contents: read
 
+# Backfill runs should be started from the current workflow on main, for example:
+# gh workflow run release.yml --ref main -f tag=v1.1.0-alpha.7
+# The workflow logic and inline gates stay current while package and binary
+# build steps below still check out the selected release tag.
+
 jobs:
   quality:
     name: Test, typecheck, and package gate
@@ -194,6 +199,7 @@ jobs:
       - name: Verify local release assets
         env:
           RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          VERSION: ${{ needs.quality.outputs.version }}
         run: |
           set -euo pipefail
           required_assets=(
@@ -216,18 +222,50 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from "node:fs";
           const releaseUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.RELEASE_TAG}`;
-          const requiredBinaries = [
-            "orange-macos-arm64",
-            "orange-macos-x64",
-            "orange-linux-x64",
-            "orange-windows-x64.exe"
-          ];
+          const version = process.env.VERSION;
+          const requiredBinaries = new Map([
+            ["orange-macos-arm64", { platform: "macos", arch: "arm64" }],
+            ["orange-macos-x64", { platform: "macos", arch: "x64" }],
+            ["orange-linux-x64", { platform: "linux", arch: "x64" }],
+            ["orange-windows-x64.exe", { platform: "windows", arch: "x64" }]
+          ]);
           const manifest = JSON.parse(fs.readFileSync("dist/release/release-manifest.json", "utf8"));
-          const assets = new Map(manifest.assets.map((asset) => [asset.filename, asset]));
-          for (const filename of requiredBinaries) {
+          if (manifest.version !== version) {
+            throw new Error(`release-manifest.json version must be ${version}, got ${manifest.version}`);
+          }
+          if (!Array.isArray(manifest.assets)) {
+            throw new Error("release-manifest.json must contain an assets array.");
+          }
+          const assets = new Map();
+          for (const asset of manifest.assets) {
+            if (!asset || typeof asset.filename !== "string") {
+              throw new Error("release-manifest.json asset entries must include filename.");
+            }
+            if (assets.has(asset.filename)) {
+              throw new Error(`release-manifest.json contains duplicate asset entry: ${asset.filename}`);
+            }
+            assets.set(asset.filename, asset);
+          }
+          const unexpectedBinaries = [...assets.keys()].filter((filename) => filename.startsWith("orange-") && !requiredBinaries.has(filename));
+          if (unexpectedBinaries.length) {
+            throw new Error(`release-manifest.json contains unexpected binary assets: ${unexpectedBinaries.join(", ")}`);
+          }
+          for (const [filename, expected] of requiredBinaries) {
             const asset = assets.get(filename);
             if (!asset) {
               throw new Error(`release-manifest.json is missing ${filename}`);
+            }
+            if (asset.version !== version) {
+              throw new Error(`release-manifest.json entry ${filename} version must be ${version}, got ${asset.version}`);
+            }
+            if (asset.platform !== expected.platform) {
+              throw new Error(`release-manifest.json entry ${filename} platform must be ${expected.platform}, got ${asset.platform}`);
+            }
+            if (asset.arch !== expected.arch) {
+              throw new Error(`release-manifest.json entry ${filename} arch must be ${expected.arch}, got ${asset.arch}`);
+            }
+            if (typeof asset.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
+              throw new Error(`release-manifest.json entry ${filename} must include a sha256 hex digest.`);
             }
             const expectedUrl = `${releaseUrl}/${filename}`;
             if (asset.download_url !== expectedUrl) {
@@ -274,6 +312,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
+    # npm Trusted Publisher must point to .github/workflows/release.yml.
+    # Keep OIDC/provenance as the official path; do not add NODE_AUTH_TOKEN
+    # fallback publishing. Backfills skip npm when the exact version exists.
 
     steps:
       - name: Checkout tag

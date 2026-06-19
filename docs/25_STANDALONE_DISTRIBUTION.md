@@ -29,6 +29,19 @@ workflow. A `v*` tag push must complete the whole release path:
 as `v1.1.0-alpha.7` can be checked out and backfilled by the same pipeline.
 Routine releases must not require manual `gh release upload`.
 
+Backfills should run the current workflow from `main` with the target tag as
+input, for example `gh workflow run release.yml --ref main -f
+tag=v1.1.0-alpha.7`. The package source, installers, manifest generation, and
+binary builds still check out the selected tag, but Release asset verification
+is kept inline in `.github/workflows/release.yml`. That keeps the backfill path
+from depending on helper scripts that may have been added after the target tag.
+
+npm Trusted Publisher settings must point at `.github/workflows/release.yml`.
+If npm still points at the old split publish workflow filename, update that
+setting rather than adding a token-based publish fallback. Existing npm package
+versions are skipped during backfills so GitHub Release assets can be repaired
+without republishing the same version.
+
 ## Supported Assets
 
 Supported binary assets:

@@ -13,7 +13,12 @@ const REQUIRED_ASSETS = [
   "orange-windows-x64.exe"
 ];
 
-const REQUIRED_BINARIES = REQUIRED_ASSETS.filter((name) => name.startsWith("orange-"));
+const REQUIRED_BINARIES = new Map([
+  ["orange-macos-arm64", { platform: "macos", arch: "arm64" }],
+  ["orange-macos-x64", { platform: "macos", arch: "x64" }],
+  ["orange-linux-x64", { platform: "linux", arch: "x64" }],
+  ["orange-windows-x64.exe", { platform: "windows", arch: "x64" }]
+]);
 const args = parseArgs(process.argv.slice(2));
 const assetNames = readAssetNames(args);
 
@@ -23,7 +28,10 @@ if (missing.length) {
 }
 
 if (args.manifest) {
-  checkManifest(path.resolve(args.manifest), args["release-url"]);
+  checkManifest(path.resolve(args.manifest), {
+    releaseUrl: args["release-url"],
+    version: args.version
+  });
 }
 
 console.log(`Release asset gate OK: ${REQUIRED_ASSETS.join(", ")}`);
@@ -60,21 +68,55 @@ function readAssetNames(parsed) {
   throw new Error("Either --dir or --asset-list is required.");
 }
 
-function checkManifest(manifestPath, releaseUrl) {
+function checkManifest(manifestPath, { releaseUrl, version }) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  if (version && manifest.version !== version) {
+    throw new Error(`release-manifest.json version must be ${version}, got ${manifest.version}`);
+  }
   if (!Array.isArray(manifest.assets)) {
     throw new Error("release-manifest.json must contain an assets array.");
   }
 
-  const manifestAssets = new Map(manifest.assets.map((asset) => [asset.filename, asset]));
-  const missingBinaries = REQUIRED_BINARIES.filter((filename) => !manifestAssets.has(filename));
+  const manifestAssets = new Map();
+  for (const asset of manifest.assets) {
+    if (!asset || typeof asset.filename !== "string") {
+      throw new Error("release-manifest.json asset entries must include filename.");
+    }
+    if (manifestAssets.has(asset.filename)) {
+      throw new Error(`release-manifest.json contains duplicate asset entry: ${asset.filename}`);
+    }
+    manifestAssets.set(asset.filename, asset);
+  }
+
+  const missingBinaries = [...REQUIRED_BINARIES.keys()].filter((filename) => !manifestAssets.has(filename));
   if (missingBinaries.length) {
     throw new Error(`release-manifest.json is missing binaries: ${missingBinaries.join(", ")}`);
   }
 
+  const unexpectedBinaries = [...manifestAssets.keys()].filter((filename) => filename.startsWith("orange-") && !REQUIRED_BINARIES.has(filename));
+  if (unexpectedBinaries.length) {
+    throw new Error(`release-manifest.json contains unexpected binary assets: ${unexpectedBinaries.join(", ")}`);
+  }
+
+  for (const [filename, expected] of REQUIRED_BINARIES) {
+    const asset = manifestAssets.get(filename);
+    if (version && asset.version !== version) {
+      throw new Error(`release-manifest.json entry ${filename} version must be ${version}, got ${asset.version}`);
+    }
+    if (asset.platform !== expected.platform) {
+      throw new Error(`release-manifest.json entry ${filename} platform must be ${expected.platform}, got ${asset.platform}`);
+    }
+    if (asset.arch !== expected.arch) {
+      throw new Error(`release-manifest.json entry ${filename} arch must be ${expected.arch}, got ${asset.arch}`);
+    }
+    if (typeof asset.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
+      throw new Error(`release-manifest.json entry ${filename} must include a sha256 hex digest.`);
+    }
+  }
+
   if (releaseUrl) {
     const normalizedReleaseUrl = releaseUrl.replace(/\/$/, "");
-    for (const filename of REQUIRED_BINARIES) {
+    for (const filename of REQUIRED_BINARIES.keys()) {
       const asset = manifestAssets.get(filename);
       const expectedUrl = `${normalizedReleaseUrl}/${filename}`;
       if (asset.download_url !== expectedUrl) {
