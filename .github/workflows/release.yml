@@ -109,7 +109,7 @@ jobs:
             filename: orange-macos-arm64
           - platform: macos
             arch: x64
-            runner: macos-13
+            runner: macos-15-intel
             filename: orange-macos-x64
           - platform: linux
             arch: x64
@@ -406,7 +406,7 @@ jobs:
             runner: macos-14
           - platform: macos
             arch: x64
-            runner: macos-13
+            runner: macos-15-intel
           - platform: linux
             arch: x64
             runner: ubuntu-latest
