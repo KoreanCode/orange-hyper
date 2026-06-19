@@ -1,0 +1,497 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release or backfill, for example v1.1.0-alpha.7'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Backfill runs should be started from the current workflow on main, for example:
+# gh workflow run release.yml --ref main -f tag=v1.1.0-alpha.7
+# The workflow logic and inline gates stay current while package and binary
+# build steps below still check out the selected release tag.
+
+jobs:
+  quality:
+    name: Test, typecheck, and package gate
+    runs-on: ubuntu-latest
+
+    outputs:
+      release_tag: ${{ steps.release-metadata.outputs.release_tag }}
+      version: ${{ steps.release-metadata.outputs.version }}
+      npm_tag: ${{ steps.release-metadata.outputs.npm_tag }}
+
+    steps:
+      - name: Resolve release metadata
+        id: release-metadata
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TAG" in
+            v*) ;;
+            *) echo "Release tag must start with v: $RELEASE_TAG" >&2; exit 1 ;;
+          esac
+
+          version="${RELEASE_TAG#v}"
+          npm_tag="latest"
+          case "$version" in
+            *-alpha.*) npm_tag="alpha" ;;
+          esac
+
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.release-metadata.outputs.release_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches package version
+        env:
+          VERSION: ${{ steps.release-metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          package_version="$(node -p "require('./package.json').version")"
+          if [ "$package_version" != "$VERSION" ]; then
+            echo "Tag version $VERSION does not match package.json version $package_version." >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Check README sync
+        run: npm run check:readme-sync
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: CLI smoke
+        run: node bin/orange.js --help
+
+      - name: Pack dry run
+        run: npm pack --dry-run
+
+  build:
+    name: Build ${{ matrix.platform }}-${{ matrix.arch }}
+    needs: quality
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            arch: arm64
+            runner: macos-14
+            filename: orange-macos-arm64
+          - platform: macos
+            arch: x64
+            runner: macos-13
+            filename: orange-macos-x64
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+            filename: orange-linux-x64
+          - platform: windows
+            arch: x64
+            runner: windows-latest
+            filename: orange-windows-x64.exe
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.quality.outputs.release_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bundle standalone CLI
+        run: npm run build:standalone
+
+      - name: Build SEA binary
+        run: npm run build:sea -- --platform ${{ matrix.platform }} --arch ${{ matrix.arch }}
+
+      - name: Verify standalone binary
+        run: node scripts/smoke-standalone-binary.js --binary dist/standalone/${{ matrix.filename }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: standalone-${{ matrix.platform }}-${{ matrix.arch }}
+          path: dist/standalone/${{ matrix.filename }}
+          if-no-files-found: error
+
+  release-assets:
+    name: Create or update GitHub Release assets
+    needs:
+      - quality
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    outputs:
+      release_tag: ${{ steps.release-metadata.outputs.release_tag }}
+      version: ${{ steps.release-metadata.outputs.version }}
+      release_url: ${{ steps.release-metadata.outputs.release_url }}
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.quality.outputs.release_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: dist/release
+          merge-multiple: true
+
+      - name: Add installers
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release
+          cp install.sh dist/release/install.sh
+          cp install.ps1 dist/release/install.ps1
+
+      - name: Generate checksums and manifest
+        env:
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          VERSION: ${{ needs.quality.outputs.version }}
+        run: node scripts/build-release-manifest.js --assets-dir dist/release --version "$VERSION" --release-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}"
+
+      - name: Verify local release assets
+        env:
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          VERSION: ${{ needs.quality.outputs.version }}
+        run: |
+          set -euo pipefail
+          required_assets=(
+            install.sh
+            install.ps1
+            checksums.txt
+            release-manifest.json
+            orange-macos-arm64
+            orange-macos-x64
+            orange-linux-x64
+            orange-windows-x64.exe
+          )
+          for asset in "${required_assets[@]}"; do
+            if [ ! -f "dist/release/$asset" ]; then
+              echo "Missing required local release asset: $asset" >&2
+              exit 1
+            fi
+          done
+
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const releaseUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.RELEASE_TAG}`;
+          const version = process.env.VERSION;
+          const requiredBinaries = new Map([
+            ["orange-macos-arm64", { platform: "macos", arch: "arm64" }],
+            ["orange-macos-x64", { platform: "macos", arch: "x64" }],
+            ["orange-linux-x64", { platform: "linux", arch: "x64" }],
+            ["orange-windows-x64.exe", { platform: "windows", arch: "x64" }]
+          ]);
+          const manifest = JSON.parse(fs.readFileSync("dist/release/release-manifest.json", "utf8"));
+          if (manifest.version !== version) {
+            throw new Error(`release-manifest.json version must be ${version}, got ${manifest.version}`);
+          }
+          if (!Array.isArray(manifest.assets)) {
+            throw new Error("release-manifest.json must contain an assets array.");
+          }
+          const assets = new Map();
+          for (const asset of manifest.assets) {
+            if (!asset || typeof asset.filename !== "string") {
+              throw new Error("release-manifest.json asset entries must include filename.");
+            }
+            if (assets.has(asset.filename)) {
+              throw new Error(`release-manifest.json contains duplicate asset entry: ${asset.filename}`);
+            }
+            assets.set(asset.filename, asset);
+          }
+          const unexpectedBinaries = [...assets.keys()].filter((filename) => filename.startsWith("orange-") && !requiredBinaries.has(filename));
+          if (unexpectedBinaries.length) {
+            throw new Error(`release-manifest.json contains unexpected binary assets: ${unexpectedBinaries.join(", ")}`);
+          }
+          for (const [filename, expected] of requiredBinaries) {
+            const asset = assets.get(filename);
+            if (!asset) {
+              throw new Error(`release-manifest.json is missing ${filename}`);
+            }
+            if (asset.version !== version) {
+              throw new Error(`release-manifest.json entry ${filename} version must be ${version}, got ${asset.version}`);
+            }
+            if (asset.platform !== expected.platform) {
+              throw new Error(`release-manifest.json entry ${filename} platform must be ${expected.platform}, got ${asset.platform}`);
+            }
+            if (asset.arch !== expected.arch) {
+              throw new Error(`release-manifest.json entry ${filename} arch must be ${expected.arch}, got ${asset.arch}`);
+            }
+            if (typeof asset.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
+              throw new Error(`release-manifest.json entry ${filename} must include a sha256 hex digest.`);
+            }
+            const expectedUrl = `${releaseUrl}/${filename}`;
+            if (asset.download_url !== expectedUrl) {
+              throw new Error(`release-manifest.json download_url for ${filename} must be ${expectedUrl}, got ${asset.download_url}`);
+            }
+          }
+          NODE
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG"
+          else
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "Orange Hyper $RELEASE_TAG release assets."
+          fi
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+        run: gh release upload "$RELEASE_TAG" dist/release/* --clobber
+
+      - name: Export release metadata
+        id: release-metadata
+        env:
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          VERSION: ${{ needs.quality.outputs.version }}
+        run: |
+          set -euo pipefail
+          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "release_url=https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+
+  npm-publish:
+    name: npm publish
+    needs:
+      - quality
+      - release-assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    # npm Trusted Publisher must point to .github/workflows/release.yml.
+    # Keep OIDC/provenance as the official path; do not add NODE_AUTH_TOKEN
+    # fallback publishing. Backfills skip npm when the exact version exists.
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-assets.outputs.release_tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check npm version
+        id: npm-version
+        env:
+          VERSION: ${{ needs.release-assets.outputs.version }}
+        run: |
+          set -euo pipefail
+          if npm view "orange-hyper@$VERSION" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "orange-hyper@$VERSION already exists on npm; skipping publish."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish alpha
+        if: steps.npm-version.outputs.already_published == 'false' && needs.quality.outputs.npm_tag == 'alpha'
+        run: npm publish --tag alpha
+
+      - name: Publish stable
+        if: steps.npm-version.outputs.already_published == 'false' && needs.quality.outputs.npm_tag == 'latest'
+        run: npm publish
+
+  verify-release-assets:
+    name: Verify published Release assets
+    needs:
+      - release-assets
+      - npm-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Read Release asset names
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-assets.outputs.release_tag }}
+        run: gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name' > dist-release-assets.txt
+
+      - name: Gate required Release assets
+        run: |
+          set -euo pipefail
+          required_assets=(
+            install.sh
+            install.ps1
+            checksums.txt
+            release-manifest.json
+            orange-macos-arm64
+            orange-macos-x64
+            orange-linux-x64
+            orange-windows-x64.exe
+          )
+          for asset in "${required_assets[@]}"; do
+            if ! grep -Fxq "$asset" dist-release-assets.txt; then
+              echo "Missing required GitHub Release asset: $asset" >&2
+              exit 1
+            fi
+          done
+
+  installer-smoke:
+    name: Installer smoke ${{ matrix.platform }}-${{ matrix.arch }}
+    needs:
+      - release-assets
+      - verify-release-assets
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            arch: arm64
+            runner: macos-14
+          - platform: macos
+            arch: x64
+            runner: macos-13
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+          - platform: windows
+            arch: x64
+            runner: windows-latest
+
+    steps:
+      - name: Smoke macOS/Linux installer from Release URL
+        if: matrix.platform != 'windows'
+        env:
+          RELEASE_URL: ${{ needs.release-assets.outputs.release_url }}
+          VERSION: ${{ needs.release-assets.outputs.version }}
+        run: |
+          set -euo pipefail
+          home_dir="$RUNNER_TEMP/orange-home"
+          install_dir="$RUNNER_TEMP/orange-bin"
+          poison_dir="$RUNNER_TEMP/orange-poison"
+          smoke_cwd="$RUNNER_TEMP/orange-smoke"
+          mkdir -p "$home_dir" "$install_dir" "$poison_dir" "$smoke_cwd"
+
+          printf '#!/usr/bin/env sh\nexit 42\n' > "$poison_dir/node"
+          printf '#!/usr/bin/env sh\nexit 42\n' > "$poison_dir/npm"
+          chmod 755 "$poison_dir/node" "$poison_dir/npm"
+
+          curl -fsSL "$RELEASE_URL/install.sh" -o "$RUNNER_TEMP/install.sh"
+          cd "$smoke_cwd"
+          PATH="$poison_dir:/usr/bin:/bin" HOME="$home_dir" ORANGE_HYPER_BASE_URL="$RELEASE_URL" ORANGE_HYPER_VERSION="$VERSION" ORANGE_HYPER_INSTALL_DIR="$install_dir" sh "$RUNNER_TEMP/install.sh"
+
+          PATH="$poison_dir:$install_dir:/usr/bin:/bin" HOME="$home_dir" "$install_dir/orange" --version > "$RUNNER_TEMP/orange-version.txt"
+          grep "^$VERSION$" "$RUNNER_TEMP/orange-version.txt"
+          PATH="$poison_dir:$install_dir:/usr/bin:/bin" HOME="$home_dir" "$install_dir/orange" env --json > "$RUNNER_TEMP/orange-env.json"
+          grep '"distribution"[[:space:]]*:[[:space:]]*"standalone"' "$RUNNER_TEMP/orange-env.json"
+          grep '"node_runtime_embedded"[[:space:]]*:[[:space:]]*true' "$RUNNER_TEMP/orange-env.json"
+
+          for name in package.json package-lock.json node_modules; do
+            if [ -e "$name" ]; then
+              echo "$name should not be created by standalone installer smoke." >&2
+              exit 1
+            fi
+          done
+
+      - name: Smoke Windows installer from Release URL
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          RELEASE_URL: ${{ needs.release-assets.outputs.release_url }}
+          VERSION: ${{ needs.release-assets.outputs.version }}
+        run: |
+          $homeDir = Join-Path $env:RUNNER_TEMP "orange-home"
+          $installDir = Join-Path $env:RUNNER_TEMP "orange-bin"
+          $poisonDir = Join-Path $env:RUNNER_TEMP "orange-poison"
+          $smokeCwd = Join-Path $env:RUNNER_TEMP "orange-smoke"
+          New-Item -ItemType Directory -Force -Path $homeDir, $installDir, $poisonDir, $smokeCwd | Out-Null
+
+          Set-Content -Path (Join-Path $poisonDir "node.cmd") -Value "@echo off`r`nexit /b 42`r`n"
+          Set-Content -Path (Join-Path $poisonDir "npm.cmd") -Value "@echo off`r`nexit /b 42`r`n"
+
+          $installer = Join-Path $env:RUNNER_TEMP "install.ps1"
+          Invoke-WebRequest -Uri "$env:RELEASE_URL/install.ps1" -OutFile $installer
+
+          Set-Location $smokeCwd
+          $env:ORANGE_HYPER_BASE_URL = $env:RELEASE_URL
+          $env:ORANGE_HYPER_VERSION = $env:VERSION
+          $env:ORANGE_HYPER_INSTALL_DIR = $installDir
+          $env:Path = "$poisonDir;$env:SystemRoot\System32;$env:SystemRoot"
+          & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File $installer -Version $env:VERSION -InstallDir $installDir
+
+          $orange = Join-Path $installDir "orange.exe"
+          $env:Path = "$poisonDir;$installDir;$env:SystemRoot\System32;$env:SystemRoot"
+          $actualVersion = (& $orange --version).Trim()
+          if ($actualVersion -ne $env:VERSION) {
+            throw "Expected orange --version $env:VERSION, got $actualVersion."
+          }
+
+          $envPayload = & $orange env --json | ConvertFrom-Json
+          if ($envPayload.data.distribution -ne "standalone") {
+            throw "Expected standalone distribution, got $($envPayload.data.distribution)."
+          }
+          if ($envPayload.data.node_runtime_embedded -ne $true) {
+            throw "Expected embedded Node runtime."
+          }
+
+          foreach ($name in @("package.json", "package-lock.json", "node_modules")) {
+            if (Test-Path (Join-Path $smokeCwd $name)) {
+              throw "$name should not be created by standalone installer smoke."
+            }
+          }

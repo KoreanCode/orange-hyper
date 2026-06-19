@@ -154,19 +154,17 @@ binary asset entry includes:
 
 ## 5. CI/CD
 
-Two release workflows stay separate:
-
-- npm Trusted Publishing workflow: publishes the npm package through OIDC and
-  npm provenance.
-- Standalone binary release workflow: builds platform binaries, checksums,
-  manifest, and installers, then uploads GitHub Release assets.
+One tag-driven Release workflow owns both GitHub Release assets and npm
+Trusted Publishing. A `v*` tag push must build the standalone binaries, upload
+the workflow artifacts, create or update the GitHub Release, upload final
+Release assets, publish npm, and then gate the published Release asset list.
+`workflow_dispatch` accepts a `tag` input so an existing release can be
+backfilled by the same path without manual `gh release upload`.
 
 Standalone platform jobs:
 
 ```text
 npm ci
-npm test
-npm run typecheck
 npm run build:standalone
 npm run build:sea
 binary --version
@@ -182,7 +180,12 @@ download binary artifacts
 copy install.sh and install.ps1
 generate checksums.txt
 generate release-manifest.json
+gh release view
+gh release edit or create
 upload GitHub Release assets
+npm publish through Trusted Publishing
+verify required Release asset names
+run hosted installer smoke from actual Release URLs
 ```
 
 ## 6. Release Gates
