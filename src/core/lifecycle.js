@@ -100,7 +100,14 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
       additional_context: "",
       warnings: []
     };
-    writeTurn(cwd, turnKey, input, result, { processed: true });
+    writeTurn(cwd, turnKey, input, result, {
+      processed: true,
+      layer: "L5",
+      verification: "V5",
+      intent_signature: normalizedIntentSignature(prompt),
+      scope_signature: scopeSignatureFor(prompt),
+      continuity: { action: "none", confidence: "high" }
+    });
     return { ...result, heartbeat };
   }
   const contract = buildRouteContract(prompt);
@@ -129,7 +136,14 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
       ...baseResult,
       additional_context: context
     };
-    writeTurn(cwd, turnKey, input, result, { processed: true });
+    writeTurn(cwd, turnKey, input, result, {
+      processed: true,
+      layer: contract.layer,
+      verification: contract.verification,
+      intent_signature: normalizedIntentSignature(prompt),
+      scope_signature: scopeSignatureFor(prompt),
+      continuity: { action: "none", confidence: "high" }
+    });
     return { ...result, heartbeat };
   }
   if (contract.layer === "L4") {
@@ -144,11 +158,27 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
       ].join("\n"))
     };
     appendRouteTrace(cwd, prompt, contract, { clock: options.clock });
-    writeTurn(cwd, turnKey, input, result, { processed: true });
+    writeTurn(cwd, turnKey, input, result, {
+      processed: true,
+      layer: contract.layer,
+      verification: contract.verification,
+      intent_signature: normalizedIntentSignature(prompt),
+      scope_signature: scopeSignatureFor(prompt),
+      continuity: { action: "none", confidence: "high" }
+    });
     return { ...result, heartbeat };
   }
 
-  const questId = `quest_${shortHash(turnKey)}_${slugify(prompt).slice(0, 48) || "codex-turn"}`;
+  const intentSignature = normalizedIntentSignature(prompt);
+  const scopeSignature = scopeSignatureFor(prompt);
+  const continuity = resolveQuestContinuity(cwd, input, {
+    intentSignature,
+    scopeSignature,
+    prompt
+  });
+  const questId = continuity.action === "continue_existing"
+    ? continuity.quest_id
+    : `quest_${shortHash(turnKey)}_${slugify(prompt).slice(0, 48) || "codex-turn"}`;
   const existingQuest = findQuestOrNull(cwd, questId);
   const quest = existingQuest || createQuest(cwd, prompt, {
     id: questId,
@@ -178,9 +208,11 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
       id: quest.data.id,
       file: path.relative(cwd, quest.filePath),
       created: !existingQuest,
+      continued: continuity.action === "continue_existing",
       status: quest.data.status,
       verification_status: quest.data.verification_status
     },
+    continuity,
     capsule: {
       file: path.relative(cwd, capsule.filePath),
       created: true
@@ -193,7 +225,20 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
     quest_id: quest.data.id,
     layer: contract.layer,
     verification: contract.verification,
-    prompt
+    intent_signature: intentSignature,
+    scope_signature: scopeSignature,
+    continuity,
+    durable_candidate_detected: hasDurableCandidate(prompt)
+  });
+  writeSessionState(cwd, input, {
+    current_turn: {
+      turn_key: hashedTurnKey(input),
+      quest_id: quest.data.id,
+      intent_signature: intentSignature,
+      scope_signature: continuity.scope_signature || scopeSignature,
+      continuity_confidence: continuity.confidence
+    },
+    recent_quest_id: quest.data.id
   });
   return { ...result, heartbeat };
 }
@@ -264,7 +309,7 @@ function lifecycleStop(cwd, input, heartbeat, options) {
   const needsEvidence = layerNumber(layer) >= 2;
   const alreadyContinued = Boolean(input.stop_hook_active || turn.continuation_requested);
   if (needsEvidence && !evidence.length && !alreadyContinued) {
-    const reason = `현재 Quest는 ${verification} 검증이 필요하지만 targeted test/build/lint evidence가 없습니다. 변경 범위에 해당하는 테스트나 동등한 검증 명령을 실행하고 결과를 기록한 뒤 다시 완료하십시오.`;
+    const reason = `Orange가 현재 turn에서 verification evidence를 관찰하지 못했습니다. 현재 Quest는 ${verification} 검증이 필요합니다. 변경 범위에 해당하는 테스트, 빌드, 린트 또는 동등한 검증 명령을 실행하고 결과를 기록한 뒤 다시 완료하십시오.`;
     writeTurn(cwd, turnKey, input, turn.result, {
       ...turn,
       continuation_requested: true,
@@ -284,11 +329,35 @@ function lifecycleStop(cwd, input, heartbeat, options) {
       warnings: []
     };
   }
+  const explicitUnverifiedReason = extractExplicitUnverifiedReason(input.last_assistant_message);
+  if (needsEvidence && !evidence.length && !explicitUnverifiedReason) {
+    const reason = "Orange가 현재 turn에서 verification evidence를 관찰하지 못했고, 명시적인 미검증 사유도 확인하지 못했습니다. Quest는 incomplete 상태로 유지됩니다.";
+    writeTurn(cwd, turnKey, input, turn.result, {
+      ...turn,
+      incomplete: true,
+      incomplete_reason: reason
+    });
+    return {
+      event: "stop",
+      host: input.host,
+      active: true,
+      noop: false,
+      degraded: false,
+      quest: { id: turn.quest_id },
+      continuation_required: false,
+      completed: false,
+      incomplete: true,
+      reason,
+      additional_context: reason,
+      heartbeat,
+      warnings: []
+    };
+  }
 
   const completion = completeQuestIfNeeded(cwd, turn.quest_id, {
     evidence: evidence.map(formatEvidenceForQuest),
     unverifiedReason: needsEvidence && !evidence.length
-      ? `No targeted verification evidence was available after one Stop continuation for turn ${safeString(input.turn_id) || "unknown"}.`
+      ? explicitUnverifiedReason
       : "",
     clock: options.clock
   });
@@ -418,12 +487,12 @@ function buildToolEvidence(cwd, input, options) {
   });
   return {
     schema_version: 1,
-    id: `evidence_${shortHash(JSON.stringify([input.session_id, input.turn_id, input.tool_use_id, now]))}`,
+    id: `evidence_${shortHash(JSON.stringify([hashedSessionKey(input), hashedTurnKey(input), input.tool_use_id, now]))}`,
     created_at: now,
     host: input.host,
-    session_id: safeString(input.session_id),
-    turn_id: safeString(input.turn_id),
-    tool_use_id: safeString(input.tool_use_id),
+    session_key: hashedSessionKey(input),
+    turn_key: hashedTurnKey(input),
+    tool_use_key: safeString(input.tool_use_id) ? shortHash(safeString(input.tool_use_id)) : null,
     tool_name: toolName,
     evidence_kind: isVerification ? "verification" : toolName === "apply_patch" ? "changed_paths" : "observation",
     command: redact(command).slice(0, 500),
@@ -514,6 +583,8 @@ function evidenceForTurn(cwd, input) {
   if (!fs.existsSync(paths.runtimeEvidence)) {
     return [];
   }
+  const sessionKey = hashedSessionKey(input);
+  const turnKey = hashedTurnKey(input);
   return fs.readdirSync(paths.runtimeEvidence)
     .filter((name) => name.endsWith(".json"))
     .map((name) => {
@@ -523,7 +594,7 @@ function evidenceForTurn(cwd, input) {
         return null;
       }
     })
-    .filter((item) => item && item.session_id === safeString(input.session_id) && item.turn_id === safeString(input.turn_id));
+    .filter((item) => item && item.session_key === sessionKey && item.turn_key === turnKey);
 }
 
 function completeQuestIfNeeded(cwd, questId, options) {
@@ -548,7 +619,7 @@ function completeQuestIfNeeded(cwd, questId, options) {
 
 function maybeCreatePendingProposal(cwd, turn, completion, evidence) {
   const layer = completion.data?.layer || turn.layer;
-  if (layerNumber(layer) < 2 || !hasDurableCandidate(turn.prompt || turn.result?.additional_context || "")) {
+  if (layerNumber(layer) < 2 || !turn.durable_candidate_detected) {
     return {
       created: false,
       reason: "No durable decision, constraint, risk, or verification candidate detected."
@@ -583,8 +654,8 @@ function writeEpisode(cwd, input, turn, completion, evidence, options) {
     id,
     created_at: nowIso(options.clock),
     host: input.host,
-    session_id: safeString(input.session_id),
-    turn_id: safeString(input.turn_id),
+    session_key: hashedSessionKey(input),
+    turn_key: hashedTurnKey(input),
     quest_id: completion.data?.id || turn.quest_id,
     verification_status: completion.data?.verification_status || null,
     evidence_count: evidence.length,
@@ -620,6 +691,82 @@ function hasDurableCandidate(text) {
     || /결정|제약|위험|검증|정책|계약|아키텍처|기억|메모리/.test(text);
 }
 
+function normalizedIntentSignature(text) {
+  const normalized = String(text || "")
+    .toLowerCase()
+    .replace(/[`"'.,:;!?()[\]{}]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return shortHash(normalized.split(" ").slice(0, 24).join(" "));
+}
+
+function scopeSignatureFor(text) {
+  const source = String(text || "").toLowerCase();
+  const pathMatches = [...source.matchAll(/\b(?:src|lib|app|docs|tests|fixtures|scripts)\/[a-z0-9._/-]+/g)]
+    .map((match) => match[0].split("/").slice(0, 3).join("/"));
+  if (pathMatches.length) {
+    return shortHash(pathMatches.sort().join("|"));
+  }
+  const components = [
+    "activation",
+    "binding",
+    "lifecycle",
+    "quest",
+    "memory",
+    "verification",
+    "adapter",
+    "hook",
+    "windows",
+    "standalone",
+    "sea",
+    "docs",
+    "readme",
+    "test",
+    "auth",
+    "search",
+    "api",
+    "ui",
+    "database"
+  ].filter((word) => source.includes(word));
+  const korean = [
+    ["활성화", "activation"],
+    ["바인딩", "binding"],
+    ["라이프사이클", "lifecycle"],
+    ["퀘스트", "quest"],
+    ["메모리", "memory"],
+    ["검증", "verification"],
+    ["어댑터", "adapter"],
+    ["훅", "hook"],
+    ["문서", "docs"],
+    ["윈도우", "windows"]
+  ].filter(([word]) => source.includes(word)).map(([, key]) => key);
+  const all = [...new Set([...components, ...korean])].sort();
+  return all.length ? shortHash(all.join("|")) : "general";
+}
+
+function isExplicitFollowUp(text) {
+  return /\b(follow[- ]?up|continue|same task|same work|that task|previous task|above task|also|add tests|fix it|update it|keep going)\b/i.test(text)
+    || /이어서|계속|방금|위 작업|이전 작업|같은 작업|마저|추가로|그 작업|그것|테스트도|수정해|고쳐/.test(text);
+}
+
+function isExplicitNewWork(text) {
+  return /\b(new task|separate task|unrelated|different task|start over|instead)\b/i.test(text)
+    || /별도|다른 작업|새 작업|새로운 작업|무관한/.test(text);
+}
+
+function extractExplicitUnverifiedReason(text) {
+  const source = String(text || "").trim();
+  if (!source) {
+    return "";
+  }
+  const matchesReason = /\b(not run|not verified|unverified|could not run|unable to run|skipped tests|tests not run|without verification)\b/i.test(source)
+    || /검증.*못|테스트.*못|실행.*못|미검증|검증하지 못|테스트를 실행하지 않|검증 생략/.test(source);
+  if (!matchesReason) {
+    return "";
+  }
+  return redact(source).replace(/\s+/g, " ").slice(0, 500);
+}
+
 function isL5Prompt(text) {
   return /\b(L5|raid mode|autonomous loop|long-running loop|full autonomous planner)\b/i.test(text)
     || /자율\s*루프|레이드\s*모드/.test(text);
@@ -636,6 +783,100 @@ function findQuestOrNull(cwd, selector) {
   } catch {
     return null;
   }
+}
+
+function resolveQuestContinuity(cwd, input, context) {
+  const state = readSessionState(cwd, input);
+  const currentQuestId = state?.current_turn?.quest_id || state?.recent_quest_ids?.[0] || null;
+  const currentQuest = currentQuestId ? findQuestOrNull(cwd, currentQuestId) : null;
+  if (!currentQuest || currentQuest.data.status !== "active") {
+    return {
+      action: "create_new",
+      confidence: "high",
+      quest_id: null,
+      reason: "No active Quest is linked to this session."
+    };
+  }
+  const previousScope = state?.current_turn?.scope_signature || "general";
+  if (isExplicitNewWork(context.prompt)) {
+    return {
+      action: "create_new",
+      confidence: "high",
+      quest_id: null,
+      reason: "Prompt indicates a separate task."
+    };
+  }
+  if (isExplicitFollowUp(context.prompt)) {
+    return {
+      action: "continue_existing",
+      confidence: "high",
+      quest_id: currentQuestId,
+      scope_signature: previousScope,
+      reason: "Prompt is an explicit follow-up in the same session."
+    };
+  }
+  if (previousScope !== "general" && context.scopeSignature !== "general" && previousScope === context.scopeSignature) {
+    return {
+      action: "continue_existing",
+      confidence: "medium",
+      quest_id: currentQuestId,
+      scope_signature: previousScope,
+      reason: "Prompt scope matches the active Quest scope."
+    };
+  }
+  if (previousScope !== "general" && context.scopeSignature !== "general" && previousScope !== context.scopeSignature) {
+    return {
+      action: "create_new",
+      confidence: "medium",
+      quest_id: null,
+      reason: "Prompt scope differs from the active Quest scope."
+    };
+  }
+  return {
+    action: "continue_existing",
+    confidence: "low",
+    quest_id: currentQuestId,
+    scope_signature: previousScope,
+    reason: "Prompt is ambiguous, so Orange keeps continuity with the active Quest."
+  };
+}
+
+function readSessionState(cwd, input) {
+  const filePath = sessionFilePath(cwd, input);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionState(cwd, input, update) {
+  const filePath = sessionFilePath(cwd, input);
+  const before = readSessionState(cwd, input) || {
+    schema_version: 1,
+    host: input.host,
+    session_key: hashedSessionKey(input),
+    recent_quest_ids: []
+  };
+  const recent = [
+    update.recent_quest_id,
+    ...(before.recent_quest_ids || [])
+  ].filter(Boolean);
+  const next = {
+    ...before,
+    current_turn: update.current_turn,
+    recent_quest_ids: [...new Set(recent)].slice(0, 8),
+    updated_at: nowIso()
+  };
+  writeJsonAtomic(filePath, next);
+}
+
+function sessionFilePath(cwd, input) {
+  const paths = workspacePaths(cwd);
+  return path.join(paths.runtimeSessions, `${safeFileName(hashedSessionKey(input))}.json`);
 }
 
 function readTurn(cwd, key) {
@@ -659,8 +900,8 @@ function writeTurn(cwd, key, input, result, extra = {}) {
     schema_version: 1,
     idempotency_key: key,
     host: input.host,
-    session_id: safeString(input.session_id),
-    turn_id: safeString(input.turn_id),
+    session_key: hashedSessionKey(input),
+    turn_key: hashedTurnKey(input),
     updated_at: nowIso(),
     result
   };
@@ -688,6 +929,14 @@ function idempotencyKey(cwd, input, eventName) {
     safeString(input.tool_use_id) || ""
   ].join("\u0000");
   return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+function hashedSessionKey(input) {
+  return shortHash(`session:${safeString(input.session_id) || "unknown-session"}`);
+}
+
+function hashedTurnKey(input) {
+  return shortHash(`turn:${safeString(input.session_id) || "unknown-session"}:${safeString(input.turn_id) || "unknown-turn"}`);
 }
 
 function shortHash(value) {

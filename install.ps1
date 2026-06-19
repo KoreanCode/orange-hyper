@@ -1,5 +1,5 @@
 param(
-  [string]$Version = $(if ($env:ORANGE_HYPER_VERSION) { $env:ORANGE_HYPER_VERSION } else { "1.1.0-alpha.7" }),
+  [string]$Version = $(if ($env:ORANGE_HYPER_VERSION) { $env:ORANGE_HYPER_VERSION } else { "1.1.0-alpha.8" }),
   [string]$Repo = $(if ($env:ORANGE_HYPER_REPO) { $env:ORANGE_HYPER_REPO } else { "KoreanCode/orange-hyper" }),
   [string]$InstallDir = $(if ($env:ORANGE_HYPER_INSTALL_DIR) { $env:ORANGE_HYPER_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "OrangeHyper\bin" }),
   [switch]$AddToPath

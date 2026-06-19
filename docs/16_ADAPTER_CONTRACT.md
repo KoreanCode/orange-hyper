@@ -73,6 +73,10 @@ failure envelopes.
 - `activation.apply`
 - `activation.status`
 - `activation.remove`
+- `binding.plan`
+- `binding.install`
+- `binding.status`
+- `binding.remove`
 - `quest.new`
 - `adapter.list`
 - `adapter.show`
@@ -200,12 +204,23 @@ repair doctor findings, or mutate project memory/config.
 Markdown report only under `.orange-hyper/evals/reports/`. `--write-report`
 does not accept a path or value.
 
-Activation Runtime commands are opt-in lifecycle surfaces. `activate plan` is
-read-only. `activate apply` may initialize the project, write
-`.orange-hyper/local/activation.json`, and materialize the Orange-owned Codex
-binding/marketplace entry. `activate status` must distinguish installed,
-initialized, pending trust, heartbeat-active, degraded, and inactive states.
-`activate remove` removes only Orange-owned activation and binding material.
+Activation Runtime commands are opt-in lifecycle surfaces with two separate
+scopes. `binding plan/install/status/remove` manages the user-scoped Codex Host
+Binding state. `activate plan/apply/status/remove` manages only repo-scoped
+Project Activation state. `activate apply` may initialize the project and write
+`.orange-hyper/local/activation.json`, but it must not register marketplaces,
+materialize plugin source, install or enable Codex plugins, mutate hook trust,
+or remove user-scoped binding state.
+
+Activation status must distinguish marketplace registration, plugin
+availability, plugin installation, plugin enablement, hook review/heartbeat,
+and project activation. If Codex does not expose a machine-readable state,
+adapters must keep it as `unknown` rather than infer it.
+
+`activate remove` removes only project-local activation/runtime state.
+`binding remove` removes only Orange-owned user-scoped marketplace, plugin
+source, and binding metadata; it must preserve project memory and project
+activation.
 
 Lifecycle commands read one JSON object from stdin and use Kernel-owned state
 transitions. They may write activation-scoped local runtime state, Quest state,

@@ -14,14 +14,15 @@ layout coordinates, Structure/Memory/Combined views, responsive drawers, and
 v1.1.0-alpha.7 adds the standalone distribution foundation: a bundled CommonJS
 entry, Node SEA binary release workflow, checksum-verifying user-local
 installers, and `orange env --json`.
-The Activation Runtime track adds Orange Activation Runtime v0.1 and the
-first-party Codex Host Binding as a limited opt-in runtime surface. It still
-does not add an MCP runner, custom subagent execution, role system, planner,
-LLM judge, telemetry path, graph editing surface, or Memory Proposal auto-accept.
+v1.1.0-alpha.8 adds Orange Activation Runtime v0.1 and the first-party Codex
+Host Binding as a limited opt-in runtime surface. It still does not add an MCP
+runner, custom subagent execution, role system, planner, LLM judge, telemetry
+path, graph editing surface, or Memory Proposal auto-accept.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.7`
+- package version: `1.1.0-alpha.8`
+- Codex plugin version: `1.1.0-alpha.8`
 - README version: `1.1-doc.8`
 - Adapter JSON contract version: `0.1`
 
@@ -58,9 +59,10 @@ product experience.
 - Hook, Growth, and Eval remain warning/summary surfaces. MCP remains a
   suggestion surface. None of them automatically repair, install, unlock, or
   mutate project memory/config.
-- Supported host activation is explicit: `activate plan` is read-only, `apply`
-  records local activation state and materializes the Codex binding, and
-  `status` reports `active` only after a lifecycle heartbeat.
+- Supported host binding and project activation are separate: `binding install`
+  prepares user-scoped Codex marketplace/plugin source, `activate apply` records
+  only repo-local activation state, and `status` reports `active` only after the
+  current binding fingerprint has produced the required lifecycle events.
 - Knowledge Graph is documented as generated project structure plus accepted
   project memory, not a code dependency graph. Current Identity HTML remains
   read-only and graph-first, not a full graph editor.
@@ -144,6 +146,7 @@ The v1 stable audited top-level CLI command surface is:
 - `mcp`
 - `growth`
 - `adapter`
+- `binding`
 - `eval`
 - `sync`
 - `env`
@@ -153,7 +156,7 @@ The v1 stable audited top-level CLI command surface is:
 
 `init` is the bootstrap command. The user-requested audit surface is the
 post-init kernel surface: `activate`, `lifecycle`, `host`, `quest`, `route`,
-`capsule`, `remember`, `graph`, `hook`, `mcp`, `growth`, `adapter`, `eval`,
+`capsule`, `remember`, `graph`, `hook`, `mcp`, `growth`, `adapter`, `binding`, `eval`,
 `sync`, `env`, `doctor`, and `identity`.
 
 ## What v1 Stable Guarantees
@@ -170,10 +173,12 @@ post-init kernel surface: `activate`, `lifecycle`, `host`, `quest`, `route`,
 
 ## What v1 Stable Does Not Guarantee
 
-- A limited Codex Activation Runtime is provided only after explicit project activation.
+- A limited Codex Activation Runtime is provided only after explicit user-scope
+  Host Binding setup and explicit project activation.
 - No MCP server is installed, configured, or executed automatically.
-- No hook lifecycle is trusted or considered active without Codex hook review and
-  an observed lifecycle heartbeat.
+- No hook lifecycle is trusted or considered active without Codex hook review,
+  plugin enablement evidence where Codex exposes it, and current-fingerprint
+  SessionStart, UserPromptSubmit, and Stop heartbeat events.
 - No roles, subagents, workflows, planner loops, or automatic growth unlocks are
   created.
 - No telemetry, network upload, external API call, or LLM judge is used.

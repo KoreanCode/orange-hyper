@@ -3,6 +3,7 @@ import path from "node:path";
 import { runCodexHook, safeCodexHookFailure } from "../adapters/codex/host.js";
 import { activationApply, activationPlan, activationRemove, activationStatus } from "../core/activation.js";
 import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../core/adapter.js";
+import { bindingInstall, bindingPlan, bindingRemove, bindingStatus } from "../core/binding.js";
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, readProjectIdentity, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
@@ -129,6 +130,12 @@ const COMMAND_IDS = {
     show: "adapter.show",
     "dry-run": "adapter.dryRun"
   },
+  binding: {
+    plan: "binding.plan",
+    install: "binding.install",
+    status: "binding.status",
+    remove: "binding.remove"
+  },
   capsule: "capsule.build",
   doctor: "doctor.run",
   env: "environment.show",
@@ -227,6 +234,11 @@ export async function main(argv = process.argv.slice(2), env = {}) {
 
   if (command === "activate") {
     await activationCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "binding") {
+    await bindingCommand(cwd, io, rest);
     return;
   }
 
@@ -382,6 +394,41 @@ async function activationCommand(cwd, io, argv) {
     return;
   }
   write(io, formatActivationResult(result));
+}
+
+async function bindingCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    write(io, bindingUsage());
+    return;
+  }
+  const args = parseBindingArgs(rest, { scopeRequired: subcommand !== "status" });
+  const options = {
+    host: args.flags.host,
+    scope: args.flags.scope || "user"
+  };
+  let result;
+  let commandId;
+  if (subcommand === "plan") {
+    result = bindingPlan(cwd, options);
+    commandId = COMMAND_IDS.binding.plan;
+  } else if (subcommand === "install") {
+    result = bindingInstall(cwd, options);
+    commandId = COMMAND_IDS.binding.install;
+  } else if (subcommand === "status") {
+    result = bindingStatus(cwd, options);
+    commandId = COMMAND_IDS.binding.status;
+  } else if (subcommand === "remove") {
+    result = bindingRemove(cwd, options);
+    commandId = COMMAND_IDS.binding.remove;
+  } else {
+    throw new Error(`Unknown binding command: ${subcommand}`);
+  }
+  if (args.flags.json) {
+    writeJson(io, jsonOk(commandId, result));
+    return;
+  }
+  write(io, formatBindingResult(result));
 }
 
 async function lifecycleCommand(cwd, io, argv) {
@@ -1119,6 +1166,21 @@ function parseActivationArgs(argv, options = {}) {
   return args;
 }
 
+function parseBindingArgs(argv, options = {}) {
+  const args = parseArgs(argv);
+  assertOnlyBindingFlags(args.flags);
+  if (args.positionals.length) {
+    throw new Error(`Unexpected binding argument: ${args.positionals[0]}`);
+  }
+  if (!args.flags.host) {
+    throw new Error("binding requires --host codex.");
+  }
+  if (options.scopeRequired && !args.flags.scope) {
+    throw new Error("binding plan/install/remove require --scope user.");
+  }
+  return args;
+}
+
 function parseLifecycleArgs(argv) {
   const args = parseArgs(argv);
   assertOnlyLifecycleFlags(args.flags);
@@ -1165,6 +1227,14 @@ function assertOnlyActivationFlags(flags) {
   for (const key of Object.keys(flags)) {
     if (!["host", "scope", "json"].includes(key)) {
       throw new Error(`Unsupported activate flag: --${key}`);
+    }
+  }
+}
+
+function assertOnlyBindingFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (!["host", "scope", "json"].includes(key)) {
+      throw new Error(`Unsupported binding flag: --${key}`);
     }
   }
 }
@@ -1299,6 +1369,23 @@ function formatActivationResult(result) {
     `Last heartbeat: ${result.lifecycle.last_heartbeat || "none"}`,
     `Requires restart: ${yesNo(result.requires_restart)}`,
     `Rollback available: ${yesNo(result.rollback_available)}`
+  ].join("\n");
+}
+
+function formatBindingResult(result) {
+  return [
+    "Orange Codex binding",
+    `Host: ${result.host}`,
+    `Scope: ${result.scope}`,
+    `Status: ${result.effective_status}`,
+    `Marketplace: ${result.marketplace.status}`,
+    `Plugin availability: ${result.plugin.availability}`,
+    `Plugin installation: ${result.plugin_installation}`,
+    `Plugin enabled: ${result.plugin_enabled}`,
+    `Hook execution: ${result.hook_execution.status}`,
+    `Fingerprint: ${result.binding_fingerprint}`,
+    `Binding root: ${result.binding_root}`,
+    `Restart required: ${yesNo(result.restart_required)}`
   ].join("\n");
 }
 
@@ -2370,6 +2457,9 @@ function defaultErrorHint(command = "command") {
   if (command.startsWith("activation.")) {
     return "Run `orange activate plan --host codex --scope project --json` before applying activation; active requires a real lifecycle heartbeat.";
   }
+  if (command.startsWith("binding.")) {
+    return "Run `orange binding plan --host codex --scope user --json` before installing the user-scoped Codex Host Binding.";
+  }
   if (command.startsWith("adapter.")) {
     return "Run `orange adapter list` to inspect built-in recipe ids; adapter dry-runs describe commands but do not execute or mutate `.orange-hyper`.";
   }
@@ -2724,6 +2814,10 @@ function usage() {
     "",
     "Commands:",
     "  init [--project <name>] [--force]",
+    "  binding plan --host codex --scope user [--json]",
+    "  binding install --host codex --scope user [--json]",
+    "  binding status --host codex [--json]",
+    "  binding remove --host codex --scope user [--json]",
     "  activate plan --host codex --scope project [--json]",
     "  activate apply --host codex --scope project [--json]",
     "  activate status --host codex [--json]",
@@ -2772,6 +2866,18 @@ function usage() {
     "  hook run stop [--json] [--write-report]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
+  ].join("\n");
+}
+
+function bindingUsage() {
+  return [
+    "orange binding <command>",
+    "",
+    "Commands:",
+    "  plan --host codex --scope user [--json]",
+    "  install --host codex --scope user [--json]",
+    "  status --host codex [--json]",
+    "  remove --host codex --scope user [--json]"
   ].join("\n");
 }
 

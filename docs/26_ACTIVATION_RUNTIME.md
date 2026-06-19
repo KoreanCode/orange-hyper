@@ -3,46 +3,65 @@
 Orange Activation Runtime v0.1 turns Orange Hyper from a CLI-only kernel into an
 opt-in lifecycle binding for supported coding-agent hosts.
 
-Product contract:
+User contract:
 
 ```text
-Orange Hyper becomes automatic after one-time activation on a supported host.
-Binary installation alone does not mean the project is active.
+Install the Orange Codex Host Binding once.
+Activate Orange in the repositories where you want it.
+Then work normally.
 ```
 
-The guiding principle is:
+Binary installation alone does not mean Orange is active. A local marketplace
+entry alone does not mean the Codex plugin is installed or enabled. Project
+activation alone does not mean lifecycle hooks are operational.
+
+## Two Lifecycles
+
+Orange separates Host Binding from Project Activation.
+
+| Lifecycle | Scope | Owns | Must not own |
+| --- | --- | --- | --- |
+| Host Binding | user Codex environment | Orange Codex plugin source, personal marketplace root, binding metadata, binding fingerprint, host health hints | repo activation, project memory, Codex plugin cache, hook trust store |
+| Project Activation | repository | `.orange-hyper/local/activation.json`, activation policy, project-local runtime and episodes | marketplace registration, plugin installation, plugin enablement, hook trust, user binding removal |
+
+The final shape is:
 
 ```text
-Strong attachment, adaptive ceremony.
+User Codex Environment
+  Orange Host Binding
+  personal marketplace
+  Orange plugin
+  meta-skill
+  lifecycle hooks
+
+Repository
+  .orange-hyper/local/activation.json
+  .orange-hyper/local/runtime/
+  .orange-hyper/local/episodes/
 ```
 
-Attachment is deterministic: if a project is activated and Codex hooks are
-installed/trusted, lifecycle events call Orange automatically. Ceremony is
-adaptive: L0/L1 stay light, while L2+ can create Quest, Context Capsule,
-verification evidence, working memory, and pending Memory Proposal candidates.
-
-## Installed vs Active
-
-Orange distinguishes these states:
-
-| State | Meaning |
-| --- | --- |
-| `installed` | An `orange` executable exists on PATH or at a known user-local install path. |
-| `initialized` | The current project has `.orange-hyper/config.json`. |
-| `binding_installed` | The Codex binding bundle is available from the project marketplace. |
-| `pending_trust` | Activation policy and binding material exist, but no lifecycle heartbeat has been observed. |
-| `active` | Activation policy exists and a real lifecycle heartbeat has been recorded. |
-| `degraded` | Activation exists, but a lifecycle or binding part is unavailable or inconsistent. |
-| `inactive` | Orange may be installed, but this project has no activation policy. |
-
-`orange activate status --host codex --json` must not return `active` merely
-because a binary exists. A lifecycle heartbeat under
-`.orange-hyper/local/runtime/heartbeat.json` is required.
+Inactive repositories return quiet hook no-ops.
 
 ## CLI Surface
 
-Activation commands use the Adapter JSON envelope and keep
+Binding commands use the Adapter JSON envelope and keep
 `contract_version: "0.1"`:
+
+```bash
+orange binding plan --host codex --scope user --json
+orange binding install --host codex --scope user --json
+orange binding status --host codex --json
+orange binding remove --host codex --scope user --json
+```
+
+Command ids:
+
+- `binding.plan`
+- `binding.install`
+- `binding.status`
+- `binding.remove`
+
+Activation commands remain project-scoped:
 
 ```bash
 orange activate plan --host codex --scope project --json
@@ -58,7 +77,7 @@ Command ids:
 - `activation.status`
 - `activation.remove`
 
-Provider-neutral lifecycle commands also use the Adapter JSON envelope:
+Lifecycle commands also use the Adapter JSON envelope:
 
 ```bash
 orange lifecycle session-start --host codex --from-stdin --json
@@ -66,13 +85,6 @@ orange lifecycle user-prompt-submit --host codex --from-stdin --json
 orange lifecycle post-tool-use --host codex --from-stdin --json
 orange lifecycle stop --host codex --from-stdin --json
 ```
-
-Command ids:
-
-- `lifecycle.sessionStart`
-- `lifecycle.userPromptSubmit`
-- `lifecycle.postToolUse`
-- `lifecycle.stop`
 
 Codex hooks call the host bridge instead:
 
@@ -85,243 +97,283 @@ orange host codex hook stop
 
 The host bridge returns Codex-native hook JSON, not the Adapter JSON envelope.
 
-## Activation State
+## Binding Commands
 
-Project activation policy is local state, not shared project memory:
+`binding plan` is read-only. It reports:
 
-```text
-.orange-hyper/local/activation.json
-.orange-hyper/local/runtime/
-.orange-hyper/local/episodes/
-```
+- Codex executable detection
+- Orange executable and version
+- plugin version
+- deterministic binding fingerprint
+- user data path
+- marketplace state
+- plugin availability, installation, and enablement state
+- current hook execution state
+- legacy project-local binding state
+- planned writes, removals, and external commands
+- conflicts, restart hints, user actions, and rollback availability
 
-The default policy allows only activation-scoped local automation:
-
-```json
-{
-  "schema_version": 1,
-  "host": "codex",
-  "scope": "project",
-  "mode": "adaptive",
-  "status": "pending_trust",
-  "policy": {
-    "automatic": {
-      "project_init": true,
-      "route": true,
-      "quest_from": "L2",
-      "capsule": true,
-      "working_memory": true,
-      "verification_evidence_capture": true,
-      "quest_completion": true,
-      "pending_memory_proposal": true,
-      "growth_evidence": true
-    },
-    "approval_required": {
-      "memory_accept": true,
-      "mcp_install": true,
-      "persistent_mcp": true,
-      "skill_materialization": true,
-      "agent_materialization": true,
-      "write_capable_agent": true,
-      "external_side_effect": true,
-      "destructive_operation": true,
-      "raid_mode": true
-    }
-  }
-}
-```
-
-The refined memory rule is:
+`binding install` writes only user-scoped Orange-owned binding files. The default
+layout is:
 
 ```text
-No automatic durable/shared-memory acceptance.
+${ORANGE_HYPER_HOME:-~/.orange-hyper}/bindings/codex/
+  marketplace.json
+  plugins/orange-hyper-codex/
+  binding.json
 ```
 
-Activation-scoped local state, Quest state, verification evidence, working
-memory, and pending proposal candidates may be written automatically. Accepted
-Memory Graph writes still require explicit `remember accept`.
+The command prepares the marketplace root and plugin source. If Codex plugin
+installation, enablement, or hook review cannot be reliably automated through
+official Codex surfaces, the command returns user actions instead of claiming
+the binding is operational.
 
-## Codex Binding
+`binding status` reports independent state:
 
-The first-party Codex plugin bundle lives at:
-
-```text
-adapters/codex/plugin/
-  .codex-plugin/plugin.json
-  skills/orange-hyper/SKILL.md
-  hooks/hooks.json
-  hooks/run-orange.sh
-  hooks/run-orange.ps1
-```
-
-`activate apply` materializes an Orange-owned project-local copy under:
-
-```text
-.agents/plugins/orange-hyper-codex/
-.agents/plugins/marketplace.json
-```
-
-The plugin contains one small `orange-hyper` skill and four lifecycle command
-hooks:
-
-- `SessionStart`
-- `UserPromptSubmit`
-- `PostToolUse`
-- `Stop`
-
-It does not include MCP servers, custom subagents, project-specific generated
-skills/agents, role packs, planner loops, or `orange-hyper-run`.
-
-Codex hook trust is a Codex user action. `activate apply` does not claim that
-hooks are trusted. Until a heartbeat is observed, status remains
-`pending_trust`.
-
-## Responsibilities
-
-| Layer | Owns |
+| Field | Values |
 | --- | --- |
-| Lifecycle Kernel | activation policy, Route, Quest, Capsule, evidence, Stop verification, working episodes, pending proposal candidates |
-| Codex Host Bridge | Codex hook input mapping and Codex-native hook output mapping |
-| Codex Agent | code edits, tool execution, user-facing implementation, verification commands |
-| Plugin Bundle | one meta-skill, hook declarations, cross-platform launcher |
+| marketplace | `absent`, `registered`, `degraded`, `unknown` |
+| plugin availability | `unavailable`, `available`, `unknown` |
+| plugin installation | `not_installed`, `installed`, `unknown` |
+| plugin enabled | `enabled`, `disabled`, `unknown` |
+| hook execution | `none`, `partial`, `current`, `stale`, `degraded` |
+| effective status | `absent`, `pending_install`, `pending_enable`, `pending_review_or_restart`, `operational`, `partial`, `stale`, `degraded`, `unknown` |
 
-Adapters must not edit `.orange-hyper` files directly or duplicate lifecycle
-state logic. They call Orange Kernel commands.
+Forbidden inferences:
 
-## Event Behavior
+- marketplace exists = plugin installed
+- plugin source exists = plugin enabled
+- no heartbeat = hook trust rejected
+- one heartbeat = full lifecycle healthy
 
-### SessionStart
+When Codex does not expose a state in a machine-readable way, Orange reports
+`unknown`.
 
-Inactive project:
+`binding remove` removes only Orange-owned user-scoped marketplace, plugin
+source, and binding metadata. It preserves:
 
-- no state creation
-- no context injection
-- quiet no-op
-
-Activated project:
-
-- records heartbeat
-- checks project boundary
-- reads a bounded doctor summary
-- reads a small accepted-memory slice
-- returns `hookSpecificOutput.additionalContext`
-
-The default context limit is 3,200 characters, which is a conservative
-approximation for the requested roughly 800-token budget.
-
-### UserPromptSubmit
-
-UserPromptSubmit reads one JSON object from stdin, normalizes and redacts the
-prompt, determines Route, and applies Route policy:
-
-- L0: no Quest, no Capsule, no visible Orange ceremony.
-- L1: no Quest by default; may return a tiny touched-surface reminder.
-- L2: creates a Quest and Context Capsule; expected V2 verification.
-- L3: creates a Quest and stronger investigation context; no automatic subagent.
-- L4: returns a Codex block asking for explicit confirmation.
-- L5: never auto-enters; explicit opt-in required.
-
-The idempotency key includes project, host, session id, turn id, event name, and
-tool use id when present. Re-running the same turn does not create duplicate
-Quests.
-
-### PostToolUse
-
-PostToolUse runs after the tool already had its side effects. It is not a
-rollback boundary.
-
-It may record bounded evidence for:
-
-- Bash test/build/lint/typecheck commands
-- `apply_patch` touched paths
-- supported MCP source identifiers and timestamps
-
-It does not store:
-
-- raw full stdout/stderr
-- raw secrets
-- full patches
-- full MCP responses
-- transcript files
-
-Failed tests are recorded as failed attempts, not success evidence.
-
-### Stop
-
-Stop checks the active turn/Quest, Route verification level, collected evidence,
-and `stop_hook_active`.
-
-For L2+ Quests:
-
-- if required evidence is missing, Stop asks Codex to continue once with a
-  specific verification prompt;
-- if continuation already happened or evidence remains unavailable, it records
-  an unverified reason and avoids an infinite loop;
-- if evidence exists, it completes the Quest as verified;
-- it writes a local episode;
-- it creates a pending Memory Proposal only when a durable candidate is
-  detected.
-
-Pending proposals are never auto-accepted.
-
-## Working Memory vs Durable Memory
-
-Working memory:
-
-- local/generated
-- automatically writable
-- low confidence
-- stored under `.orange-hyper/local/`
-- ignored by git
-
-Durable memory:
-
-- accepted Memory Graph
-- explicit review/accept required
-- provenance required
-- shared project truth
-
-Flow:
-
-```text
-tool/session evidence
--> local episode
--> durable candidate quality check
--> pending Memory Proposal
--> user review
--> explicit accept
--> accepted Memory Graph
-```
-
-## Failure and Degraded Behavior
-
-Host bridge failures return safe Codex-native no-op JSON with a system message
-instead of breaking the user's whole task.
-
-Examples:
-
-- missing `orange` executable in hook launcher
-- malformed stdin JSON
-- activation policy missing
-- untrusted hooks that have not produced heartbeat
-
-Policy blocks still use Codex-native block output when required, for example L4
-confirmation or Stop verification continuation.
-
-## Remove and Rollback
-
-`orange activate remove --host codex --scope project --json` removes only
-Orange-owned activation state and the Orange-owned Codex binding material.
-
-It preserves:
-
+- other Codex marketplaces and plugins
+- unrelated Codex config
+- project activation
 - completed Quests
 - accepted proposals
 - accepted Memory Graph
-- user code
-- unrelated Codex plugins, hooks, marketplace entries, and config
 
-The marketplace is losslessly merged. Existing unrelated entries are preserved.
+If official plugin uninstall is not available, Orange does not delete Codex
+plugin cache. It returns an action telling the user to remove the plugin from
+Codex `/plugins`.
+
+Removal status is intentionally partial and explicit:
+
+```json
+{
+  "removal_status": {
+    "source_removed": true,
+    "marketplace_removed": true,
+    "metadata_removed": true,
+    "installed_plugin_status": "unknown",
+    "enabled_status": "unknown",
+    "effective_status": "pending_user_uninstall_or_disable"
+  },
+  "next_actions": [
+    "disable Orange Hyper in Codex /plugins if still enabled",
+    "uninstall Orange Hyper in Codex /plugins if still installed",
+    "start a new Codex thread",
+    "recheck binding status"
+  ]
+}
+```
+
+Orange must not summarize this as a complete uninstall when Codex-side
+installed/enabled state is not observable.
+
+## Project Activation
+
+`activate apply` performs only repo-local work:
+
+- idempotent project init when needed
+- `.orange-hyper/local/activation.json`
+- `.orange-hyper/local/runtime/`
+- `.orange-hyper/local/episodes/`
+- activation policy
+
+It does not:
+
+- register a marketplace
+- materialize plugin source
+- install or enable a plugin
+- mutate hook trust
+- remove user-scoped binding
+- create `package.json`, `package-lock.json`, `node_modules`, or project npm
+  dependencies
+
+Host Binding can be absent when a project is activated. In that case status is:
+
+```json
+{
+  "project_activated": true,
+  "effective_status": "waiting_for_host_binding"
+}
+```
+
+`activate remove` removes only project-local activation and runtime state. It
+preserves user binding and durable memory.
+
+## Legacy Binding Migration
+
+Earlier Activation Runtime builds could write project-local Codex binding files
+under `.agents/plugins/`. Orange now treats these as legacy binding artifacts.
+
+Migration order:
+
+1. write user-scoped bundle
+2. validate bundle ownership and structure
+3. write personal marketplace root
+4. confirm the user-scoped bundle exists
+5. remove only Orange-owned legacy artifacts
+
+Rules:
+
+- user-scope install failure preserves legacy state
+- unrelated marketplace entries are preserved
+- artifacts without Orange ownership markers are not deleted automatically
+- partial migration returns a recovery action
+- `.orange-hyper` memory and activation are preserved
+
+## Fingerprint and Health
+
+The binding fingerprint is a deterministic SHA-256 over the host bridge schema
+version and plugin bundle inputs:
+
+- plugin manifest
+- hooks definition
+- POSIX launcher
+- PowerShell launcher
+- meta-skill
+
+This is an Orange bundle fingerprint. It is not a Codex internal trust hash.
+
+Heartbeat records at least:
+
+- `schema_version`
+- `host`
+- `event`
+- `plugin_version`
+- `orange_version`
+- `binding_fingerprint`
+- hashed session key
+- hashed turn key
+- `session_start_at`
+- `latest_prompt_at`
+- `stop_at`
+- `complete_lifecycle_at`
+- `observed_at`
+
+Required operational events:
+
+- `SessionStart`
+- `UserPromptSubmit`
+- `Stop`
+
+Optional event:
+
+- `PostToolUse`
+
+Default freshness window: 24 hours from `complete_lifecycle_at`.
+
+A complete lifecycle is one hashed session key, one binding fingerprint, one
+Orange version, and one plugin version where all required events have been
+observed. Orange must not merge `SessionStart` from one session with
+`UserPromptSubmit` or `Stop` from another session.
+
+Hook execution status:
+
+| Status | Meaning |
+| --- | --- |
+| `none` | no current-fingerprint event exists |
+| `partial` | some required same-session events exist |
+| `current` | a complete same-session lifecycle exists for the current fingerprint/version and is inside the freshness window |
+| `stale` | only previous fingerprint/version events exist, or the complete lifecycle is outside the freshness window |
+| `degraded` | launcher or lifecycle error exists |
+| `unknown` | current execution cannot be determined from the available machine-readable evidence |
+
+Project active requires both project activation and current-fingerprint required
+events inside the freshness window. A single heartbeat is not enough.
+
+Orange reports lifecycle health, not direct Codex hook trust. Unless Codex
+exposes hook trust through a machine-readable surface, `hook_trust.trusted`
+remains `false` and `hook_trust.status` remains `unknown` even after a current
+lifecycle.
+
+## Windows Hook Requirements
+
+Every Codex command hook includes `commandWindows`.
+
+Windows launchers must:
+
+- tolerate spaces in `PLUGIN_ROOT`
+- emit exactly one Codex-native JSON object on stdout
+- avoid UTF-8 BOM and progress output
+- avoid requiring Node or Python in the launcher itself
+- support `ORANGE_HYPER_BIN`
+- support `orange.exe` on `PATH`
+- support the official user-local Orange install fallback
+- return valid safe JSON on launcher failure
+
+Source and fixture tests validate this behavior. Direct Windows execution must
+be reported separately from source/fixture validation.
+
+## Quest Continuity
+
+UserPromptSubmit resolves continuity without an LLM API.
+
+Result values:
+
+- `none`
+- `create_new`
+- `continue_existing`
+
+Local session state stores:
+
+- hashed session and turn keys
+- current turn's linked Quest
+- recent Quest ids
+- normalized intent signature
+- scope signature
+- continuity confidence
+
+Rules:
+
+- L0/L1 create no Quest
+- L2+ with no active Quest creates a Quest
+- same session with same scope or explicit follow-up continues the current Quest
+- clearly different scope/component creates a new Quest
+- ambiguous follow-up continues with low confidence
+
+Stop processes only the current turn's linked Quest. An unrelated L1 turn cannot
+complete a previous L2 Quest.
+
+## Verification Soft Gate
+
+PostToolUse evidence is observation, not a complete test runner. Absence of
+observed evidence must be phrased as:
+
+```text
+Orange가 현재 turn에서 verification evidence를 관찰하지 못했습니다.
+```
+
+Stop policy:
+
+- L0/L1: no default block
+- L2+ with evidence: verified completion candidate
+- L2+ without evidence: exactly one continuation
+- `stop_hook_active` or second Stop: no repeated continuation
+- evidence later appears: verified completion
+- explicit reason exists: unverified completion
+- no evidence and no reason: do not mark verified; keep Quest incomplete
+
+Continuation idempotency includes project, session, turn, quest, and binding
+fingerprint.
 
 ## Privacy
 
@@ -330,28 +382,46 @@ Activation Runtime is local-only:
 - no telemetry
 - no network upload
 - no transcript parsing
+- no raw prompt in session continuity state
 - no raw full tool-output storage
 - no automatic MCP install or run
 - no LLM judge
+- no Memory Proposal auto-accept
 
-`transcript_path` from Codex hook input is ignored because Codex documents it as
-convenience data, not a stable hook interface.
+`transcript_path` from Codex hook input is ignored because it is convenience
+data, not the stable lifecycle state source.
+
+## Actual Codex E2E Status
+
+Fixture and local CLI tests can verify Orange's state model, JSON contracts,
+launcher source, and no-op behavior. They do not prove that a user's Codex UI
+has installed the plugin, enabled it, reviewed hooks, or restarted into the new
+hook definitions.
+
+Until a real Codex UI path is executed and observed, report:
+
+```text
+not externally verified
+```
+
+for plugin install, enablement, hook review, required lifecycle events, and
+active operational behavior.
 
 ## Non-goals
 
 Activation Runtime v0.1 does not implement:
 
 - `orange-hyper-run` fusion
-- Claude Code adapter
-- IDE adapter
-- automatic MCP install/run
-- custom subagent execution
-- project-specific skill or agent generation
+- Claude Code or IDE binding
+- project-specific Skill/Agent generation
+- subagent execution
+- MCP automatic install or run
 - role unlock
-- autonomous planner
-- L5 repair loop
-- branch/PR/SPEC workflow
-- telemetry
-- network upload
-- LLM judge
+- L5 autonomous loop
+- branch, PR, or SPEC workflow
 - Memory Proposal auto-accept
+- telemetry or network upload
+- Identity Dashboard redesign
+- Codex plugin cache direct mutation
+- hook trust silent bypass
+- tag, npm publish, or GitHub Release execution

@@ -89,7 +89,7 @@ Installation priority:
 
 1. Standalone binary: install the platform-specific `orange` executable from GitHub Releases into a user-local directory.
 2. Future package managers: Homebrew, Scoop, and similar user-scope package managers are future channels.
-3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-alpha.7` or `@alpha`.
+3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-alpha.8` or `@alpha`.
 4. Project-local npm install: an advanced/manual option only when the user explicitly asks for it.
 
 Release policy: one `v*` tag push runs the single Release workflow. That workflow performs the test gate, standalone binary matrix build, `install.sh`/`install.ps1`, `checksums.txt`, `release-manifest.json`, GitHub Release asset upload, npm publish, asset gate, and installer smoke together. Existing GitHub Release backfills use the same pipeline through the `workflow_dispatch` `tag` input, so routine releases do not require manual `gh release upload`.
@@ -97,13 +97,13 @@ Release policy: one `v*` tag push runs the single Release workflow. That workflo
 macOS/Linux user-local install:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.sh | sh
 ```
 
 Windows PowerShell user-local install:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.7/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.7"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.8"
 ```
 
 The installer verifies SHA-256 checksums and stops on mismatch. It does not use npm, create package files, create `node_modules`, or modify the current project.
@@ -111,7 +111,7 @@ The installer verifies SHA-256 checksums and stops on mismatch. It does not use 
 For fallback package visibility checks, pin the exact version:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.7 orange --help
+npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
 ```
 
 This is not the default installation path. AI should not automatically run `npm init -y` or `npm install -D orange-hyper`. The npm package remains available as a developer/fallback channel.
@@ -123,15 +123,23 @@ Paste this into your AI when you want to use Orange Hyper in a new or existing r
 ```text
 Use Orange Hyper for this project.
 
+Install the Orange Codex Host Binding once.
+Activate Orange in the repositories where you want it.
+Then work normally.
+
 First, check whether `orange --version` and `orange env --json` work from PATH.
 
 If `orange` is missing, suggest standalone binary installation and install it into a user-local location only after I approve.
 
 Do not run `npm init -y`. Do not use `npm install -D orange-hyper` as the default install path. Do not create or modify project `package.json`, `package-lock.json`, or `node_modules`.
 
-Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@alpha` or `orange-hyper@1.1.0-alpha.7`.
+Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@alpha` or `orange-hyper@1.1.0-alpha.8`.
 
-After install or PATH confirmation, run `orange activate plan --host codex --scope project --json` and show me the read-only activation plan.
+If the Orange Codex Host Binding is not installed in this Codex environment, run `orange binding plan --host codex --scope user --json` and show me the read-only binding plan.
+
+If I approve, run `orange binding install --host codex --scope user --json`. This can prepare the user-scoped marketplace and plugin source only; do not describe marketplace registration as plugin installation, enablement, hook review, or operational status.
+
+Then run `orange activate plan --host codex --scope project --json` and show me the read-only project activation plan.
 
 If I approve, run `orange activate apply --host codex --scope project --json` to activate this project. Do not report active until an actual lifecycle heartbeat exists.
 
@@ -226,6 +234,7 @@ Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboa
 - [Project Sync](docs/24_PROJECT_SYNC.md)
 - [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)
+- [Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference
@@ -252,6 +261,7 @@ The list below is not a long usage guide. It is the top-level kernel surface for
 - `mcp`
 - `growth`
 - `adapter`
+- `binding`
 - `eval`
 - `sync`
 - `env`

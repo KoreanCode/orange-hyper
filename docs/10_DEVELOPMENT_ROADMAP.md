@@ -376,27 +376,32 @@ v1 이후는 무작정 v1.1 feature를 여는 단계가 아니다. 먼저 안정
 
 ## 11.1 Activation Runtime v0.1 — Codex Host Binding
 
-목표: 사용자가 supported host에서 project activation을 한 번 승인하면 Codex
-lifecycle에 Orange가 자동 연결되게 한다.
+목표: 사용자가 Codex 환경에 Orange Host Binding을 한 번 설치하고, Orange를 사용할
+repository만 Project Activation으로 선택하면 Codex lifecycle에 Orange가 자동
+연결되게 한다.
 
 포함:
 
+- `orange binding plan/install/status/remove`
 - `orange activate plan/apply/status/remove`
 - `orange lifecycle session-start/user-prompt-submit/post-tool-use/stop`
 - `orange host codex hook ...`
 - first-party Codex plugin bundle
+- user-scoped personal marketplace and plugin source
 - one meta skill
 - SessionStart/UserPromptSubmit/PostToolUse/Stop hooks
 - `.orange-hyper/local/activation.json`
 - `.orange-hyper/local/runtime/`
 - `.orange-hyper/local/episodes/`
-- installed vs active 상태 분리
-- heartbeat 기반 active 판정
+- marketplace/register/install/enable/review/operational 상태 분리
+- current fingerprint heartbeat 기반 active 판정
 - L0/L1 Quest ceremony 없음
 - L2/L3 Quest/Capsule 자동 생성
+- deterministic multi-turn Quest continuity
 - L4/L5 confirmation block
 - bounded verification evidence capture
 - Stop missing verification continuation 1회
+- evidence 없는 verified completion 금지
 - quality-gated pending Memory Proposal 후보 생성
 
 제외:
@@ -411,13 +416,19 @@ lifecycle에 Orange가 자동 연결되게 한다.
 - telemetry/network upload
 - raw transcript 저장
 - raw full tool output 저장
+- Codex plugin cache 직접 조작
+- hook trust silent bypass
+- project package.json/lockfile/node_modules 변경
 
 완료 기준:
 
 ```text
-binary installed와 project active가 구분되고, activation apply 후에도 lifecycle
-heartbeat 전에는 pending_trust로 남는다. Codex host bridge는 Codex-native JSON을
-반환하고, Kernel lifecycle service만 .orange-hyper state transition을 수행한다.
+binary installed, Host Binding, Project Activation, plugin install/enable/hook
+review, operational heartbeat가 구분된다. activation apply는 binding을 설치하지
+않고 repo-local activation만 기록한다. current binding fingerprint의
+SessionStart/UserPromptSubmit/Stop 전에는 active가 아니다. Codex host bridge는
+Codex-native JSON을 반환하고, Kernel lifecycle service만 .orange-hyper state
+transition을 수행한다.
 ```
 
 ## 12. 다음 안정화 목표

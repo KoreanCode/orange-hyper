@@ -85,22 +85,30 @@ npm install -D orange-hyper
 
 The npm path is allowed only when the user explicitly asks for it. If npm
 fallback is used for a temporary check, specify `orange-hyper@alpha` or an exact
-version such as `orange-hyper@1.1.0-alpha.7`.
+version such as `orange-hyper@1.1.0-alpha.8`.
 
 After install or PATH confirmation, the adapter should use `orange init --json`
-and then the `project-sync` recipe. It must not create or modify project
-`package.json`, `package-lock.json`, or `node_modules`.
+and then the `project-sync` recipe when the user wants generated structure and
+Identity output. It must not create or modify project `package.json`,
+`package-lock.json`, or `node_modules`.
 
 For supported host activation, the adapter should prefer:
 
 ```bash
+orange binding plan --host codex --scope user --json
+orange binding install --host codex --scope user --json
+orange binding status --host codex --json
 orange activate plan --host codex --scope project --json
 orange activate apply --host codex --scope project --json
 orange activate status --host codex --json
 ```
 
-Binary installation alone is not activation. `status` must not report `active`
-until a lifecycle heartbeat is observed.
+Binding is user-scoped and activation is repo-scoped. Marketplace registration
+is not plugin installation; plugin source is not plugin enablement; one
+heartbeat is not operational lifecycle health. When Codex state cannot be
+confirmed, keep it as `unknown`. `status` must not report `active` until the
+project is activated and required current-fingerprint lifecycle events are
+observed.
 
 ## Boundary Flags
 

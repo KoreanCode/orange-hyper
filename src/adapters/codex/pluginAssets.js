@@ -1,5 +1,6 @@
 export const CODEX_PLUGIN_NAME = "orange-hyper-codex";
-export const CODEX_PLUGIN_VERSION = "0.1.0";
+export const CODEX_PLUGIN_VERSION = "1.1.0-alpha.8";
+export const CODEX_HOST_BRIDGE_SCHEMA_VERSION = "codex-host-bridge-v1";
 export const CODEX_PLUGIN_RELATIVE_ROOT = ".agents/plugins/orange-hyper-codex";
 export const CODEX_MARKETPLACE_RELATIVE_PATH = ".agents/plugins/marketplace.json";
 
@@ -85,9 +86,18 @@ Orange Hyper is a local lifecycle harness for activated projects.
     }
   }, null, 2)}\n`,
   "hooks/run-orange.sh": `#!/usr/bin/env sh
-set -eu
 
 event="\${1:-}"
+
+hook_event_name() {
+  case "$1" in
+    session-start) printf '%s\\n' "SessionStart" ;;
+    user-prompt-submit) printf '%s\\n' "UserPromptSubmit" ;;
+    post-tool-use) printf '%s\\n' "PostToolUse" ;;
+    stop) printf '%s\\n' "Stop" ;;
+    *) printf '%s\\n' "Stop" ;;
+  esac
+}
 
 find_orange() {
   if [ "\${ORANGE_HYPER_BIN:-}" ] && [ -x "\${ORANGE_HYPER_BIN}" ]; then
@@ -115,32 +125,39 @@ find_orange() {
 
 degraded() {
   hook_event="$1"
-  printf '{"continue":true,"systemMessage":"Orange Hyper binding degraded: orange executable not found.","hookSpecificOutput":{"hookEventName":"%s","additionalContext":""}}\\n' "$hook_event"
+  message="$2"
+  printf '{"continue":true,"systemMessage":"Orange Hyper binding degraded: %s","hookSpecificOutput":{"hookEventName":"%s","additionalContext":""}}\\n' "$message" "$hook_event"
 }
 
-case "$event" in
-  session-start) hook_event="SessionStart" ;;
-  user-prompt-submit) hook_event="UserPromptSubmit" ;;
-  post-tool-use) hook_event="PostToolUse" ;;
-  stop) hook_event="Stop" ;;
-  *) hook_event="Stop" ;;
-esac
+hook_event="$(hook_event_name "$event")"
 
 if [ -z "$event" ]; then
-  degraded "$hook_event"
+  degraded "$hook_event" "hook event was not provided."
   exit 0
 fi
 
 if ! orange_bin="$(find_orange)"; then
-  degraded "$hook_event"
+  degraded "$hook_event" "orange executable not found."
   exit 0
 fi
 
-exec "$orange_bin" host codex hook "$event"
+if ! output="$("$orange_bin" host codex hook "$event" 2>/dev/null)"; then
+  degraded "$hook_event" "orange host bridge failed."
+  exit 0
+fi
+
+case "$output" in
+  \{*\}) printf '%s\\n' "$output" ;;
+  *) degraded "$hook_event" "orange host bridge returned invalid JSON." ;;
+esac
+exit 0
 `,
   "hooks/run-orange.ps1": `param(
   [string]$Event = ""
 )
+
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+$ProgressPreference = "SilentlyContinue"
 
 function Find-Orange {
   if ($env:ORANGE_HYPER_BIN -and (Test-Path -LiteralPath $env:ORANGE_HYPER_BIN)) {
@@ -154,9 +171,11 @@ function Find-Orange {
   if ($cmdExe) {
     return $cmdExe.Source
   }
-  $local = Join-Path $env:LOCALAPPDATA "OrangeHyper\\bin\\orange.exe"
-  if (Test-Path -LiteralPath $local) {
-    return $local
+  if ($env:LOCALAPPDATA) {
+    $local = Join-Path $env:LOCALAPPDATA "OrangeHyper\\bin\\orange.exe"
+    if (Test-Path -LiteralPath $local) {
+      return $local
+    }
   }
   return $null
 }
@@ -171,22 +190,45 @@ function Hook-Event-Name([string]$Name) {
   }
 }
 
-$hookEvent = Hook-Event-Name $Event
-$orange = Find-Orange
-if (-not $orange) {
+function Write-Degraded([string]$HookEvent, [string]$Message) {
   $payload = @{
     continue = $true
-    systemMessage = "Orange Hyper binding degraded: orange executable not found."
+    systemMessage = "Orange Hyper binding degraded: $Message"
     hookSpecificOutput = @{
-      hookEventName = $hookEvent
+      hookEventName = $HookEvent
       additionalContext = ""
     }
   }
-  $payload | ConvertTo-Json -Depth 8 -Compress
+  [Console]::Out.WriteLine(($payload | ConvertTo-Json -Depth 8 -Compress))
+}
+
+$hookEvent = Hook-Event-Name $Event
+if ([string]::IsNullOrWhiteSpace($Event)) {
+  Write-Degraded $hookEvent "hook event was not provided."
+  exit 0
+fi
+
+$orange = Find-Orange
+if (-not $orange) {
+  Write-Degraded $hookEvent "orange executable not found."
   exit 0
 }
 
-& $orange host codex hook $Event
-exit $LASTEXITCODE
+try {
+  $output = & $orange host codex hook $Event 2>$null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Degraded $hookEvent "orange host bridge failed."
+    exit 0
+  }
+  $text = ($output -join [Environment]::NewLine).Trim()
+  if ($text.StartsWith("{") -and $text.EndsWith("}")) {
+    [Console]::Out.WriteLine($text)
+  } else {
+    Write-Degraded $hookEvent "orange host bridge returned invalid JSON."
+  }
+} catch {
+  Write-Degraded $hookEvent "orange host bridge failed."
+}
+exit 0
 `
 };

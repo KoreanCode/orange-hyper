@@ -10,8 +10,11 @@ roles, or start an automatic planner/execution loop.
 
 Activation Runtime v0.1 adds a separate opt-in runtime track. Hook Preview stays
 manual and read-only. Activation Runtime is used only after the user runs
-`orange activate apply --host codex --scope project --json` and Codex hook
-trust produces a lifecycle heartbeat.
+user-scoped `orange binding install --host codex --scope user --json`, completes
+Codex-side plugin install/enable/hook review, and then runs
+`orange activate apply --host codex --scope project --json`. Orange reports
+observed lifecycle freshness; it does not claim direct Codex hook trust unless
+Codex exposes that state through a machine-readable surface.
 
 ## Scope
 
