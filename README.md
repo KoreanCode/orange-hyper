@@ -91,6 +91,8 @@ Orange Hyper는 coding agent를 위한 repo-local project-memory kernel입니다
 3. `npx` exact-version fallback: 임시 확인이 필요할 때만 `orange-hyper@1.1.0-alpha.7`처럼 정확한 버전이나 `@alpha`를 지정한다.
 4. Project-local npm install: 사용자가 명시적으로 요청한 경우에만 쓰는 advanced/manual option이다.
 
+릴리즈 정책: `v*` tag push 한 번이 단일 Release workflow를 실행한다. 이 workflow가 테스트, standalone binary matrix build, `install.sh`/`install.ps1`, `checksums.txt`, `release-manifest.json`, GitHub Release asset upload, npm publish, asset gate, installer smoke를 함께 처리한다. 기존 GitHub Release backfill도 `workflow_dispatch`의 `tag` 입력으로 같은 pipeline을 사용하며, 일상 릴리즈 절차에 수동 `gh release upload`는 필요하지 않다.
+
 macOS/Linux user-local 설치:
 
 ```bash

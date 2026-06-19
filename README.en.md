@@ -91,6 +91,8 @@ Installation priority:
 3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-alpha.7` or `@alpha`.
 4. Project-local npm install: an advanced/manual option only when the user explicitly asks for it.
 
+Release policy: one `v*` tag push runs the single Release workflow. That workflow performs the test gate, standalone binary matrix build, `install.sh`/`install.ps1`, `checksums.txt`, `release-manifest.json`, GitHub Release asset upload, npm publish, asset gate, and installer smoke together. Existing GitHub Release backfills use the same pipeline through the `workflow_dispatch` `tag` input, so routine releases do not require manual `gh release upload`.
+
 macOS/Linux user-local install:
 
 ```bash

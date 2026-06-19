@@ -83,6 +83,65 @@ test("release manifest records platform assets and checksums", () => {
   assert.match(fs.readFileSync(path.join(assetsDir, "checksums.txt"), "utf8"), /orange-linux-x64/);
 });
 
+test("release asset gate requires installers, metadata, and all supported binaries", () => {
+  const assetsDir = fs.mkdtempSync(path.join(os.tmpdir(), "orange-release-gate-"));
+  for (const filename of [
+    "orange-linux-x64",
+    "orange-macos-arm64",
+    "orange-macos-x64",
+    "orange-windows-x64.exe",
+    "install.sh",
+    "install.ps1",
+    "checksums.txt"
+  ]) {
+    fs.writeFileSync(path.join(assetsDir, filename), filename);
+  }
+  fs.writeFileSync(path.join(assetsDir, "release-manifest.json"), `${JSON.stringify({
+    version: VERSION,
+    assets: [
+      "orange-linux-x64",
+      "orange-macos-arm64",
+      "orange-macos-x64",
+      "orange-windows-x64.exe"
+    ].map((filename) => ({
+      version: VERSION,
+      platform: filename.includes("windows") ? "windows" : filename.includes("linux") ? "linux" : "macos",
+      arch: filename.includes("arm64") ? "arm64" : "x64",
+      filename,
+      sha256: "0".repeat(64),
+      download_url: `https://example.test/releases/v1.1.0-alpha.7/${filename}`,
+      signed: false,
+      experimental: filename === "orange-macos-x64"
+    }))
+  })}\n`);
+
+  const ok = spawnSync(process.execPath, [
+    path.join(ROOT, "scripts", "check-release-assets.js"),
+    "--dir",
+    assetsDir,
+    "--manifest",
+    path.join(assetsDir, "release-manifest.json"),
+    "--release-url",
+    "https://example.test/releases/v1.1.0-alpha.7"
+  ], {
+    cwd: ROOT,
+    encoding: "utf8"
+  });
+  assert.equal(ok.status, 0, ok.stderr || ok.stdout);
+
+  fs.rmSync(path.join(assetsDir, "install.ps1"));
+  const missing = spawnSync(process.execPath, [
+    path.join(ROOT, "scripts", "check-release-assets.js"),
+    "--dir",
+    assetsDir
+  ], {
+    cwd: ROOT,
+    encoding: "utf8"
+  });
+  assert.notEqual(missing.status, 0);
+  assert.match(missing.stderr, /Missing required release assets: install\.ps1/);
+});
+
 test("install.sh verifies checksums and is idempotent", { skip: process.platform === "win32" || !currentReleaseFilename() }, () => {
   const filename = currentReleaseFilename();
   const assetsDir = fs.mkdtempSync(path.join(os.tmpdir(), "orange-install-assets-"));

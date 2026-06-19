@@ -7,17 +7,40 @@ The goal is simple: a project can use Orange Hyper without becoming a Node/npm
 project. Installing Orange must not create or modify project `package.json`,
 `package-lock.json`, or `node_modules`.
 
+## Tag-Driven Release Policy
+
+Standalone distribution is release-owned by the single GitHub Actions Release
+workflow. A `v*` tag push must complete the whole release path:
+
+1. test, typecheck, README sync, whitespace, CLI smoke, and npm pack gate;
+2. platform matrix standalone binary builds;
+3. workflow artifact upload for each platform binary;
+4. release job download of those workflow artifacts;
+5. `install.sh` and `install.ps1` copy into the release asset directory;
+6. `checksums.txt` and `release-manifest.json` generation;
+7. GitHub Release create-or-update;
+8. Release asset upload with clobber for backfills;
+9. npm publish through Trusted Publishing, skipped only when the exact version
+   already exists during a backfill;
+10. required Release asset verification;
+11. hosted installer smoke from the actual Release asset URLs.
+
+`workflow_dispatch` accepts a required `tag` input so an existing release such
+as `v1.1.0-alpha.7` can be checked out and backfilled by the same pipeline.
+Routine releases must not require manual `gh release upload`.
+
 ## Supported Assets
 
-Initial release assets:
+Supported binary assets:
 
 - `orange-windows-x64.exe`
 - `orange-macos-arm64`
+- `orange-macos-x64`
 - `orange-linux-x64`
 
-Experimental asset:
-
-- `orange-macos-x64`
+`orange-macos-x64` is built and uploaded for every release. The manifest may
+keep its `experimental` flag until Intel macOS coverage has enough external
+validation, but it is still a required Release asset.
 
 Release metadata assets:
 
@@ -202,6 +225,8 @@ Required checks:
 
 - standalone binary runs without `node` on PATH;
 - standalone binary runs without `npm` on PATH;
+- release installer smoke downloads `install.sh` or `install.ps1` from the
+  actual GitHub Release URL;
 - fresh non-Node project passes `init`, `sync plan`, `sync apply`,
   `sync status`, `identity build`, and `doctor`;
 - fresh non-Node project creates `.orange-hyper/` only;
@@ -210,4 +235,7 @@ Required checks:
 - installer rerun is idempotent;
 - checksum mismatch blocks installation;
 - current project files are not modified by installers;
+- Release asset gate requires `install.sh`, `install.ps1`, `checksums.txt`,
+  `release-manifest.json`, `orange-macos-arm64`, `orange-macos-x64`,
+  `orange-linux-x64`, and `orange-windows-x64.exe`;
 - Adapter JSON `contract_version` remains `"0.1"`.
