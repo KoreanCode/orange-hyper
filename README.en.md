@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.7`
+- README version: `1.1-doc.8`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -58,7 +58,8 @@ What is needed is the space between those two. Small requests should stay small.
 - role, MCP, hook, and subagent are not enabled from the start.
 - role, MCP, hook, and subagent grow only from repeated evidence.
 - Start light and grow gradually.
-- Do not write memory automatically.
+- Do not accept durable/shared memory automatically.
+- On an activated supported host, Orange may automatically manage local runtime state, Quest, Capsule, evidence, working memory, and pending proposal candidates within activation policy.
 - Create a Memory Delta Proposal only from a completed Quest.
 - Only user-accepted proposals become graph node candidates.
 - Only memory with the current `project_id` is treated as current project memory.
@@ -130,7 +131,9 @@ Do not run `npm init -y`. Do not use `npm install -D orange-hyper` as the defaul
 
 Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@alpha` or `orange-hyper@1.1.0-alpha.7`.
 
-After install or PATH confirmation, run `orange init --json` for idempotent bootstrap.
+After install or PATH confirmation, run `orange activate plan --host codex --scope project --json` and show me the read-only activation plan.
+
+If I approve, run `orange activate apply --host codex --scope project --json` to activate this project. Do not report active until an actual lifecycle heartbeat exists.
 
 Then run `orange sync plan --json` and show me the diff. If I approve, run `orange sync apply --json` and `orange sync status --json` to refresh generated Structure Graph and Identity HTML.
 
@@ -186,6 +189,7 @@ Orange Hyper is easier to understand by its artifacts than by a feature list.
 - Knowledge Graph: accepted memory read as decision, constraint, risk, verification, and component nodes.
 - Identity HTML: a single HTML view of project memory, accepted memory graph, growth signals, and eval summary.
 - Hook Warning: a warning without automatic repair.
+- Activation Runtime: a user-approved supported-host lifecycle binding. Installation alone is not active; a heartbeat is required.
 - MCP Suggestion: a tool suggestion without installation.
 - Growth Signal: a growth candidate without automatic unlock.
 - Eval Report: a local-only evaluation report.
@@ -221,6 +225,7 @@ Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboa
 - [v1 Stabilization Readiness](docs/22_V1_STABILIZATION.md)
 - [Project Sync](docs/24_PROJECT_SYNC.md)
 - [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
+- [Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference
@@ -235,6 +240,9 @@ The list below is not a long usage guide. It is the top-level kernel surface for
 
 <!-- orange-command-surface:start -->
 - `init`
+- `activate`
+- `lifecycle`
+- `host`
 - `quest`
 - `route`
 - `capsule`

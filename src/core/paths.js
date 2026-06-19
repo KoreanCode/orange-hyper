@@ -38,6 +38,15 @@ export function workspacePaths(cwd = process.cwd()) {
     hookReports: path.join(root, "hooks", "reports"),
     evals: path.join(root, "evals"),
     evalReports: path.join(root, "evals", "reports"),
+    local: path.join(root, "local"),
+    activation: path.join(root, "local", "activation.json"),
+    runtime: path.join(root, "local", "runtime"),
+    runtimeHeartbeat: path.join(root, "local", "runtime", "heartbeat.json"),
+    runtimeEvents: path.join(root, "local", "runtime", "events"),
+    runtimeTurns: path.join(root, "local", "runtime", "turns"),
+    runtimeEvidence: path.join(root, "local", "runtime", "evidence"),
+    runtimeSessions: path.join(root, "local", "runtime", "sessions"),
+    episodes: path.join(root, "local", "episodes"),
     traces: path.join(root, "traces"),
     routeTrace: path.join(root, "traces", "route.jsonl")
   };

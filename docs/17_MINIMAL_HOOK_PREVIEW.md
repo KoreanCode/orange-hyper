@@ -8,6 +8,11 @@ The preview shows what a future hook layer could observe at session start or
 stop. It does not install hooks, register MCP servers, run subagents, evolve
 roles, or start an automatic planner/execution loop.
 
+Activation Runtime v0.1 adds a separate opt-in runtime track. Hook Preview stays
+manual and read-only. Activation Runtime is used only after the user runs
+`orange activate apply --host codex --scope project --json` and Codex hook
+trust produces a lifecycle heartbeat.
+
 ## Scope
 
 Included commands:
@@ -144,11 +149,19 @@ Preview checks:
 `orange hook status` summarizes the preview state:
 
 - `previewAvailable: true`
-- `installed: false`
+- `installed`: whether an activation binding is available for the project
 - `readOnly: true`
 - `autoMutation: false`
 - `supportedEvents: ["session-start", "stop"]`
 - future unsupported events such as `user-prompt-submit` and `post-tool-use`
+- `runtimeAvailable`
+- `bindingInstalled`
+- `bindingStatus`
+- `activationStatus`
+- `lastHeartbeat`
+
+`supportedEvents` remains the preview event list. Runtime events are exposed
+separately as `runtimeSupportedEvents`.
 
 ## `orange hook run session-start`
 

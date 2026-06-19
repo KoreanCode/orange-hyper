@@ -13,10 +13,13 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.7";
+const EXPECTED_README_VERSION = "1.1-doc.8";
 const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.7";
 const COMMAND_SURFACE = [
   "init",
+  "activate",
+  "lifecycle",
+  "host",
   "quest",
   "route",
   "capsule",
@@ -158,7 +161,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.1-doc.7", () => {
+test("README version metadata stays synchronized at 1.1-doc.8", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);

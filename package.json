@@ -37,6 +37,8 @@
   },
   "files": [
     "bin",
+    "adapters",
+    "fixtures",
     "scripts",
     "src",
     "docs",

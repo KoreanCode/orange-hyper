@@ -8,6 +8,11 @@ subagent orchestrator, or auto planner. It is the first contract that tells a
 natural-language layer, skill layer, or agent adapter how to call the Orange
 Kernel safely.
 
+Activation Runtime v0.1 is the first limited runtime track. It does not replace
+the Adapter Invocation Contract. `activate` and `lifecycle` commands still use
+the Adapter JSON envelope, while `host codex hook ...` returns Codex-native hook
+JSON for Codex itself.
+
 The core principle:
 
 ```text
@@ -54,6 +59,10 @@ delete files under `.orange-hyper/` directly.
 Adapters must parse only `--json` output. Human-readable output is display text
 for people and is not a stable machine interface.
 
+Host bindings must also avoid duplicating Kernel state logic. The Codex bridge
+maps hook input/output only; Route, Quest, evidence, Stop verification, working
+episode, and pending proposal behavior live in the lifecycle Kernel.
+
 ## Install Policy For AI/Adapters
 
 Adapters should discover Orange before trying to install it:
@@ -81,6 +90,17 @@ version such as `orange-hyper@1.1.0-alpha.7`.
 After install or PATH confirmation, the adapter should use `orange init --json`
 and then the `project-sync` recipe. It must not create or modify project
 `package.json`, `package-lock.json`, or `node_modules`.
+
+For supported host activation, the adapter should prefer:
+
+```bash
+orange activate plan --host codex --scope project --json
+orange activate apply --host codex --scope project --json
+orange activate status --host codex --json
+```
+
+Binary installation alone is not activation. `status` must not report `active`
+until a lifecycle heartbeat is observed.
 
 ## Boundary Flags
 

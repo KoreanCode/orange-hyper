@@ -4,6 +4,10 @@
 
 `orange-hyper`는 하네스 프로젝트이므로 hook을 완전히 배제할 필요는 없다. 다만 hook은 절차 강제가 아니라 안전장치여야 한다.
 
+v0.4 Minimal Hook Preview는 계속 read-only / warning-first diagnostic surface다.
+Activation Runtime v0.1은 별도 opt-in runtime track이며, 사용자가 supported host에서
+activation을 승인한 뒤에만 실제 lifecycle hook binding을 사용한다.
+
 좋은 hook은 작고 결정적이다. 나쁜 hook은 모든 작업을 거대한 workflow로 바꾼다.
 
 ## 2. Hook 철학
@@ -12,6 +16,15 @@
 Hook should observe, warn, summarize, and suggest explicit next commands.
 Hook should not force ceremony by default.
 ```
+
+Activation Runtime에서의 hook 원칙은 다음으로 확장된다.
+
+```text
+Strong attachment, adaptive ceremony.
+```
+
+Attachment는 결정적이어야 하지만, L0/L1에는 Quest ceremony를 붙이지 않고 L2 이상에서만
+Route, Quest, Capsule, evidence, working memory, pending proposal 후보를 관리한다.
 
 ## 3. 허용되는 hook
 
@@ -111,6 +124,23 @@ Stop:
   doctor quick status, completed Quest verification, graph provenance, pending proposal count, capsule/identity freshness 관찰
 ```
 
+Activation Runtime v0.1 실제 runtime:
+
+```text
+SessionStart:
+  active project에서 bounded developer context와 heartbeat 기록
+
+UserPromptSubmit:
+  Route 판단, L2+ Quest/Capsule 생성, L4/L5 confirmation block
+
+PostToolUse:
+  test/build/lint evidence candidate와 apply_patch touched paths를 bounded 기록
+
+Stop:
+  L2+ missing verification continuation 1회, Quest completion, working episode,
+  durable candidate가 있을 때만 pending proposal 생성
+```
+
 v0.3 후보:
 
 ```text
@@ -166,6 +196,7 @@ hooks:
 - Hook은 실제 실행 중 누락을 감지한다.
 - Hook은 skill을 대체하지 않는다.
 - Hook은 하네스의 강제력을 최소한으로 보완한다.
+- Activation attachment는 hook이 담당하고, meta skill은 Route level과 Kernel command 사용 원칙을 설명한다.
 
 ## 11. 첫 구현 제안
 

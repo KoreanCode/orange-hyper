@@ -1,0 +1,15 @@
+{
+  "session_id": "fixture-session",
+  "turn_id": "fixture-turn-l2",
+  "cwd": ".",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Bash",
+  "tool_use_id": "fixture-tool-test-pass",
+  "tool_input": {
+    "command": "npm test"
+  },
+  "tool_response": {
+    "exit_code": 0,
+    "stdout": "tests passed"
+  }
+}

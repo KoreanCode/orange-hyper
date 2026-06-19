@@ -23,6 +23,7 @@ Runtime Adapter Layer
 - Claude Code adapter
 - generic CLI adapter
 - future IDE adapter
+- activation runtime host binding
 
 Storage Layer
 - .orange-hyper/graph nodes
@@ -31,6 +32,7 @@ Storage Layer
 - traces
 - proposals
 - local private memory
+- activation-scoped runtime state
 ```
 
 핵심 원칙은 core가 특정 모델이나 특정 agent client에 종속되지 않는 것이다. Codex hooks, Codex skills, MCP configuration, subagent TOML은 adapter에만 둔다.
@@ -177,7 +179,16 @@ Excluded memory:
 observed → proposed → accepted/rejected → indexed → retrieved
 ```
 
-자동 기록은 trace까지만 허용한다. 장기 기억으로 승격하려면 사용자 승인 또는 명시적 정책이 필요하다.
+Activation Runtime 이전의 자동 기록은 trace까지만 허용했다. v0.1 Activation Runtime은 이 경계를 다음처럼 정교화한다.
+
+```text
+No automatic durable/shared-memory acceptance.
+```
+
+사용자가 supported host에서 한 번 활성화한 프로젝트에서는 local runtime state,
+Quest state, Context Capsule, verification evidence candidate, working episode,
+quality-gated pending Memory Proposal 후보를 activation policy 범위 안에서 자동으로
+쓸 수 있다. 장기 공유 기억으로 승격하려면 여전히 명시적 `remember accept`가 필요하다.
 
 ## 6. MVP 구현 범위
 
@@ -205,6 +216,9 @@ v0.2에서 하지 않을 것:
 - LLM API 호출 필수화
 - Memory Graph rendering
 - 자동 memory write
+
+Activation Runtime은 별도 opt-in track이다. 설치된 binary만으로 활성 상태가 되지
+않으며, Codex binding trust 후 실제 lifecycle heartbeat가 기록되어야 active다.
 
 ## 7. 기술 스택 제안
 

@@ -69,6 +69,10 @@ failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
+- `activation.plan`
+- `activation.apply`
+- `activation.status`
+- `activation.remove`
 - `quest.new`
 - `adapter.list`
 - `adapter.show`
@@ -106,6 +110,10 @@ failure envelopes.
 - `sync.status`
 - `doctor.run`
 - `identity.build`
+- `lifecycle.sessionStart`
+- `lifecycle.userPromptSubmit`
+- `lifecycle.postToolUse`
+- `lifecycle.stop`
 
 Unknown JSON-mode failures still use a dot-shaped command id such as
 `unknown.command` or `<command>.unknown`.
@@ -191,6 +199,32 @@ repair doctor findings, or mutate project memory/config.
 `orange eval report --write-report` is the only eval write path. It writes a
 Markdown report only under `.orange-hyper/evals/reports/`. `--write-report`
 does not accept a path or value.
+
+Activation Runtime commands are opt-in lifecycle surfaces. `activate plan` is
+read-only. `activate apply` may initialize the project, write
+`.orange-hyper/local/activation.json`, and materialize the Orange-owned Codex
+binding/marketplace entry. `activate status` must distinguish installed,
+initialized, pending trust, heartbeat-active, degraded, and inactive states.
+`activate remove` removes only Orange-owned activation and binding material.
+
+Lifecycle commands read one JSON object from stdin and use Kernel-owned state
+transitions. They may write activation-scoped local runtime state, Quest state,
+Context Capsule, verification evidence candidate, working episode, Quest
+completion, and quality-gated pending Memory Proposal candidates. They must not
+accept Memory Proposals, create accepted graph nodes directly, install MCPs,
+spawn subagents, or store raw transcript/full tool output.
+
+The Codex host bridge is intentionally not an Adapter JSON command:
+
+```bash
+orange host codex hook session-start
+orange host codex hook user-prompt-submit
+orange host codex hook post-tool-use
+orange host codex hook stop
+```
+
+It returns Codex-native hook JSON such as
+`hookSpecificOutput.additionalContext` or `decision: "block"`.
 
 ## Command Examples
 

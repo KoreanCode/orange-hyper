@@ -1,0 +1,7 @@
+{
+  "name": "orange-hyper-codex",
+  "version": "0.1.0",
+  "description": "Orange Hyper lifecycle binding for Codex.",
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
+}

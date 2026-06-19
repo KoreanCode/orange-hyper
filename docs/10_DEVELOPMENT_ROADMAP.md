@@ -374,6 +374,52 @@ v1 이후는 무작정 v1.1 feature를 여는 단계가 아니다. 먼저 안정
 5. TS Migration Review: Type Safety Foundation을 바탕으로 JS 유지, 점진적 TS,
    전면 migration의 비용과 위험을 따로 평가한다.
 
+## 11.1 Activation Runtime v0.1 — Codex Host Binding
+
+목표: 사용자가 supported host에서 project activation을 한 번 승인하면 Codex
+lifecycle에 Orange가 자동 연결되게 한다.
+
+포함:
+
+- `orange activate plan/apply/status/remove`
+- `orange lifecycle session-start/user-prompt-submit/post-tool-use/stop`
+- `orange host codex hook ...`
+- first-party Codex plugin bundle
+- one meta skill
+- SessionStart/UserPromptSubmit/PostToolUse/Stop hooks
+- `.orange-hyper/local/activation.json`
+- `.orange-hyper/local/runtime/`
+- `.orange-hyper/local/episodes/`
+- installed vs active 상태 분리
+- heartbeat 기반 active 판정
+- L0/L1 Quest ceremony 없음
+- L2/L3 Quest/Capsule 자동 생성
+- L4/L5 confirmation block
+- bounded verification evidence capture
+- Stop missing verification continuation 1회
+- quality-gated pending Memory Proposal 후보 생성
+
+제외:
+
+- Memory Proposal auto-accept
+- accepted graph node 자동 생성
+- MCP 자동 설치/실행
+- subagent 자동 spawn
+- project-specific skill/agent 자동 생성
+- branch/PR/SPEC workflow 강제
+- L5 autonomous loop
+- telemetry/network upload
+- raw transcript 저장
+- raw full tool output 저장
+
+완료 기준:
+
+```text
+binary installed와 project active가 구분되고, activation apply 후에도 lifecycle
+heartbeat 전에는 pending_trust로 남는다. Codex host bridge는 Codex-native JSON을
+반환하고, Kernel lifecycle service만 .orange-hyper state transition을 수행한다.
+```
+
 ## 12. 다음 안정화 목표
 
 ```text
