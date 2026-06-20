@@ -101,7 +101,7 @@ test("binding plan is read-only and binding install writes only user-scope state
   assert.equal(current.data.plugin.availability, "available");
   assert.equal(current.data.plugin_installation, "unknown");
   assert.equal(current.data.plugin_enabled, "unknown");
-  assert.equal(fs.existsSync(path.join(home, "bindings", "codex", "marketplace.json")), true);
+  assert.equal(fs.existsSync(path.join(home, "bindings", "codex", ".agents", "plugins", "marketplace.json")), true);
   assert.equal(fs.existsSync(path.join(home, "bindings", "codex", "plugins", "orange-hyper-codex", ".codex-plugin", "plugin.json")), true);
   assert.equal(fs.existsSync(path.join(cwd, ".agents")), false);
 });

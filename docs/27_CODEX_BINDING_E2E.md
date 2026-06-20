@@ -97,3 +97,90 @@ Do not record secrets, raw prompts, raw transcripts, or private absolute paths.
 Fixture success is not real Codex E2E success. If plugin install, enablement,
 hook review, required lifecycle events, or active status were not observed in
 the real Codex UI, report them as `not externally verified`.
+
+## 2026-06-20 alpha.8 E2E Attempt
+
+Release status: `blocked`; do not create or push `v1.1.0-alpha.8` from this
+attempt.
+
+Environment:
+
+- Date: 2026-06-20 KST.
+- Platform: macOS arm64 (`Darwin 25.5.0 arm64`).
+- Codex version: `codex-cli 0.133.0`.
+- Orange version: `1.1.0-alpha.8`.
+- Codex plugin version: `1.1.0-alpha.8`.
+- Source commit at start: `bcddda7a140bed6cb9110bea67a8b2b5c3d12f59`.
+- Binding fingerprint:
+  `71a074d4e20b26184428247323db0b2fbf1e644f72695f2305c804d771a29edb`.
+
+Observed state transitions:
+
+1. Initial `binding status`: `absent`; lifecycle hook execution `none`.
+2. `binding plan`: `dry_run: true`; no project files changed.
+3. First `binding install`: `pending_install`; user-scoped plugin source and
+   marketplace state were prepared.
+4. Codex marketplace registration failed because the generated user binding
+   wrote `marketplace.json` at the binding root instead of the supported
+   `.agents/plugins/marketplace.json` location.
+5. After the marketplace path fix, `binding install` wrote the supported
+   marketplace layout and `codex plugin marketplace add` succeeded.
+6. Codex plugin manager reported `orange-hyper-codex@orange-hyper-user` as
+   `installed, enabled` at version `1.1.0-alpha.8`.
+7. Project activation applied successfully and reported
+   `waiting_for_host_binding` before any complete lifecycle.
+8. A new Codex app thread was started and completed a minimal L1 response, but
+   no Orange lifecycle heartbeat was written for `SessionStart`,
+   `UserPromptSubmit`, or `Stop`.
+
+Scenario results:
+
+| # | Scenario | Result |
+| --- | --- | --- |
+| 1 | Initial `binding status --host codex --json` | Pass: `absent`, no lifecycle events |
+| 2 | `binding plan --host codex --scope user --json` read-only | Pass |
+| 3 | `binding install --host codex --scope user --json` | Pass after marketplace path fix |
+| 4 | Codex plugin install | Pass through official Codex plugin manager; `/plugins` UI click path not externally verified |
+| 5 | Plugin enable | Pass through official Codex plugin manager status; `/plugins` UI click path not externally verified |
+| 6 | Codex `/hooks` review and approval | Not externally verified |
+| 7 | New Codex thread starts | Pass through Codex app thread creation |
+| 8 | Inactive repository lifecycle no-op | Not externally verified in real Codex thread |
+| 9 | Test repository project activation | Pass |
+| 10 | Before first complete lifecycle status is warming up/partial | Partial: `waiting_for_host_binding`; no real hook event observed |
+| 11 | L1 request creates no Quest | Not externally verified because hooks did not run |
+| 12 | L2 request creates Quest and Capsule | Not reached |
+| 13 | Follow-up continues same Quest | Not reached |
+| 14 | Different task creates a new Quest | Not reached |
+| 15 | Unrelated L1 Stop does not complete prior L2 Quest | Not reached |
+| 16 | Evidence-free L2 Stop continuation exactly once | Not reached |
+| 17 | `stop_hook_active` suppresses additional continuation | Not reached |
+| 18 | Required events observed in same session and current fingerprint | Fail: no required lifecycle events observed |
+| 19 | `activate status` becomes `active` | Fail: remained `waiting_for_host_binding` |
+| 20 | Deactivate returns lifecycle to no-op | Not reached |
+| 21 | `binding remove` preserves project activation and accepted memory | Partial pass during cleanup: project activation preservation was reported; not verified after an active lifecycle |
+
+Continuation count: not observed; no real `Stop` hook execution was recorded.
+
+Defects found and fixed:
+
+- User-scoped Codex binding wrote the marketplace manifest at the binding root.
+  Codex `0.133.0` requires the marketplace manifest under
+  `.agents/plugins/marketplace.json`. The binding path now uses
+  `CODEX_MARKETPLACE_RELATIVE_PATH`, and the activation runtime test verifies
+  the supported layout.
+
+Items not verified:
+
+- Manual `/plugins` UI install and enable flow.
+- Manual `/hooks` definition review and approval.
+- Real lifecycle hook execution in a new Codex thread.
+- L1/L2 routing, Quest/Capsule creation, multi-turn continuity, and Stop
+  continuation behavior through real Codex hooks.
+- Transition to `active`.
+- tag-driven release, GitHub Release assets, npm publication, and hosted
+  installer smoke.
+
+Release decision:
+
+- Hold the `v1.1.0-alpha.8` release until a real Codex hook run records
+  current-fingerprint `SessionStart`, `UserPromptSubmit`, and `Stop` events.

@@ -210,7 +210,7 @@ export function codexBindingPaths(env = process.env) {
   return {
     userHome,
     bindingRoot,
-    marketplaceJson: path.join(bindingRoot, "marketplace.json"),
+    marketplaceJson: path.join(bindingRoot, CODEX_MARKETPLACE_RELATIVE_PATH),
     pluginRoot: path.join(bindingRoot, "plugins", CODEX_PLUGIN_NAME),
     bindingJson: path.join(bindingRoot, "binding.json"),
     ownershipMarker: path.join(bindingRoot, "plugins", CODEX_PLUGIN_NAME, ".orange-hyper-owned.json")
