@@ -100,8 +100,8 @@ the real Codex UI, report them as `not externally verified`.
 
 ## 2026-06-20 alpha.8 Hook Trust Diagnostics
 
-Release status: `blocked`; do not create or push `v1.1.0-alpha.8` from this
-attempt.
+Initial diagnostic status: `blocked` before the independent Stop-continuation
+recheck below. Do not treat this subsection alone as release approval.
 
 The earlier "no heartbeat" attempt is reclassified as an inconclusive
 pre-trust attempt. The plugin had been installed and enabled, but the current
@@ -269,8 +269,8 @@ Automatic validation on this diagnostic continuation:
 | `dist/standalone/orange-macos-arm64 binding status --host codex --json` | Pass |
 | `npm pack --dry-run` | Pass with a temporary npm cache; the default user npm cache first failed with an `EPERM` ownership error outside Orange |
 
-Items not re-verified in a real interactive Codex thread after this final
-continuation:
+Items not re-verified in a real interactive Codex thread during the first
+diagnostic continuation:
 
 - Same-work follow-up continuing the same active Quest.
 - Clearly different L2 work creating a new Quest in the same interactive
@@ -280,10 +280,130 @@ continuation:
 - Operational status when `PostToolUse` is completely absent in a real
   interactive thread.
 
-Release decision:
+Release decision for this first diagnostic continuation:
 
-- Keep the `v1.1.0-alpha.8` release gate blocked for this diagnostic task.
-  Hook trust, hook execution, one-shot Stop continuation, verification evidence,
-  Quest completion, and active status are now proven in a real Codex run. The
-  release gate still requires the remaining same-session interactive
-  Quest-continuity and isolation checks before it can be opened.
+- Superseded by the independent Stop-continuation recheck below. At this point,
+  hook trust, hook execution, one-shot Stop continuation, verification evidence,
+  Quest completion, and active status were proven in a real Codex run, but the
+  release gate stayed blocked until the final release-blocking continuation case
+  was reproduced in a fresh thread.
+
+## 2026-06-20 alpha.8 Independent Stop Continuation Recheck
+
+Release status: `open` for the `v1.1.0-alpha.8` release path after this
+recheck. This section records the additional independent Codex thread that
+closed the remaining alpha.8 release blocker. It does not create a tag, npm
+publication, or GitHub Release by itself.
+
+Environment:
+
+- Date: 2026-06-20 KST.
+- Platform: macOS arm64.
+- Codex version: `codex-cli 0.141.0`.
+- Orange version: `1.1.0-alpha.8`.
+- Codex plugin version: `1.1.0-alpha.8`.
+- Validation base commit before this recheck:
+  `c8eed1134bac6a990e76fc6a7ff51dd1a6614af1`.
+- Candidate binary: current alpha.8 standalone built from this source tree and
+  forced through `ORANGE_HYPER_BIN`.
+- Binding fingerprint:
+  `df05c483c1e949a3065df56a4531108da6c3a1a2542eeb6583e45511a1835bd1`.
+- Adapter contract version: `0.1`.
+
+Setup:
+
+1. The E2E target was an isolated temporary git repository, not this
+   repository.
+2. The temporary project contained only a minimal README and one small
+   CommonJS source fixture before activation.
+3. The temporary project contained no `package.json`, `package-lock.json`, or
+   `node_modules` before activation, after activation, or after the lifecycle
+   run.
+4. The user-scoped Orange binding was installed under an isolated Orange home.
+5. Codex installed `orange-hyper-codex@orange-hyper-user` from the Orange user
+   marketplace and reported it as installed, enabled, and version
+   `1.1.0-alpha.8`.
+6. Project activation was applied only in the temporary repository. Immediately
+   after activation it was `waiting_for_host_binding`, not `active`.
+7. No raw prompt, raw transcript, credential, or private absolute path was
+   recorded in this document.
+
+Real `/hooks` result:
+
+| Hook | Source | Command | Review result |
+| --- | --- | --- | --- |
+| `SessionStart` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" session-start` | Found, active, trusted |
+| `UserPromptSubmit` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" user-prompt-submit` | Found, active, trusted |
+| `PostToolUse` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" post-tool-use` | Found, active, trusted |
+| `Stop` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" stop` | Found, active, trusted |
+
+The hooks were reviewed through the real Codex `/hooks` surface. No trust store
+was edited directly, no unsafe trust bypass was used, and plugin installation
+or enablement was not treated as equivalent to hook trust.
+
+Independent lifecycle scenario:
+
+- A new Codex thread was started after hook review.
+- The task was a bounded L2 source edit in the temporary fixture.
+- The first completion intentionally had no verification evidence before the
+  Stop hook.
+- The Stop hook requested continuation because V2 verification evidence had
+  not been observed.
+- The continuation ran the narrow Node verification for the touched behavior.
+- The follow-up Stop completed the Quest after verification evidence was
+  recorded.
+
+Observed hook lifecycle:
+
+| Event | Result |
+| --- | --- |
+| `SessionStart` | Pass at `2026-06-20T06:21:30.760Z` |
+| `UserPromptSubmit` | Pass at `2026-06-20T06:21:30.825Z` |
+| `PostToolUse` | Pass; latest observed at `2026-06-20T06:22:43.513Z` |
+| First `Stop` | Pass at `2026-06-20T06:22:29.875Z`; requested continuation |
+| Second `Stop` | Pass at `2026-06-20T06:22:46.673Z`; completed after verification |
+| Same current binding fingerprint | Pass |
+| Same Codex hook heartbeat session | Pass |
+| `activate status` transition | Pass: `active`, binding `operational`, lifecycle `current` |
+
+Observed Quest and continuation behavior:
+
+| Item | Result |
+| --- | --- |
+| Route | `L2/P2/T2/V2/A0/M0/MB2` |
+| Quest id | `quest_cf8aa5a23224_l2_implementation` |
+| Quest creation | Pass: new Quest and current Capsule created |
+| Continuation trigger | Pass: missing V2 evidence at the first Stop |
+| Continuation count | Pass: one turn file, exactly one `continuation_requested: true` |
+| `stop_hook_active` isolation | Pass: no additional continuation after the verification continuation |
+| Verification evidence | Pass: one targeted Node verification recorded with `passed: true` and `success_evidence: true` |
+| Quest completion | Pass: Quest moved to `completed` with `verification_status: verified` |
+| Raw output storage | Pass: 22 evidence files, zero with `raw_output_stored: true` |
+| Secret redaction marker | Pass: 22 evidence files, zero with `secret_redaction_applied: false` |
+
+Final activation status in the isolated project:
+
+- `status`: `active`
+- binding `effective_status`: `operational`
+- hook execution `status`: `current`
+- hook execution `status_reason`: `complete_lifecycle_fresh`
+- observed required events:
+  `SessionStart`, `UserPromptSubmit`, `Stop`
+- optional observed event: `PostToolUse`
+- observed fingerprint:
+  `df05c483c1e949a3065df56a4531108da6c3a1a2542eeb6583e45511a1835bd1`
+- complete lifecycle time: `2026-06-20T06:22:46.673Z`
+
+Release decision after this recheck:
+
+- The exact original "no heartbeat" cause was not a product launcher failure;
+  it was an inconclusive pre-trust attempt where current hook definitions had
+  not yet been reviewed in the real Codex `/hooks` surface.
+- The trusted-hook diagnostics then found and fixed product issues in Stop
+  success output shape and guarded Node verification evidence handling.
+- This independent recheck confirms that reviewed/trusted hooks now execute,
+  request a single Stop continuation when verification evidence is absent,
+  capture the post-continuation verification evidence, complete the Quest, and
+  make activation status `active`.
+- The alpha.8 release gate is open, subject to the normal release workflow and
+  hosted release verification.
