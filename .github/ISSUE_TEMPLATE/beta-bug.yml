@@ -1,0 +1,135 @@
+{
+  "name": "Closed Beta Bug",
+  "description": "Report an Orange Hyper closed beta issue without raw prompts, transcripts, or secrets.",
+  "title": "[Beta Bug]: ",
+  "labels": ["closed-beta", "bug"],
+  "body": [
+    {
+      "type": "markdown",
+      "attributes": {
+        "value": "Do not attach raw prompts, raw transcripts, credentials, tokens, secrets, `.env` content, private absolute paths, full tool output, or proprietary source code. Paste only redacted summaries or selected safe JSON fields."
+      }
+    },
+    {
+      "type": "input",
+      "id": "orange_version",
+      "attributes": {
+        "label": "Orange version",
+        "description": "Example: 1.1.0-alpha.8"
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "input",
+      "id": "codex_version",
+      "attributes": {
+        "label": "Codex version",
+        "description": "Example: codex-cli 0.141.0"
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "input",
+      "id": "os_architecture",
+      "attributes": {
+        "label": "OS and architecture",
+        "description": "Example: macOS 15 arm64, Ubuntu x64, Windows x64"
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "dropdown",
+      "id": "install_channel",
+      "attributes": {
+        "label": "Install channel",
+        "options": ["standalone installer", "npm exact-version fallback", "npm alpha fallback", "other"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "input",
+      "id": "binding_effective_status",
+      "attributes": {
+        "label": "Binding effective status",
+        "description": "Redacted value from `orange binding status --host codex --json`."
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "input",
+      "id": "activation_status",
+      "attributes": {
+        "label": "Activation status",
+        "description": "Redacted value from `orange activate status --host codex --json`."
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "dropdown",
+      "id": "task_layer",
+      "attributes": {
+        "label": "Task layer",
+        "options": ["L0", "L1", "L2", "not sure", "not applicable"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "dropdown",
+      "id": "step",
+      "attributes": {
+        "label": "Step where it happened",
+        "options": ["install", "binding plan", "binding install", "plugin install", "plugin enable", "/hooks review", "activation plan", "activation apply", "L0 question", "L1 edit", "L2 implementation", "follow-up", "Stop continuation", "verification", "Memory Proposal review", "deactivate", "binding remove", "other"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "textarea",
+      "id": "expected_behavior",
+      "attributes": {
+        "label": "Expected behavior",
+        "description": "What should have happened?"
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "textarea",
+      "id": "actual_behavior",
+      "attributes": {
+        "label": "Actual behavior",
+        "description": "What happened instead? Keep this redacted."
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "textarea",
+      "id": "minimal_reproduction",
+      "attributes": {
+        "label": "Minimal reproduction steps",
+        "description": "Use redacted commands and safe selected JSON fields only."
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "dropdown",
+      "id": "cleanup_success",
+      "attributes": {
+        "label": "Cleanup success",
+        "options": ["pass", "fail", "blocked", "not applicable", "not verified"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "checkboxes",
+      "id": "privacy_confirmation",
+      "attributes": {
+        "label": "Privacy confirmation",
+        "options": [
+          {
+            "label": "I removed raw prompts, raw transcripts, credentials, tokens, secrets, `.env` content, private absolute paths, full tool output, and proprietary source code.",
+            "required": true
+          }
+        ]
+      }
+    }
+  ]
+}

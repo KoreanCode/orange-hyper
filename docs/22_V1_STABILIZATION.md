@@ -23,7 +23,7 @@ Version axes remain separate:
 
 - package version: `1.1.0-alpha.8`
 - Codex plugin version: `1.1.0-alpha.8`
-- README version: `1.1-doc.8`
+- README version: `1.1-doc.9`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model

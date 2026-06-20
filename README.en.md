@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.8`
+- README version: `1.1-doc.9`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -107,6 +107,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/K
 ```
 
 The installer verifies SHA-256 checksums and stops on mismatch. It does not use npm, create package files, create `node_modules`, or modify the current project.
+
+Closed technical beta participants should use [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md) for onboarding and safe diagnostics, then record actual test results with [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md).
 
 For fallback package visibility checks, pin the exact version:
 
@@ -235,6 +237,8 @@ Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboa
 - [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)
 - [Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)
+- [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)
+- [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference
