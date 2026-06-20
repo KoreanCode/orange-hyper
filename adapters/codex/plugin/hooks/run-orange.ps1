@@ -37,6 +37,10 @@ function Hook-Event-Name([string]$Name) {
 }
 
 function Write-Degraded([string]$HookEvent, [string]$Message) {
+  if ($HookEvent -eq "Stop") {
+    [Console]::Out.WriteLine("{}")
+    return
+  }
   $payload = @{
     continue = $true
     systemMessage = "Orange Hyper binding degraded: $Message"

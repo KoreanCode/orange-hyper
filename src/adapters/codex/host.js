@@ -19,6 +19,9 @@ export function codexNativeOutput(event, result) {
       reason: result.continuation_reason
     };
   }
+  if (hookEventName === "Stop") {
+    return {};
+  }
   const output = {
     continue: true
   };
@@ -39,11 +42,15 @@ export function codexNativeOutput(event, result) {
 }
 
 export function safeCodexHookFailure(event, error) {
+  const hookEventName = codexHookEventName(event);
+  if (hookEventName === "Stop") {
+    return {};
+  }
   return {
     continue: true,
     systemMessage: `Orange Hyper binding degraded: ${error instanceof Error ? error.message : String(error)}`,
     hookSpecificOutput: {
-      hookEventName: codexHookEventName(event),
+      hookEventName,
       additionalContext: ""
     }
   };
