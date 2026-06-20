@@ -207,10 +207,11 @@ does not accept a path or value.
 Activation Runtime commands are opt-in lifecycle surfaces with two separate
 scopes. `binding plan/install/status/remove` manages the user-scoped Codex Host
 Binding state. `activate plan/apply/status/remove` manages only repo-scoped
-Project Activation state. `activate apply` may initialize the project and write
-`.orange-hyper/local/activation.json`, but it must not register marketplaces,
-materialize plugin source, install or enable Codex plugins, mutate hook trust,
-or remove user-scoped binding state.
+Project Activation state. `activate apply` writes only activation-local runtime
+state such as `.orange-hyper/local/activation.json`; it must not initialize the
+full project memory tree, register marketplaces, materialize plugin source,
+install or enable Codex plugins, mutate hook trust, or remove user-scoped
+binding state.
 
 Activation status must distinguish marketplace registration, plugin
 availability, plugin installation, plugin enablement, hook review/heartbeat,

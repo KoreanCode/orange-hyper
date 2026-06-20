@@ -98,10 +98,15 @@ Fixture success is not real Codex E2E success. If plugin install, enablement,
 hook review, required lifecycle events, or active status were not observed in
 the real Codex UI, report them as `not externally verified`.
 
-## 2026-06-20 alpha.8 E2E Attempt
+## 2026-06-20 alpha.8 Hook Trust Diagnostics
 
 Release status: `blocked`; do not create or push `v1.1.0-alpha.8` from this
 attempt.
+
+The earlier "no heartbeat" attempt is reclassified as an inconclusive
+pre-trust attempt. The plugin was installed and enabled, but the current hook
+definitions had not been reviewed in the real Codex `/hooks` surface, so that
+attempt was not evidence of a product-code launcher failure.
 
 Environment:
 
@@ -110,77 +115,136 @@ Environment:
 - Codex version: `codex-cli 0.133.0`.
 - Orange version: `1.1.0-alpha.8`.
 - Codex plugin version: `1.1.0-alpha.8`.
-- Source commit at start: `bcddda7a140bed6cb9110bea67a8b2b5c3d12f59`.
+- Validation base commit: `8439d6215eafb915068a288e5885fa0dc1468a2d`.
+- Diagnostic commit: pending final merge commit.
 - Binding fingerprint:
   `71a074d4e20b26184428247323db0b2fbf1e644f72695f2305c804d771a29edb`.
 
-Observed state transitions:
+Setup:
 
-1. Initial `binding status`: `absent`; lifecycle hook execution `none`.
-2. `binding plan`: `dry_run: true`; no project files changed.
-3. First `binding install`: `pending_install`; user-scoped plugin source and
-   marketplace state were prepared.
-4. Codex marketplace registration failed because the generated user binding
-   wrote `marketplace.json` at the binding root instead of the supported
-   `.agents/plugins/marketplace.json` location.
-5. After the marketplace path fix, `binding install` wrote the supported
-   marketplace layout and `codex plugin marketplace add` succeeded.
-6. Codex plugin manager reported `orange-hyper-codex@orange-hyper-user` as
-   `installed, enabled` at version `1.1.0-alpha.8`.
-7. Project activation applied successfully and reported
-   `waiting_for_host_binding` before any complete lifecycle.
-8. A new Codex app thread was started and completed a minimal L1 response, but
-   no Orange lifecycle heartbeat was written for `SessionStart`,
-   `UserPromptSubmit`, or `Stop`.
+1. A current alpha.8 standalone candidate was built and used through
+   `ORANGE_HYPER_BIN`.
+2. The E2E target was an isolated temporary git repository with no
+   `package.json`, `package-lock.json`, or `node_modules`.
+3. `binding status` started as `absent`; `binding plan` was read-only.
+4. `binding install` prepared user-scoped binding state and the marketplace at
+   `.agents/plugins/marketplace.json`.
+5. Codex plugin manager reported
+   `orange-hyper-codex@orange-hyper-user` as installed, enabled, and version
+   `1.1.0-alpha.8`.
+6. `activate apply` initially created only
+   `.orange-hyper/local/activation.json` and reported
+   `waiting_for_host_binding`, not `active`.
 
-Scenario results:
+Real `/hooks` discovery and review:
 
-| # | Scenario | Result |
-| --- | --- | --- |
-| 1 | Initial `binding status --host codex --json` | Pass: `absent`, no lifecycle events |
-| 2 | `binding plan --host codex --scope user --json` read-only | Pass |
-| 3 | `binding install --host codex --scope user --json` | Pass after marketplace path fix |
-| 4 | Codex plugin install | Pass through official Codex plugin manager; `/plugins` UI click path not externally verified |
-| 5 | Plugin enable | Pass through official Codex plugin manager status; `/plugins` UI click path not externally verified |
-| 6 | Codex `/hooks` review and approval | Not externally verified |
-| 7 | New Codex thread starts | Pass through Codex app thread creation |
-| 8 | Inactive repository lifecycle no-op | Not externally verified in real Codex thread |
-| 9 | Test repository project activation | Pass |
-| 10 | Before first complete lifecycle status is warming up/partial | Partial: `waiting_for_host_binding`; no real hook event observed |
-| 11 | L1 request creates no Quest | Not externally verified because hooks did not run |
-| 12 | L2 request creates Quest and Capsule | Not reached |
-| 13 | Follow-up continues same Quest | Not reached |
-| 14 | Different task creates a new Quest | Not reached |
-| 15 | Unrelated L1 Stop does not complete prior L2 Quest | Not reached |
-| 16 | Evidence-free L2 Stop continuation exactly once | Not reached |
-| 17 | `stop_hook_active` suppresses additional continuation | Not reached |
-| 18 | Required events observed in same session and current fingerprint | Fail: no required lifecycle events observed |
-| 19 | `activate status` becomes `active` | Fail: remained `waiting_for_host_binding` |
-| 20 | Deactivate returns lifecycle to no-op | Not reached |
-| 21 | `binding remove` preserves project activation and accepted memory | Partial pass during cleanup: project activation preservation was reported; not verified after an active lifecycle |
+| Hook | Source | Command | Result |
+| --- | --- | --- | --- |
+| `SessionStart` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" session-start` | Found and trusted |
+| `UserPromptSubmit` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" user-prompt-submit` | Found and trusted |
+| `PostToolUse` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" post-tool-use` | Found and trusted |
+| `Stop` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" stop` | Found and trusted |
 
-Continuation count: not observed; no real `Stop` hook execution was recorded.
+After review, Codex `/hooks` reported one installed and one active hook for
+each of `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
+
+Observed real lifecycle:
+
+| Item | Result |
+| --- | --- |
+| New Codex thread after hook review | Pass |
+| `SessionStart` heartbeat | Pass at `2026-06-20T02:00:43.539Z` |
+| L1 `UserPromptSubmit` heartbeat | Pass at `2026-06-20T02:00:43.585Z` |
+| L1 `PostToolUse` heartbeat | Pass |
+| L1 `Stop` heartbeat | Pass at `2026-06-20T02:02:20.238Z` |
+| Same session and binding fingerprint | Pass |
+| `activate status` transition | Pass: `active`; binding `operational` |
+| L1 Quest/Capsule behavior | Pass: no Quest or Capsule created |
+| L2 `UserPromptSubmit` heartbeat | Pass |
+| L2 route | Pass: `L2/P2/T2/V2/A0/M0/MB2` |
+| L2 Quest and Capsule | Pass: Quest created and current Capsule generated |
+| L2 `PostToolUse` heartbeat | Pass |
+| L2 verification failure classification | Pass: failed verification was not success evidence |
+| L2 `Stop` heartbeat | Blocked: not observed before the interactive session was interrupted |
+| L2 continuation count | Blocked: real `Stop` did not complete, so continuation count was not observed |
+| Same-work follow-up continuity in real Codex | Blocked |
+| Different L2 request creates new Quest in real Codex | Blocked |
+| `stop_hook_active` suppression in real Codex | Blocked |
+
+Fixture coverage that passed:
+
+- marketplace standard location.
+- plugin bundle includes `hooks/hooks.json`.
+- POSIX launcher uses `ORANGE_HYPER_BIN` before PATH lookup.
+- POSIX and PowerShell launchers have safe JSON failure behavior.
+- inactive repositories no-op without creating Orange state.
+- current-fingerprint heartbeat status.
+- same-session complete lifecycle.
+- L0/L1 no Quest.
+- L2 Quest/Capsule creation.
+- Quest continuity and different-scope new Quest creation.
+- unrelated L1 Stop does not complete a previous L2 Quest.
+- missing verification evidence requests continuation exactly once.
+- `stop_hook_active` does not request another continuation.
+- explicit unverified reason is required before unverified completion.
+- raw prompt text is not stored in Quest, Capsule, route trace, or runtime
+  artifacts.
+
+Automatic validation that passed on the diagnostic branch:
+
+- `npm test`.
+- `npm run typecheck`.
+- `npm run check:readme-sync`.
+- `git diff --check`.
+- `node bin/orange.js --version`.
+- `node bin/orange.js env --json`.
+- `node bin/orange.js binding status --host codex --json`.
+- `node bin/orange.js activate status --host codex --json`.
+- `node bin/orange.js doctor --json`.
+- `npm run build:standalone`.
+- `dist/standalone/orange.cjs --version`.
+- `dist/standalone/orange.cjs binding status --host codex --json`.
+- `npm run build:sea`.
+- `dist/standalone/orange-macos-arm64 --version`.
+- `dist/standalone/orange-macos-arm64 binding status --host codex --json`.
+- `npm pack --dry-run`.
 
 Defects found and fixed:
 
-- User-scoped Codex binding wrote the marketplace manifest at the binding root.
-  Codex `0.133.0` requires the marketplace manifest under
-  `.agents/plugins/marketplace.json`. The binding path now uses
-  `CODEX_MARKETPLACE_RELATIVE_PATH`, and the activation runtime test verifies
-  the supported layout.
+- The marketplace path defect was fixed in the preserved
+  `codex/activation-runtime-alpha8-e2e` branch and merged before this run.
+- `activate apply` initialized the full project memory tree before the first
+  L2 lifecycle event. It now writes only activation-local state; L2+ lifecycle
+  events initialize the project workspace only when Quest/Capsule artifacts are
+  actually needed.
+- L2 lifecycle artifacts previously used raw prompt text in durable Quest and
+  Capsule content. They now store a bounded summary with intent and scope
+  signatures instead of raw prompt text.
+- The regression suite now executes the POSIX hook launcher against a fake
+  candidate `ORANGE_HYPER_BIN`, proving the launcher does not silently select an
+  older PATH binary first.
 
-Items not verified:
+Root cause for the original no-heartbeat observation:
 
-- Manual `/plugins` UI install and enable flow.
-- Manual `/hooks` definition review and approval.
-- Real lifecycle hook execution in a new Codex thread.
-- L1/L2 routing, Quest/Capsule creation, multi-turn continuity, and Stop
-  continuation behavior through real Codex hooks.
-- Transition to `active`.
-- tag-driven release, GitHub Release assets, npm publication, and hosted
-  installer smoke.
+- The hook definitions were pending real Codex `/hooks` review. After reviewing
+  and trusting the current definitions, Orange recorded `SessionStart`,
+  `UserPromptSubmit`, `PostToolUse`, and `Stop` heartbeats from the installed
+  plugin source. No plugin discovery, bundle path, executable permission,
+  launcher JSON, or Host Bridge failure was confirmed in the trusted-hook run.
+
+Items not verified in real Codex:
+
+- L2 `Stop` after successful verification evidence.
+- Evidence-free L2 `Stop` continuation exactly once.
+- `stop_hook_active` no-second-continuation behavior.
+- Same-work real follow-up continuing the same Quest.
+- Clearly different real L2 work creating a new Quest.
+- Real completed L2 Quest with verification evidence or explicit unverified
+  reason.
 
 Release decision:
 
-- Hold the `v1.1.0-alpha.8` release until a real Codex hook run records
-  current-fingerprint `SessionStart`, `UserPromptSubmit`, and `Stop` events.
+- Keep the `v1.1.0-alpha.8` release gate blocked. The hook trust blocker is
+  resolved, but a full real Codex L2 Stop/continuation lifecycle was not
+  observed before session interruption. The automated fixture suite covers the
+  behavior, but fixture success is not real Codex E2E success.

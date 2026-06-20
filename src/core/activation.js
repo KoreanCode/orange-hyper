@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
 import path from "node:path";
-import { initWorkspace, isInitialized } from "./config.js";
+import { isInitialized } from "./config.js";
 import { ORANGE_HYPER_VERSION } from "./origin.js";
 import { workspacePaths } from "./paths.js";
 import { nowIso } from "./time.js";
@@ -58,10 +58,6 @@ export function activationApply(cwd = process.cwd(), options = {}) {
   const host = normalizeHost(options.host);
   const scope = normalizeScope(options.scope || "project");
   assertSupported(host, scope);
-  const beforeInitialized = isInitialized(cwd);
-  if (!beforeInitialized) {
-    initWorkspace(cwd);
-  }
   const activatedAt = nowIso(options.clock);
   const paths = workspacePaths(cwd);
   fs.mkdirSync(paths.local, { recursive: true });
@@ -93,7 +89,7 @@ export function activationApply(cwd = process.cwd(), options = {}) {
       dryRun: false,
       applied: true
     }),
-    initialized_by_apply: !beforeInitialized,
+    initialized_by_apply: false,
     host_binding_installed_by_apply: false
   };
 }
@@ -351,9 +347,6 @@ function buildActivationResult(cwd, options) {
 
 function plannedProjectChanges(cwd, initialized, binding) {
   const changes = [];
-  if (!initialized) {
-    changes.push({ action: "initialize_project", path: ".orange-hyper/" });
-  }
   changes.push({ action: "write_activation_policy", path: ".orange-hyper/local/activation.json" });
   changes.push({ action: "prepare_project_runtime", path: ".orange-hyper/local/runtime/" });
   changes.push({ action: "prepare_project_episodes", path: ".orange-hyper/local/episodes/" });

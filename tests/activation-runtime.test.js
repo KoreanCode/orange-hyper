@@ -65,6 +65,25 @@ function countFiles(dir) {
   return fs.existsSync(dir) ? fs.readdirSync(dir).filter((name) => !name.startsWith(".")).length : 0;
 }
 
+function relativeFiles(root) {
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  const found = [];
+  const visit = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(full);
+      } else {
+        found.push(path.relative(root, full).split(path.sep).join("/"));
+      }
+    }
+  };
+  visit(root);
+  return found.sort();
+}
+
 test("activate plan is read-only and does not report installed binary as active", () => {
   const cwd = tempWorkspace();
   const before = fs.readdirSync(cwd);
@@ -189,7 +208,7 @@ test("activate apply is idempotent, preserves unrelated marketplace entries, and
   const current = status(cwd);
   const marketplace = JSON.parse(fs.readFileSync(path.join(marketplaceDir, "marketplace.json"), "utf8"));
 
-  assert.equal(first.data.initialized_by_apply, true);
+  assert.equal(first.data.initialized_by_apply, false);
   assert.equal(first.data.host_binding_installed_by_apply, false);
   assert.equal(second.data.initialized_by_apply, false);
   assert.equal(current.data.status, "waiting_for_host_binding");
@@ -197,6 +216,19 @@ test("activate apply is idempotent, preserves unrelated marketplace entries, and
   assert.equal(current.data.binding.plugin_installation, "unknown");
   assert.equal(current.data.binding.hook_execution.status, "none");
   assert.deepEqual(marketplace.plugins.map((item) => item.name), ["other-plugin"]);
+});
+
+test("activate apply writes only activation-local runtime state in a fresh repository", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+
+  assert.deepEqual(relativeFiles(path.join(cwd, ".orange-hyper")), [
+    "local/activation.json"
+  ]);
+  assert.equal(fs.existsSync(path.join(cwd, ".orange-hyper", "config.json")), false);
+  assert.equal(fs.existsSync(path.join(cwd, ".orange-hyper", "capsules")), false);
+  assert.equal(fs.existsSync(path.join(cwd, ".orange-hyper", "graph")), false);
+  assert.equal(fs.existsSync(path.join(cwd, ".orange-hyper", "traces")), false);
 });
 
 test("activate remove deletes only project-local activation and runtime state", () => {
@@ -430,8 +462,42 @@ test("Codex hook bundle includes Windows launchers with safe JSON behavior", () 
   assert.match(psTemplate, /ConvertTo-Json -Depth 8 -Compress/);
   assert.match(psTemplate, /ORANGE_HYPER_BIN/);
   assert.match(psTemplate, /orange\.exe/);
+  assert.match(shTemplate, /ORANGE_HYPER_BIN/);
   assert.match(shTemplate, /printf '\{"continue":true/);
   assert.equal(fs.readFileSync(path.join(process.cwd(), "adapters", "codex", "plugin", "hooks", "run-orange.ps1"))[0], 112);
+});
+
+test("Codex POSIX hook launcher executes the candidate ORANGE_HYPER_BIN", () => {
+  const cwd = tempWorkspace();
+  const fakeBin = path.join(cwd, "candidate-orange");
+  fs.writeFileSync(fakeBin, [
+    "#!/usr/bin/env sh",
+    "printf '%s\\n' '{\"continue\":true,\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"candidate-bin\"}}'"
+  ].join("\n"));
+  fs.chmodSync(fakeBin, 0o755);
+
+  const launched = spawnSync("sh", [
+    path.join(process.cwd(), "adapters", "codex", "plugin", "hooks", "run-orange.sh"),
+    "session-start"
+  ], {
+    cwd,
+    env: {
+      ...process.env,
+      ORANGE_HYPER_BIN: fakeBin,
+      PATH: "/usr/bin:/bin"
+    },
+    input: "{}",
+    encoding: "utf8"
+  });
+
+  assert.equal(launched.status, 0, launched.stderr);
+  assert.deepEqual(JSON.parse(launched.stdout), {
+    continue: true,
+    hookSpecificOutput: {
+      hookEventName: "SessionStart",
+      additionalContext: "candidate-bin"
+    }
+  });
 });
 
 test("UserPromptSubmit keeps L0/L1 light, creates L2 Quest/Capsule once, and blocks L4/L5", () => {
@@ -502,6 +568,27 @@ test("UserPromptSubmit keeps L0/L1 light, creates L2 Quest/Capsule once, and blo
   assert.match(l4.reason, /L4/);
   assert.equal(l5.decision, "block");
   assert.match(l5.reason, /L5/);
+});
+
+test("Codex lifecycle artifacts do not store raw prompt text", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  const sentinel = "rawprompt-sentinel-991";
+
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "sentinel",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: `Implement bounded parser behavior ${sentinel}`,
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  const contents = relativeFiles(path.join(cwd, ".orange-hyper"))
+    .map((name) => fs.readFileSync(path.join(cwd, ".orange-hyper", name), "utf8"))
+    .join("\n");
+  assert.equal(contents.includes(sentinel), false);
 });
 
 test("PostToolUse records bounded evidence, redacts secrets, and is idempotent", () => {
