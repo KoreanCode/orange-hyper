@@ -1,0 +1,101 @@
+{
+  "name": "Closed Beta Feedback",
+  "description": "Share closed beta feedback without raw prompts, transcripts, or secrets.",
+  "title": "[Beta Feedback]: ",
+  "labels": ["closed-beta", "feedback"],
+  "body": [
+    {
+      "type": "markdown",
+      "attributes": {
+        "value": "Do not attach raw prompts, raw transcripts, credentials, tokens, secrets, `.env` content, private absolute paths, full tool output, or proprietary source code. Summaries are enough."
+      }
+    },
+    {
+      "type": "dropdown",
+      "id": "onboarding_difficulty",
+      "attributes": {
+        "label": "Onboarding difficulty",
+        "options": ["very easy", "easy", "mixed", "hard", "blocked"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "textarea",
+      "id": "quiet_work",
+      "attributes": {
+        "label": "Work where Orange stayed quiet",
+        "description": "Describe tasks where Orange avoided unnecessary ceremony."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "unnecessary_quest",
+      "attributes": {
+        "label": "Unnecessary Quest examples",
+        "description": "Summarize cases where L0/L1 work got too much Quest ceremony."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "wrong_route",
+      "attributes": {
+        "label": "Wrong Route examples",
+        "description": "Summarize any route or layer classification that felt wrong."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "unnecessary_stop",
+      "attributes": {
+        "label": "Unnecessary Stop continuation examples",
+        "description": "Summarize any continuation that felt redundant."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "useful_capsule",
+      "attributes": {
+        "label": "Useful Context Capsule examples",
+        "description": "Summarize when Capsule context helped a follow-up."
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "memory_proposal_quality",
+      "attributes": {
+        "label": "Memory Proposal quality",
+        "description": "Were proposals specific, reviewable, and worth accepting?"
+      }
+    },
+    {
+      "type": "dropdown",
+      "id": "repeated_explanation_reduced",
+      "attributes": {
+        "label": "Repeated explanation reduced?",
+        "options": ["yes", "partly", "no", "not enough evidence"]
+      },
+      "validations": { "required": true }
+    },
+    {
+      "type": "textarea",
+      "id": "remove_or_improve",
+      "attributes": {
+        "label": "What should be removed or improved?",
+        "description": "Keep this concrete and redacted."
+      }
+    },
+    {
+      "type": "checkboxes",
+      "id": "privacy_confirmation",
+      "attributes": {
+        "label": "Privacy confirmation",
+        "options": [
+          {
+            "label": "I removed raw prompts, raw transcripts, credentials, tokens, secrets, `.env` content, private absolute paths, full tool output, and proprietary source code.",
+            "required": true
+          }
+        ]
+      }
+    }
+  ]
+}

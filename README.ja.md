@@ -13,7 +13,7 @@
 <summary>Version metadata の詳細</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.8`
+- README version: `1.1-doc.9`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -105,6 +105,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/K
 ```
 
 インストーラーは SHA-256 checksum を検証し、失敗したら停止します。npm は使わず、package files や `node_modules` を作らず、現在のプロジェクトも変更しません。
+
+非公開技術 beta の参加者は、onboarding と安全な診断境界を [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md) で確認し、実際のテスト結果を [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md) に沿って記録します。
 
 fallback としてパッケージの可視性だけを確認する場合は exact version を指定します。
 
@@ -233,6 +235,8 @@ Identity HTML は Orange Hyper Identity の primary product surface です。v1.
 - [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)
 - [Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)
+- [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)
+- [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference

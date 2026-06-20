@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.8`
+- README version: `1.1-doc.9`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -107,6 +107,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/K
 ```
 
 설치기는 checksum을 검증하고 실패하면 설치를 중단한다. `npm`, `package.json`, `package-lock.json`, `node_modules`를 사용하지 않으며 현재 프로젝트 파일을 수정하지 않는다.
+
+비공개 기술 베타 참가자는 전체 온보딩과 안전 진단 절차를 [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)에서 확인하고, 실제 테스트 결과는 [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)에 맞춰 기록한다.
 
 fallback으로만 패키지가 보이는지 짧게 확인하려면 exact version을 지정한다.
 
@@ -248,6 +250,8 @@ Identity HTML은 Orange Hyper Identity의 primary product surface입니다. v1.1
 - [Standalone Distribution](docs/25_STANDALONE_DISTRIBUTION.md)
 - [Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)
 - [Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)
+- [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)
+- [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)
 - [Release Notes](RELEASE_NOTES.md)
 
 ## Manual fallback / Kernel command reference

@@ -28,28 +28,17 @@ jobs:
       release_tag: ${{ steps.release-metadata.outputs.release_tag }}
       version: ${{ steps.release-metadata.outputs.version }}
       npm_tag: ${{ steps.release-metadata.outputs.npm_tag }}
+      is_prerelease: ${{ steps.release-metadata.outputs.is_prerelease }}
 
     steps:
+      - name: Checkout workflow ref
+        uses: actions/checkout@v6
+
       - name: Resolve release metadata
         id: release-metadata
         env:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
-        run: |
-          set -euo pipefail
-          case "$RELEASE_TAG" in
-            v*) ;;
-            *) echo "Release tag must start with v: $RELEASE_TAG" >&2; exit 1 ;;
-          esac
-
-          version="${RELEASE_TAG#v}"
-          npm_tag="latest"
-          case "$version" in
-            *-alpha.*) npm_tag="alpha" ;;
-          esac
-
-          echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "npm_tag=$npm_tag" >> "$GITHUB_OUTPUT"
+        run: node scripts/resolve-release-metadata.js "$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
       - name: Checkout tag
         uses: actions/checkout@v6
@@ -278,12 +267,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          IS_PRERELEASE: ${{ needs.quality.outputs.is_prerelease }}
         run: |
           set -euo pipefail
+          release_flags=()
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            release_flags+=(--prerelease)
+          fi
+
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG"
+            gh release edit "$RELEASE_TAG" --title "$RELEASE_TAG" "${release_flags[@]}"
           else
-            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "Orange Hyper $RELEASE_TAG release assets."
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" "${release_flags[@]}" --notes "Orange Hyper $RELEASE_TAG release assets."
           fi
 
       - name: Upload release assets
@@ -346,9 +341,11 @@ jobs:
             echo "already_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish alpha
-        if: steps.npm-version.outputs.already_published == 'false' && needs.quality.outputs.npm_tag == 'alpha'
-        run: npm publish --tag alpha
+      - name: Publish prerelease
+        if: steps.npm-version.outputs.already_published == 'false' && needs.quality.outputs.npm_tag != 'latest'
+        env:
+          NPM_TAG: ${{ needs.quality.outputs.npm_tag }}
+        run: npm publish --tag "$NPM_TAG"
 
       - name: Publish stable
         if: steps.npm-version.outputs.already_published == 'false' && needs.quality.outputs.npm_tag == 'latest'

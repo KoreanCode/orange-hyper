@@ -1,0 +1,64 @@
+{
+  "schema": "orange.closed_beta.safe_diagnostic_fixture",
+  "orange_version": "1.1.0-alpha.8",
+  "commands": [
+    {
+      "command": "orange --version",
+      "selected_fields": {
+        "version": "1.1.0-alpha.8"
+      }
+    },
+    {
+      "command": "orange env --json",
+      "selected_fields": {
+        "distribution": "standalone",
+        "node_runtime_embedded": true,
+        "project_initialized": true
+      }
+    },
+    {
+      "command": "orange binding status --host codex --json",
+      "selected_fields": {
+        "effective_status": "operational",
+        "hook_execution": "current",
+        "plugin_enabled": "enabled"
+      }
+    },
+    {
+      "command": "orange activate status --host codex --json",
+      "selected_fields": {
+        "status": "active",
+        "effective_status": "active",
+        "required_events": ["SessionStart", "UserPromptSubmit", "Stop"]
+      }
+    },
+    {
+      "command": "orange doctor --json",
+      "selected_fields": {
+        "error_count": 0,
+        "warning_count": 0
+      }
+    },
+    {
+      "command": "orange eval snapshot --json",
+      "selected_fields": {
+        "local_only": true,
+        "telemetry": false,
+        "network_upload": false,
+        "llm_judge": false
+      }
+    },
+    {
+      "command": "orange growth status --json",
+      "selected_fields": {
+        "auto_unlock": false,
+        "manual_review_required": true
+      }
+    }
+  ],
+  "redaction": {
+    "paths": "redacted",
+    "source": "omitted",
+    "tool_output": "summarized"
+  }
+}
