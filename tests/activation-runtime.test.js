@@ -569,6 +569,24 @@ test("UserPromptSubmit keeps L0/L1 light, creates L2 Quest/Capsule once, and blo
     model: "gpt-5",
     permission_mode: "default"
   });
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "ack",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Thanks.",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "direct-response",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Reply READY only; do not edit files or run commands.",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 0);
 
   const l2 = host(cwd, "user-prompt-submit", {
@@ -816,6 +834,77 @@ test("PostToolUse accepts direct Node assertion success marker when Codex omits 
   assert.equal(evidence.passed, true);
   assert.equal(evidence.success_evidence, true);
   assert.equal(evidence.output_summary, "verification passed: arithmetic");
+  assert.equal(evidence.raw_output_stored, false);
+});
+
+test("PostToolUse accepts guarded Node verification success when Codex omits exit status", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "node-guarded-marker",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "node-guarded-marker",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-guarded-marker",
+    tool_input: {
+      command: "node -e \"const m = require('./src/math'); if (m.subtract(5, 3) !== 2) throw new Error('subtract failed'); console.log('math exports verified');\""
+    },
+    tool_response: "math exports verified"
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, null);
+  assert.equal(evidence.passed, true);
+  assert.equal(evidence.success_evidence, true);
+  assert.equal(evidence.output_summary, "math exports verified");
+  assert.equal(evidence.raw_output_stored, false);
+});
+
+test("PostToolUse rejects guarded Node marker output that also reports failure", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "node-guarded-failure",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "node-guarded-failure",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-guarded-failure",
+    tool_input: {
+      command: "node -e \"if (false) throw new Error('subtract failed'); console.log('math exports verified');\""
+    },
+    tool_response: "math exports verified\nError: subtract failed"
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, null);
+  assert.equal(evidence.passed, false);
+  assert.equal(evidence.success_evidence, false);
   assert.equal(evidence.raw_output_stored, false);
 });
 

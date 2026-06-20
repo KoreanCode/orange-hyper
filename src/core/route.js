@@ -15,6 +15,37 @@ function includesAny(text, words) {
   return words.some((word) => text.includes(word));
 }
 
+function isAcknowledgementOnly(text) {
+  const normalized = String(text || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.!?\s]+$/g, "");
+  return /^(thanks|thank you|thx|ok|okay|got it|sounds good|ready|yes|no|네|넵|예|아니요|감사|감사합니다|고마워|확인|확인했습니다|좋아|좋습니다|오케이|ㅇㅋ)$/.test(normalized);
+}
+
+function isDirectResponseOnlyInstruction(text) {
+  const normalized = String(text || "").trim().toLowerCase();
+  if (!normalized || normalized.length > 180) {
+    return false;
+  }
+  const clauses = normalized.split(/[;\n]+/).map((part) => part.trim()).filter(Boolean);
+  const firstClause = clauses[0] || "";
+  const directResponse = firstClause.match(/^(?:please\s+)?(?:just\s+)?(?:reply|respond|say|answer|output|print)\s+(.+)$/);
+  if (!directResponse) {
+    return false;
+  }
+  const literal = directResponse[1].trim();
+  if (!literal || literal.length > 80 || /\b(after|when|once|if)\b/.test(literal)) {
+    return false;
+  }
+  const firstClauseLooksLiteral = /\bonly\b/.test(literal) || /^[`'"]?[\w.-]{1,32}[`'"]?$/.test(literal);
+  if (!firstClauseLooksLiteral) {
+    return false;
+  }
+  const remainingClauses = clauses.slice(1);
+  return remainingClauses.every((clause) => /^(do not|don't|no)\s+(edit|change|modify|write|run|execute|use)\b/.test(clause));
+}
+
 export function questPolicyForLayer(layer) {
   if (layer === "L0" || layer === "L1") {
     return "not_recommended";
@@ -27,6 +58,9 @@ export function questPolicyForLayer(layer) {
 
 export function inferOutputContract(rawRequest) {
   const text = String(rawRequest).toLowerCase();
+  if (isAcknowledgementOnly(text) || isDirectResponseOnlyInstruction(text)) {
+    return "answer";
+  }
   if (includesAny(text, ["review", "리뷰", "검토", "find issues", "code review"])) {
     return "review";
   }
