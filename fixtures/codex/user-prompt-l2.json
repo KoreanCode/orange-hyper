@@ -1,0 +1,9 @@
+{
+  "session_id": "fixture-session",
+  "turn_id": "fixture-turn-l2",
+  "cwd": ".",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Implement durable memory policy decision handling",
+  "model": "gpt-5",
+  "permission_mode": "default"
+}

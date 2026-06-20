@@ -1,0 +1,8 @@
+{
+  "session_id": "fixture-session",
+  "turn_id": "fixture-turn-l2",
+  "cwd": ".",
+  "hook_event_name": "Stop",
+  "stop_hook_active": false,
+  "last_assistant_message": "Implemented the requested change."
+}

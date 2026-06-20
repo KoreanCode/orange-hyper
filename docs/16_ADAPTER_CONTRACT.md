@@ -69,6 +69,14 @@ failure envelopes.
 
 `command` uses dot notation. The Seed Kernel command ids are:
 
+- `activation.plan`
+- `activation.apply`
+- `activation.status`
+- `activation.remove`
+- `binding.plan`
+- `binding.install`
+- `binding.status`
+- `binding.remove`
 - `quest.new`
 - `adapter.list`
 - `adapter.show`
@@ -106,6 +114,10 @@ failure envelopes.
 - `sync.status`
 - `doctor.run`
 - `identity.build`
+- `lifecycle.sessionStart`
+- `lifecycle.userPromptSubmit`
+- `lifecycle.postToolUse`
+- `lifecycle.stop`
 
 Unknown JSON-mode failures still use a dot-shaped command id such as
 `unknown.command` or `<command>.unknown`.
@@ -191,6 +203,43 @@ repair doctor findings, or mutate project memory/config.
 `orange eval report --write-report` is the only eval write path. It writes a
 Markdown report only under `.orange-hyper/evals/reports/`. `--write-report`
 does not accept a path or value.
+
+Activation Runtime commands are opt-in lifecycle surfaces with two separate
+scopes. `binding plan/install/status/remove` manages the user-scoped Codex Host
+Binding state. `activate plan/apply/status/remove` manages only repo-scoped
+Project Activation state. `activate apply` may initialize the project and write
+`.orange-hyper/local/activation.json`, but it must not register marketplaces,
+materialize plugin source, install or enable Codex plugins, mutate hook trust,
+or remove user-scoped binding state.
+
+Activation status must distinguish marketplace registration, plugin
+availability, plugin installation, plugin enablement, hook review/heartbeat,
+and project activation. If Codex does not expose a machine-readable state,
+adapters must keep it as `unknown` rather than infer it.
+
+`activate remove` removes only project-local activation/runtime state.
+`binding remove` removes only Orange-owned user-scoped marketplace, plugin
+source, and binding metadata; it must preserve project memory and project
+activation.
+
+Lifecycle commands read one JSON object from stdin and use Kernel-owned state
+transitions. They may write activation-scoped local runtime state, Quest state,
+Context Capsule, verification evidence candidate, working episode, Quest
+completion, and quality-gated pending Memory Proposal candidates. They must not
+accept Memory Proposals, create accepted graph nodes directly, install MCPs,
+spawn subagents, or store raw transcript/full tool output.
+
+The Codex host bridge is intentionally not an Adapter JSON command:
+
+```bash
+orange host codex hook session-start
+orange host codex hook user-prompt-submit
+orange host codex hook post-tool-use
+orange host codex hook stop
+```
+
+It returns Codex-native hook JSON such as
+`hookSpecificOutput.additionalContext` or `decision: "block"`.
 
 ## Command Examples
 

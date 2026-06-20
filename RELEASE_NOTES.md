@@ -1,5 +1,46 @@
 # Release Notes
 
+## Unreleased
+
+## v1.1.0-alpha.8
+
+Activation Runtime Release Candidate.
+
+- Package version is `1.1.0-alpha.8`.
+- Codex plugin version is `1.1.0-alpha.8`.
+- README version is `1.1-doc.8`.
+- Release date is `2026-06-19`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- GitHub tag, GitHub Release, and npm publish state were checked before the
+  version bump. `v1.1.0-alpha.8` and `1.1.0-alpha.8` were not present, so this
+  prerelease does not reuse an already published version.
+
+- Added the user-scoped `orange binding plan/install/status/remove --host codex`
+  command family while keeping Adapter JSON `contract_version: "0.1"`.
+- Separated Codex Host Binding from repo-scoped Project Activation. `activate
+  apply` now writes only project activation/runtime state and no longer
+  materializes project-local Codex plugin or marketplace files.
+- Added deterministic Orange binding fingerprint and same-session
+  current/partial/stale lifecycle health rules. A project is not active until
+  project activation and current-fingerprint `SessionStart`,
+  `UserPromptSubmit`, and `Stop` events are observed inside the freshness
+  window.
+- Added a documented 24-hour lifecycle freshness window. A complete lifecycle
+  outside that window is `stale`, and events from different sessions are not
+  merged into a complete lifecycle.
+- Hardened `binding remove` so removing Orange marketplace/source/metadata does
+  not claim Codex plugin uninstall or enable-state changes when those states
+  cannot be confirmed through an official machine-readable surface.
+- Hardened Codex hook launchers, including Windows `commandWindows`, safe JSON
+  failure output, `ORANGE_HYPER_BIN`, PATH, and user-local install fallbacks.
+- Added deterministic multi-turn Quest continuity so follow-up turns can reuse
+  the current Quest, while unrelated L1 turns do not complete prior work.
+- Updated Stop verification soft gate wording: missing PostToolUse evidence is
+  reported as not observed, not as proof tests were not run. Stop continues at
+  most once and does not mark evidence-free work as verified.
+- Added `docs/27_CODEX_BINDING_E2E.md` to distinguish local fixture validation
+  from real Codex UI install/enable/hook-review verification.
+
 ## v1.1.0-alpha.7
 
 Standalone Distribution Foundation.

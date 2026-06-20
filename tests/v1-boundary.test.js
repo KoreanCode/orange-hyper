@@ -5,18 +5,23 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { CODEX_PLUGIN_FILES, CODEX_PLUGIN_VERSION } from "../src/adapters/codex/pluginAssets.js";
 import { JSON_CONTRACT_VERSION } from "../src/cli/index.js";
 import { initWorkspace, ORANGE_GITIGNORE } from "../src/core/config.js";
 import { acceptMemoryDelta, proposeMemoryDelta } from "../src/core/memory.js";
+import { ORANGE_HYPER_VERSION } from "../src/core/origin.js";
 import { workspacePaths } from "../src/core/paths.js";
 import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.7";
-const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.7";
+const EXPECTED_README_VERSION = "1.1-doc.8";
+const EXPECTED_PACKAGE_VERSION = "1.1.0-alpha.8";
 const COMMAND_SURFACE = [
   "init",
+  "activate",
+  "lifecycle",
+  "host",
   "quest",
   "route",
   "capsule",
@@ -26,6 +31,7 @@ const COMMAND_SURFACE = [
   "mcp",
   "growth",
   "adapter",
+  "binding",
   "eval",
   "sync",
   "env",
@@ -87,6 +93,8 @@ test("all supported JSON success commands keep contract_version 0.1", () => {
     ["adapter.list", ["adapter", "list", "--json"]],
     ["adapter.show", ["adapter", "show", "project-status", "--json"]],
     ["adapter.dryRun", ["adapter", "dry-run", "project-status", "--json"]],
+    ["binding.plan", ["binding", "plan", "--host", "codex", "--scope", "user", "--json"]],
+    ["binding.status", ["binding", "status", "--host", "codex", "--json"]],
     ["environment.show", ["env", "--json"]],
     ["eval.snapshot", ["eval", "snapshot", "--json"]],
     ["eval.report", ["eval", "report", "--json"]],
@@ -112,8 +120,13 @@ test("all supported JSON success commands keep contract_version 0.1", () => {
     ["doctor.run", ["doctor", "--json"]]
   ];
 
+  const bindingHome = fs.mkdtempSync(path.join(os.tmpdir(), "orange-v1-binding-home-"));
   for (const [command, args] of cases) {
-    assertJsonCommand(runOrange(args, cwd), command);
+    const commandId = String(command);
+    const options = commandId.startsWith("binding.")
+      ? { env: { ORANGE_HYPER_HOME: bindingHome } }
+      : {};
+    assertJsonCommand(runOrange(args, cwd, options), commandId);
   }
 });
 
@@ -158,13 +171,36 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.1-doc.7", () => {
+test("README version metadata stays synchronized at 1.1-doc.8", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);
     assert.ok(match, `${file} should expose README version metadata`);
     assert.equal(match[1], EXPECTED_README_VERSION, file);
   }
+});
+
+test("release version surfaces stay aligned without changing adapter contract", () => {
+  const packageData = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"));
+  const packageLock = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package-lock.json"), "utf8"));
+  const pluginFixture = JSON.parse(fs.readFileSync(path.join(process.cwd(), "adapters", "codex", "plugin", ".codex-plugin", "plugin.json"), "utf8"));
+  const pluginTemplate = JSON.parse(CODEX_PLUGIN_FILES[".codex-plugin/plugin.json"]);
+  const releaseNotes = fs.readFileSync(path.join(process.cwd(), "RELEASE_NOTES.md"), "utf8");
+  const env = assertJsonCommand(runOrange(["env", "--json"], tempWorkspace()), "environment.show");
+
+  assert.equal(packageData.version, EXPECTED_PACKAGE_VERSION);
+  assert.equal(packageLock.version, EXPECTED_PACKAGE_VERSION);
+  assert.equal(packageLock.packages[""].version, EXPECTED_PACKAGE_VERSION);
+  assert.equal(ORANGE_HYPER_VERSION, EXPECTED_PACKAGE_VERSION);
+  assert.equal(CODEX_PLUGIN_VERSION, EXPECTED_PACKAGE_VERSION);
+  assert.equal(pluginFixture.version, EXPECTED_PACKAGE_VERSION);
+  assert.equal(pluginTemplate.version, EXPECTED_PACKAGE_VERSION);
+  assert.equal(env.data.version, EXPECTED_PACKAGE_VERSION);
+  assert.match(releaseNotes, /## v1\.1\.0-alpha\.8/);
+  assert.match(releaseNotes, /Package version is `1\.1\.0-alpha\.8`/);
+  assert.match(releaseNotes, /Codex plugin version is `1\.1\.0-alpha\.8`/);
+  assert.match(releaseNotes, /Adapter JSON `contract_version` remains `"0\.1"`/);
+  assert.equal(JSON_CONTRACT_VERSION, "0.1");
 });
 
 test("shared and local state policy remains explicit", () => {
@@ -348,9 +384,13 @@ function parseJsonOnly(raw) {
   return JSON.parse(raw);
 }
 
-function runOrange(args, cwd) {
+function runOrange(args, cwd, options = {}) {
   return spawnSync(process.execPath, [ORANGE_BIN.pathname, ...args], {
     cwd,
+    env: {
+      ...process.env,
+      ...(options.env || {})
+    },
     encoding: "utf8"
   });
 }

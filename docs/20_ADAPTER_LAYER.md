@@ -8,6 +8,11 @@ subagent orchestrator, or auto planner. It is the first contract that tells a
 natural-language layer, skill layer, or agent adapter how to call the Orange
 Kernel safely.
 
+Activation Runtime v0.1 is the first limited runtime track. It does not replace
+the Adapter Invocation Contract. `activate` and `lifecycle` commands still use
+the Adapter JSON envelope, while `host codex hook ...` returns Codex-native hook
+JSON for Codex itself.
+
 The core principle:
 
 ```text
@@ -54,6 +59,10 @@ delete files under `.orange-hyper/` directly.
 Adapters must parse only `--json` output. Human-readable output is display text
 for people and is not a stable machine interface.
 
+Host bindings must also avoid duplicating Kernel state logic. The Codex bridge
+maps hook input/output only; Route, Quest, evidence, Stop verification, working
+episode, and pending proposal behavior live in the lifecycle Kernel.
+
 ## Install Policy For AI/Adapters
 
 Adapters should discover Orange before trying to install it:
@@ -76,11 +85,30 @@ npm install -D orange-hyper
 
 The npm path is allowed only when the user explicitly asks for it. If npm
 fallback is used for a temporary check, specify `orange-hyper@alpha` or an exact
-version such as `orange-hyper@1.1.0-alpha.7`.
+version such as `orange-hyper@1.1.0-alpha.8`.
 
 After install or PATH confirmation, the adapter should use `orange init --json`
-and then the `project-sync` recipe. It must not create or modify project
-`package.json`, `package-lock.json`, or `node_modules`.
+and then the `project-sync` recipe when the user wants generated structure and
+Identity output. It must not create or modify project `package.json`,
+`package-lock.json`, or `node_modules`.
+
+For supported host activation, the adapter should prefer:
+
+```bash
+orange binding plan --host codex --scope user --json
+orange binding install --host codex --scope user --json
+orange binding status --host codex --json
+orange activate plan --host codex --scope project --json
+orange activate apply --host codex --scope project --json
+orange activate status --host codex --json
+```
+
+Binding is user-scoped and activation is repo-scoped. Marketplace registration
+is not plugin installation; plugin source is not plugin enablement; one
+heartbeat is not operational lifecycle health. When Codex state cannot be
+confirmed, keep it as `unknown`. `status` must not report `active` until the
+project is activated and required current-fingerprint lifecycle events are
+observed.
 
 ## Boundary Flags
 

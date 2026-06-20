@@ -7,8 +7,8 @@ import { workspacePaths } from "./paths.js";
 import { nowIso } from "./time.js";
 
 export const STRUCTURE_GRAPH_SCHEMA_VERSION = /** @type {1} */ (1);
-export const STRUCTURE_GRAPH_VERSION = "1.1.0-alpha.7";
-export const STRUCTURE_STATUS_VERSION = "1.1.0-alpha.7";
+export const STRUCTURE_GRAPH_VERSION = "1.1.0-alpha.8";
+export const STRUCTURE_STATUS_VERSION = "1.1.0-alpha.8";
 
 const STRUCTURE_NODE_TYPES = new Set([
   "project",

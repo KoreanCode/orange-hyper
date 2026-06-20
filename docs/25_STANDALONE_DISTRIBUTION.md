@@ -207,6 +207,8 @@ Bundle requirements:
 - no runtime npm dependency remains outside Node built-ins;
 - no dynamic filesystem import is required to load `src/**`;
 - the same CLI commands and JSON envelopes are preserved;
+- `binding status --host codex --json` works from the standalone bundle without
+  creating project package files;
 - Adapter JSON `contract_version` remains `"0.1"`.
 
 ## Node SEA
@@ -291,7 +293,7 @@ When a user asks an AI to set up Orange Hyper, the AI should:
    `node_modules`.
 7. Use npm only when the user explicitly requests the npm path.
 8. If npm fallback is used, specify `orange-hyper@alpha` or an exact version
-   such as `orange-hyper@1.1.0-alpha.7`.
+   such as `orange-hyper@1.1.0-alpha.8`.
 9. After install, run `orange init --json`, then the Project Sync recipe:
    `orange sync plan --json`, explicit user approval, `orange sync apply --json`,
    and `orange sync status --json`.
@@ -317,7 +319,7 @@ The npm package is not removed. It remains the developer and fallback channel.
   "contract_version": "0.1",
   "command": "environment.show",
   "data": {
-    "version": "1.1.0-alpha.7",
+    "version": "1.1.0-alpha.8",
     "distribution": "standalone",
     "executable": "/path/to/orange",
     "platform": "darwin",

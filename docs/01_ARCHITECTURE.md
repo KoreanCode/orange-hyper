@@ -23,6 +23,7 @@ Runtime Adapter Layer
 - Claude Code adapter
 - generic CLI adapter
 - future IDE adapter
+- user-scoped activation runtime host binding
 
 Storage Layer
 - .orange-hyper/graph nodes
@@ -31,6 +32,7 @@ Storage Layer
 - traces
 - proposals
 - local private memory
+- activation-scoped runtime state
 ```
 
 핵심 원칙은 core가 특정 모델이나 특정 agent client에 종속되지 않는 것이다. Codex hooks, Codex skills, MCP configuration, subagent TOML은 adapter에만 둔다.
@@ -165,6 +167,9 @@ Excluded memory:
       accepted/
       rejected/
   local/
+    activation.json
+    runtime/
+    episodes/
 ```
 
 `local/`은 기본적으로 `.gitignore` 대상이다. v0.2에서 `graph/`는 accepted proposal이 만드는 node 후보 저장소이며, active retrieval이나 graph rendering은 아직 하지 않는다.
@@ -177,7 +182,18 @@ Excluded memory:
 observed → proposed → accepted/rejected → indexed → retrieved
 ```
 
-자동 기록은 trace까지만 허용한다. 장기 기억으로 승격하려면 사용자 승인 또는 명시적 정책이 필요하다.
+Activation Runtime 이전의 자동 기록은 trace까지만 허용했다. v0.1 Activation Runtime은 이 경계를 다음처럼 정교화한다.
+
+```text
+No automatic durable/shared-memory acceptance.
+```
+
+Activation Runtime은 두 생명주기를 분리한다. Host Binding은 사용자 Codex 환경에
+한 번 설치되는 user-scoped 상태이며, Project Activation은 repository마다 선택되는
+repo-scoped 상태다. 활성화된 프로젝트에서는 local runtime state, Quest state,
+Context Capsule, verification evidence candidate, working episode, quality-gated
+pending Memory Proposal 후보를 activation policy 범위 안에서 자동으로 쓸 수 있다.
+장기 공유 기억으로 승격하려면 여전히 명시적 `remember accept`가 필요하다.
 
 ## 6. MVP 구현 범위
 
@@ -205,6 +221,12 @@ v0.2에서 하지 않을 것:
 - LLM API 호출 필수화
 - Memory Graph rendering
 - 자동 memory write
+
+Activation Runtime은 별도 opt-in track이다. 설치된 binary만으로 활성 상태가 되지
+않으며, `orange binding install --host codex --scope user --json`과 Codex의
+plugin install/enable/hook review가 project activation과 구분된다. 실제 active
+판정은 project activation과 현재 binding fingerprint의 필수 lifecycle heartbeat
+이벤트가 모두 있을 때만 가능하다.
 
 ## 7. 기술 스택 제안
 

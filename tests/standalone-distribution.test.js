@@ -9,7 +9,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const BUNDLE = path.join(ROOT, "dist", "standalone", "orange.cjs");
-const VERSION = "1.1.0-alpha.7";
+const VERSION = "1.1.0-alpha.8";
 
 test("standalone CommonJS bundle preserves JSON contracts in a fresh non-Node project", () => {
   buildStandaloneBundle();
@@ -23,8 +23,10 @@ test("standalone CommonJS bundle preserves JSON contracts in a fresh non-Node pr
   assert.match(env.data.distribution, /^(source|npm)$/);
   assert.equal(env.data.node_runtime_embedded, false);
   assert.equal(env.data.project_initialized, false);
+  assertJsonCommand(runBundle(["binding", "status", "--host", "codex", "--json"], cwd), "binding.status");
 
   const commands = [
+    ["binding", "status", "--host", "codex", "--json"],
     ["init", "--json"],
     ["sync", "plan", "--json"],
     ["sync", "apply", "--json"],
@@ -59,7 +61,7 @@ test("release manifest records platform assets and checksums", () => {
     "--version",
     VERSION,
     "--release-url",
-    "https://example.test/releases/v1.1.0-alpha.7"
+    "https://example.test/releases/v1.1.0-alpha.8"
   ], {
     cwd: ROOT,
     encoding: "utf8"
@@ -75,7 +77,7 @@ test("release manifest records platform assets and checksums", () => {
     assert.match(asset.arch, /^(x64|arm64)$/);
     assert.match(asset.filename, /^orange-/);
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
-    assert.match(asset.download_url, /^https:\/\/example\.test\/releases\/v1\.1\.0-alpha\.7\/orange-/);
+    assert.match(asset.download_url, /^https:\/\/example\.test\/releases\/v1\.1\.0-alpha\.8\/orange-/);
     assert.equal(typeof asset.signed, "boolean");
     assert.equal(typeof asset.experimental, "boolean");
   }
@@ -115,7 +117,7 @@ test("release asset gate requires installers, metadata, and all supported binari
         arch: filename.includes("arm64") ? "arm64" : "x64",
         filename,
         sha256: "0".repeat(64),
-        download_url: `https://example.test/releases/v1.1.0-alpha.7/${filename}`,
+        download_url: `https://example.test/releases/v1.1.0-alpha.8/${filename}`,
         signed: false,
         experimental: filename === "orange-macos-x64"
       }))
@@ -135,7 +137,7 @@ test("release asset gate requires installers, metadata, and all supported binari
     "--manifest",
     manifestPath,
     "--release-url",
-    "https://example.test/releases/v1.1.0-alpha.7",
+    "https://example.test/releases/v1.1.0-alpha.8",
     "--version",
     VERSION
   ], {
@@ -145,7 +147,7 @@ test("release asset gate requires installers, metadata, and all supported binari
   assert.equal(ok.status, 0, ok.stderr || ok.stdout);
 
   writeManifest((manifest) => {
-    manifest.version = "1.1.0-alpha.6";
+    manifest.version = "1.1.0-alpha.7";
   });
   const wrongVersion = spawnSync(process.execPath, [
     path.join(ROOT, "scripts", "check-release-assets.js"),
@@ -160,7 +162,7 @@ test("release asset gate requires installers, metadata, and all supported binari
     encoding: "utf8"
   });
   assert.notEqual(wrongVersion.status, 0);
-  assert.match(wrongVersion.stderr, /release-manifest\.json version must be 1\.1\.0-alpha\.7/);
+  assert.match(wrongVersion.stderr, /release-manifest\.json version must be 1\.1\.0-alpha\.8/);
 
   writeManifest((manifest) => {
     manifest.assets[0].sha256 = "";

@@ -143,6 +143,10 @@ MB4: deep retrieval with user-visible context expansion
 - L1: 파일 수정/검증/tool 사용이 있으면 선택 노출.
 - L2 이상: 기본 노출.
 - L4 이상: 노출 + 확인.
+- Activation Runtime에서는 L0/L1에 Quest를 자동 생성하지 않는다.
+- Activation Runtime에서는 L2/L3에 Quest와 Context Capsule을 자동 생성할 수 있다.
+- L4는 Route와 confirmation reason을 만들 수 있지만 확인 전 진행을 block한다.
+- L5는 명시적 opt-in 없이는 자동 진입하지 않는다.
 
 route 공개는 사용자가 과잉 절차를 막거나, 반대로 더 강한 검증을 요구할 수 있게 하기 위한 장치다.
 

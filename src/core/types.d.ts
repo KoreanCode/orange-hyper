@@ -7,9 +7,17 @@ export interface JsonObject {
 export type AdapterContractVersion = "0.1";
 
 export type CommandId =
+  | "activation.plan"
+  | "activation.apply"
+  | "activation.status"
+  | "activation.remove"
   | "adapter.list"
   | "adapter.show"
   | "adapter.dryRun"
+  | "binding.plan"
+  | "binding.install"
+  | "binding.status"
+  | "binding.remove"
   | "capsule.build"
   | "doctor.run"
   | "environment.show"
@@ -28,6 +36,10 @@ export type CommandId =
   | "hook.runSessionStart"
   | "hook.runStop"
   | "identity.build"
+  | "lifecycle.sessionStart"
+  | "lifecycle.userPromptSubmit"
+  | "lifecycle.postToolUse"
+  | "lifecycle.stop"
   | "mcp.list"
   | "mcp.show"
   | "mcp.suggest"
@@ -653,11 +665,17 @@ export interface HookPreviewResult {
 
 export interface HookStatusResult {
   previewAvailable: true;
-  installed: false;
+  installed: boolean;
   readOnly: true;
   autoMutation: false;
   supportedEvents: HookEvent[];
   unsupportedEvents: string[];
+  runtimeAvailable: boolean;
+  runtimeSupportedEvents: string[];
+  bindingInstalled: boolean;
+  bindingStatus: string;
+  activationStatus: string;
+  lastHeartbeat: string | null;
   localReport: HookReportStatus;
   project: HookProjectSnapshot;
   warnings: HookWarning[];

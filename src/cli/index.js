@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { runCodexHook, safeCodexHookFailure } from "../adapters/codex/host.js";
+import { activationApply, activationPlan, activationRemove, activationStatus } from "../core/activation.js";
 import { dryRunAdapterRecipe, listAdapterRecipes, showAdapterRecipe } from "../core/adapter.js";
+import { bindingInstall, bindingPlan, bindingRemove, bindingStatus } from "../core/binding.js";
 import { generateCapsule } from "../core/capsule.js";
 import { initWorkspace, readProjectIdentity, requireInitialized } from "../core/config.js";
 import { runDoctor } from "../core/doctor.js";
@@ -23,6 +26,7 @@ import {
 import { ORANGE_HYPER_VERSION, originMetadata } from "../core/origin.js";
 import { workspacePaths } from "../core/paths.js";
 import { buildRouteContract, appendRouteTrace, formatRouteLine } from "../core/route.js";
+import { runLifecycleEvent } from "../core/lifecycle.js";
 import { completeQuest, createQuest, findQuest, listQuests } from "../core/quest.js";
 import { asArray } from "../core/text.js";
 import { applySyncPlan, buildSyncPlan, getSyncStatus, recordIdentityBuildFailure } from "../core/sync.js";
@@ -115,10 +119,22 @@ export const EXIT_CODES = {
 export const JSON_CONTRACT_VERSION = "0.1";
 
 const COMMAND_IDS = {
+  activation: {
+    plan: "activation.plan",
+    apply: "activation.apply",
+    status: "activation.status",
+    remove: "activation.remove"
+  },
   adapter: {
     list: "adapter.list",
     show: "adapter.show",
     "dry-run": "adapter.dryRun"
+  },
+  binding: {
+    plan: "binding.plan",
+    install: "binding.install",
+    status: "binding.status",
+    remove: "binding.remove"
   },
   capsule: "capsule.build",
   doctor: "doctor.run",
@@ -151,6 +167,12 @@ const COMMAND_IDS = {
     build: "identity.build"
   },
   init: "project.init",
+  lifecycle: {
+    "session-start": "lifecycle.sessionStart",
+    "user-prompt-submit": "lifecycle.userPromptSubmit",
+    "post-tool-use": "lifecycle.postToolUse",
+    stop: "lifecycle.stop"
+  },
   mcp: {
     list: "mcp.list",
     show: "mcp.show",
@@ -207,6 +229,26 @@ export async function main(argv = process.argv.slice(2), env = {}) {
       return;
     }
     write(io, `Initialized ${path.relative(cwd, paths.root)}`);
+    return;
+  }
+
+  if (command === "activate") {
+    await activationCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "binding") {
+    await bindingCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "lifecycle") {
+    await lifecycleCommand(cwd, io, rest);
+    return;
+  }
+
+  if (command === "host") {
+    await hostCommand(cwd, io, rest);
     return;
   }
 
@@ -317,6 +359,121 @@ export async function main(argv = process.argv.slice(2), env = {}) {
   }
 
   throw new Error(`Unknown command: ${command}`);
+}
+
+async function activationCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    write(io, activationUsage());
+    return;
+  }
+  const args = parseActivationArgs(rest, { scopeRequired: subcommand !== "status" });
+  const options = {
+    host: args.flags.host,
+    scope: args.flags.scope || "project"
+  };
+  let result;
+  let commandId;
+  if (subcommand === "plan") {
+    result = activationPlan(cwd, options);
+    commandId = COMMAND_IDS.activation.plan;
+  } else if (subcommand === "apply") {
+    result = activationApply(cwd, options);
+    commandId = COMMAND_IDS.activation.apply;
+  } else if (subcommand === "status") {
+    result = activationStatus(cwd, options);
+    commandId = COMMAND_IDS.activation.status;
+  } else if (subcommand === "remove") {
+    result = activationRemove(cwd, options);
+    commandId = COMMAND_IDS.activation.remove;
+  } else {
+    throw new Error(`Unknown activate command: ${subcommand}`);
+  }
+  if (args.flags.json) {
+    writeJson(io, jsonOk(commandId, result));
+    return;
+  }
+  write(io, formatActivationResult(result));
+}
+
+async function bindingCommand(cwd, io, argv) {
+  const [subcommand, ...rest] = argv;
+  if (!subcommand || subcommand === "help" || subcommand === "--help" || subcommand === "-h") {
+    write(io, bindingUsage());
+    return;
+  }
+  const args = parseBindingArgs(rest, { scopeRequired: subcommand !== "status" });
+  const options = {
+    host: args.flags.host,
+    scope: args.flags.scope || "user"
+  };
+  let result;
+  let commandId;
+  if (subcommand === "plan") {
+    result = bindingPlan(cwd, options);
+    commandId = COMMAND_IDS.binding.plan;
+  } else if (subcommand === "install") {
+    result = bindingInstall(cwd, options);
+    commandId = COMMAND_IDS.binding.install;
+  } else if (subcommand === "status") {
+    result = bindingStatus(cwd, options);
+    commandId = COMMAND_IDS.binding.status;
+  } else if (subcommand === "remove") {
+    result = bindingRemove(cwd, options);
+    commandId = COMMAND_IDS.binding.remove;
+  } else {
+    throw new Error(`Unknown binding command: ${subcommand}`);
+  }
+  if (args.flags.json) {
+    writeJson(io, jsonOk(commandId, result));
+    return;
+  }
+  write(io, formatBindingResult(result));
+}
+
+async function lifecycleCommand(cwd, io, argv) {
+  const [event, ...rest] = argv;
+  if (!event || event === "help" || event === "--help" || event === "-h") {
+    write(io, lifecycleUsage());
+    return;
+  }
+  const args = parseLifecycleArgs(rest);
+  const input = await readJsonFromStdin(io);
+  const result = runLifecycleEvent(cwd, event, {
+    ...input,
+    host: args.flags.host || input.host || "codex"
+  });
+  const commandId = lifecycleCommandId(event);
+  if (args.flags.json) {
+    writeJson(io, jsonOk(commandId, result));
+    return;
+  }
+  write(io, formatLifecycleResult(result));
+}
+
+async function hostCommand(cwd, io, argv) {
+  const [host, subcommand, event, ...rest] = argv;
+  if (!host || host === "help" || host === "--help" || host === "-h") {
+    write(io, hostUsage());
+    return;
+  }
+  if (host === "codex" && (!subcommand || subcommand === "help" || subcommand === "--help" || subcommand === "-h")) {
+    write(io, hostUsage());
+    return;
+  }
+  if (host !== "codex" || subcommand !== "hook" || !event) {
+    throw new Error("Supported host command: orange host codex hook <session-start|user-prompt-submit|post-tool-use|stop>");
+  }
+  try {
+    const input = await readJsonFromStdin(io);
+    const output = runCodexHook(cwd, event, {
+      ...input,
+      host: "codex"
+    });
+    writeJson(io, output);
+  } catch (error) {
+    writeJson(io, safeCodexHookFailure(event, error));
+  }
 }
 
 async function adapterCommand(cwd, io, argv) {
@@ -968,7 +1125,7 @@ async function routeCommand(cwd, io, argv) {
 function parseArgs(argv) {
   const flags = {};
   const positionals = [];
-  const booleanFlags = new Set(["all", "completed", "force", "json", "open", "repair-project-id", "write-report"]);
+  const booleanFlags = new Set(["all", "completed", "force", "from-stdin", "json", "open", "repair-project-id", "write-report"]);
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (!value.startsWith("--")) {
@@ -994,6 +1151,51 @@ function parseArgs(argv) {
   return { flags, positionals };
 }
 
+function parseActivationArgs(argv, options = {}) {
+  const args = parseArgs(argv);
+  assertOnlyActivationFlags(args.flags);
+  if (args.positionals.length) {
+    throw new Error(`Unexpected activate argument: ${args.positionals[0]}`);
+  }
+  if (!args.flags.host) {
+    throw new Error("activate requires --host codex.");
+  }
+  if (options.scopeRequired && !args.flags.scope) {
+    throw new Error("activate plan/apply/remove require --scope project.");
+  }
+  return args;
+}
+
+function parseBindingArgs(argv, options = {}) {
+  const args = parseArgs(argv);
+  assertOnlyBindingFlags(args.flags);
+  if (args.positionals.length) {
+    throw new Error(`Unexpected binding argument: ${args.positionals[0]}`);
+  }
+  if (!args.flags.host) {
+    throw new Error("binding requires --host codex.");
+  }
+  if (options.scopeRequired && !args.flags.scope) {
+    throw new Error("binding plan/install/remove require --scope user.");
+  }
+  return args;
+}
+
+function parseLifecycleArgs(argv) {
+  const args = parseArgs(argv);
+  assertOnlyLifecycleFlags(args.flags);
+  if (args.positionals.length) {
+    throw new Error(`Unexpected lifecycle argument: ${args.positionals[0]}`);
+  }
+  if (!args.flags.host) {
+    throw new Error("lifecycle requires --host codex.");
+  }
+  if (args.flags["from-stdin"] !== true) {
+    throw new Error("lifecycle requires --from-stdin.");
+  }
+  return args;
+}
+
 function parseHookArgs(argv) {
   const args = parseArgs(argv);
   assertOnlyFlags(args.flags, new Set(["json", "write-report"]));
@@ -1017,6 +1219,30 @@ function assertOnlyFlags(flags, allowed) {
   for (const key of Object.keys(flags)) {
     if (!allowed.has(key)) {
       throw new Error(`Unsupported hook flag: --${key}`);
+    }
+  }
+}
+
+function assertOnlyActivationFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (!["host", "scope", "json"].includes(key)) {
+      throw new Error(`Unsupported activate flag: --${key}`);
+    }
+  }
+}
+
+function assertOnlyBindingFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (!["host", "scope", "json"].includes(key)) {
+      throw new Error(`Unsupported binding flag: --${key}`);
+    }
+  }
+}
+
+function assertOnlyLifecycleFlags(flags) {
+  for (const key of Object.keys(flags)) {
+    if (!["host", "from-stdin", "json"].includes(key)) {
+      throw new Error(`Unsupported lifecycle flag: --${key}`);
     }
   }
 }
@@ -1093,6 +1319,102 @@ function hookRunCommandId(event) {
     throw new Error(`Unsupported hook event: ${event}. Supported events: session-start, stop.`);
   }
   return commandId;
+}
+
+function lifecycleCommandId(event) {
+  const commandId = COMMAND_IDS.lifecycle[event];
+  if (!commandId) {
+    throw new Error(`Unsupported lifecycle event: ${event}. Supported events: session-start, user-prompt-submit, post-tool-use, stop.`);
+  }
+  return commandId;
+}
+
+async function readJsonFromStdin(io) {
+  const stream = io.stdin || process.stdin;
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of stream) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk));
+    size += buffer.length;
+    if (size > 1024 * 1024) {
+      throw new Error("stdin JSON exceeds the 1 MiB lifecycle input limit.");
+    }
+    chunks.push(buffer);
+  }
+  const source = Buffer.concat(chunks).toString("utf8").trim();
+  if (!source) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(source);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("stdin must contain one JSON object.");
+    }
+    return parsed;
+  } catch (error) {
+    throw new Error(`Invalid stdin JSON: ${error.message}`);
+  }
+}
+
+function formatActivationResult(result) {
+  return [
+    "Orange activation",
+    `Host: ${result.host}`,
+    `Scope: ${result.scope}`,
+    `Status: ${result.status}`,
+    `Project initialized: ${yesNo(result.project_initialized)}`,
+    `Binding available: ${yesNo(result.binding.available)}`,
+    `Binding status: ${result.binding.status}`,
+    `Hook trust: ${result.hook_trust.status}`,
+    `Last heartbeat: ${result.lifecycle.last_heartbeat || "none"}`,
+    `Requires restart: ${yesNo(result.requires_restart)}`,
+    `Rollback available: ${yesNo(result.rollback_available)}`
+  ].join("\n");
+}
+
+function formatBindingResult(result) {
+  return [
+    "Orange Codex binding",
+    `Host: ${result.host}`,
+    `Scope: ${result.scope}`,
+    `Status: ${result.effective_status}`,
+    `Marketplace: ${result.marketplace.status}`,
+    `Plugin availability: ${result.plugin.availability}`,
+    `Plugin installation: ${result.plugin_installation}`,
+    `Plugin enabled: ${result.plugin_enabled}`,
+    `Hook execution: ${result.hook_execution.status}`,
+    `Fingerprint: ${result.binding_fingerprint}`,
+    `Binding root: ${result.binding_root}`,
+    `Restart required: ${yesNo(result.restart_required)}`
+  ].join("\n");
+}
+
+function formatLifecycleResult(result) {
+  const lines = [
+    "Orange lifecycle",
+    `Event: ${result.event}`,
+    `Active: ${yesNo(result.active)}`,
+    `No-op: ${yesNo(result.noop)}`,
+    `Degraded: ${yesNo(result.degraded)}`,
+    `Continuation required: ${yesNo(result.continuation_required)}`,
+    `Completed: ${yesNo(result.completed)}`
+  ];
+  if (result.reason) {
+    lines.push(`Reason: ${result.reason}`);
+  }
+  if (result.block_reason) {
+    lines.push(`Block reason: ${result.block_reason}`);
+  }
+  if (result.continuation_reason) {
+    lines.push(`Continuation: ${result.continuation_reason}`);
+  }
+  if (result.quest?.id) {
+    lines.push(`Quest: ${result.quest.id}`);
+  }
+  if (result.evidence?.length) {
+    lines.push(`Evidence: ${result.evidence.length}`);
+  }
+  return lines.join("\n");
 }
 
 function formatQuestList(quests) {
@@ -1715,6 +2037,11 @@ function formatHookStatus(result) {
     `Auto mutation: ${yesNo(result.autoMutation)}`,
     `Supported events: ${result.supportedEvents.join(", ")}`,
     `Unsupported future events: ${result.unsupportedEvents.join(", ")}`,
+    `Runtime available: ${yesNo(result.runtimeAvailable)}`,
+    `Binding installed: ${yesNo(result.bindingInstalled)}`,
+    `Binding status: ${result.bindingStatus || "inactive"}`,
+    `Activation status: ${result.activationStatus || "inactive"}`,
+    `Last heartbeat: ${result.lastHeartbeat || "none"}`,
     `Local report: ${result.localReport.directory} (only with --write-report)`
   ];
   appendHookWarnings(lines, result.warnings);
@@ -2127,6 +2454,12 @@ function isValidationError(message) {
 }
 
 function defaultErrorHint(command = "command") {
+  if (command.startsWith("activation.")) {
+    return "Run `orange activate plan --host codex --scope project --json` before applying activation; active requires a real lifecycle heartbeat.";
+  }
+  if (command.startsWith("binding.")) {
+    return "Run `orange binding plan --host codex --scope user --json` before installing the user-scoped Codex Host Binding.";
+  }
   if (command.startsWith("adapter.")) {
     return "Run `orange adapter list` to inspect built-in recipe ids; adapter dry-runs describe commands but do not execute or mutate `.orange-hyper`.";
   }
@@ -2141,6 +2474,9 @@ function defaultErrorHint(command = "command") {
   }
   if (command.startsWith("hook.")) {
     return "Run `orange hook status` to inspect supported preview events; add `--write-report` only when you want a local report under `.orange-hyper/hooks/reports/`.";
+  }
+  if (command.startsWith("lifecycle.")) {
+    return "Run lifecycle commands with `--host codex --from-stdin --json` and pass one hook event JSON object on stdin.";
   }
   if (command.startsWith("sync.")) {
     return "Run `orange sync plan --json` for a read-only preview, then `orange sync apply --json` to update generated structure state.";
@@ -2478,6 +2814,19 @@ function usage() {
     "",
     "Commands:",
     "  init [--project <name>] [--force]",
+    "  binding plan --host codex --scope user [--json]",
+    "  binding install --host codex --scope user [--json]",
+    "  binding status --host codex [--json]",
+    "  binding remove --host codex --scope user [--json]",
+    "  activate plan --host codex --scope project [--json]",
+    "  activate apply --host codex --scope project [--json]",
+    "  activate status --host codex [--json]",
+    "  activate remove --host codex --scope project [--json]",
+    "  lifecycle session-start --host codex --from-stdin [--json]",
+    "  lifecycle user-prompt-submit --host codex --from-stdin [--json]",
+    "  lifecycle post-tool-use --host codex --from-stdin [--json]",
+    "  lifecycle stop --host codex --from-stdin [--json]",
+    "  host codex hook <session-start|user-prompt-submit|post-tool-use|stop>",
     "  adapter list [--json]",
     "  adapter show <recipe-id> [--json]",
     "  adapter dry-run <recipe-id> [--json]",
@@ -2517,6 +2866,54 @@ function usage() {
     "  hook run stop [--json] [--write-report]",
     "  identity build [--json]",
     "  doctor [--json] [--repair-project-id]"
+  ].join("\n");
+}
+
+function bindingUsage() {
+  return [
+    "orange binding <command>",
+    "",
+    "Commands:",
+    "  plan --host codex --scope user [--json]",
+    "  install --host codex --scope user [--json]",
+    "  status --host codex [--json]",
+    "  remove --host codex --scope user [--json]"
+  ].join("\n");
+}
+
+function activationUsage() {
+  return [
+    "orange activate <command>",
+    "",
+    "Commands:",
+    "  plan --host codex --scope project [--json]",
+    "  apply --host codex --scope project [--json]",
+    "  status --host codex [--json]",
+    "  remove --host codex --scope project [--json]"
+  ].join("\n");
+}
+
+function lifecycleUsage() {
+  return [
+    "orange lifecycle <event>",
+    "",
+    "Events:",
+    "  session-start --host codex --from-stdin [--json]",
+    "  user-prompt-submit --host codex --from-stdin [--json]",
+    "  post-tool-use --host codex --from-stdin [--json]",
+    "  stop --host codex --from-stdin [--json]"
+  ].join("\n");
+}
+
+function hostUsage() {
+  return [
+    "orange host <host> hook <event>",
+    "",
+    "Commands:",
+    "  codex hook session-start",
+    "  codex hook user-prompt-submit",
+    "  codex hook post-tool-use",
+    "  codex hook stop"
   ].join("\n");
 }
 

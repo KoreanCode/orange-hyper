@@ -74,7 +74,7 @@ channels. They must keep the same no-project-mutation policy.
 Allowed fallback examples:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.7 orange --help
+npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
 npx -y --package orange-hyper@alpha orange --help
 ```
 
@@ -87,7 +87,7 @@ Project-local npm install remains available only when the user explicitly asks
 for a Node-project-local dependency.
 
 ```bash
-npm install -D orange-hyper@1.1.0-alpha.7
+npm install -D orange-hyper@1.1.0-alpha.8
 ```
 
 This path is advanced/manual because it intentionally writes project npm files.
@@ -199,9 +199,11 @@ npm run check:readme-sync
 git diff --check
 node bin/orange.js --help
 node bin/orange.js env --json
+node bin/orange.js binding status --host codex --json
 npm run build:standalone
 node dist/standalone/orange.cjs --version
 node dist/standalone/orange.cjs --help
+node dist/standalone/orange.cjs binding status --host codex --json
 npm pack --dry-run --cache /private/tmp/orange-hyper-npm-cache
 ```
 
@@ -212,6 +214,7 @@ On each platform runner, verify the binary with `PATH` stripped of `node` and
 orange --version
 orange --help
 orange env --json
+orange binding status --host codex --json
 orange init --json
 orange sync plan --json
 orange sync apply --json

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { activationStatus } from "./activation.js";
 import { isInitialized, projectIdentityFromConfig } from "./config.js";
 import { runDoctor } from "./doctor.js";
 import { listGraphNodes } from "./graph.js";
@@ -88,13 +89,20 @@ export function previewHook(cwd = process.cwd(), options = {}) {
  */
 export function hookStatus(cwd = process.cwd(), options = {}) {
   const project = readProjectSnapshot(cwd);
+  const activation = safeActivationStatus(cwd);
   const data = {
     previewAvailable: true,
-    installed: false,
+    installed: Boolean(activation?.binding?.available),
     readOnly: true,
     autoMutation: false,
     supportedEvents: [...HOOK_SUPPORTED_EVENTS],
     unsupportedEvents: [...HOOK_UNSUPPORTED_EVENTS],
+    runtimeAvailable: true,
+    runtimeSupportedEvents: ["session-start", "user-prompt-submit", "post-tool-use", "stop"],
+    bindingInstalled: Boolean(activation?.binding?.available),
+    bindingStatus: activation?.binding?.status || "inactive",
+    activationStatus: activation?.status || "inactive",
+    lastHeartbeat: activation?.lifecycle?.last_heartbeat || null,
     localReport: {
       directory: REPORT_DIR_RELATIVE,
       defaultWrite: false,
@@ -110,6 +118,14 @@ export function hookStatus(cwd = process.cwd(), options = {}) {
     warnings: project.warning ? [project.warning] : []
   };
   return maybeWriteReport(cwd, "hook-status", data, options);
+}
+
+function safeActivationStatus(cwd) {
+  try {
+    return activationStatus(cwd, { host: "codex" });
+  } catch {
+    return null;
+  }
 }
 
 /**

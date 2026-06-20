@@ -103,13 +103,20 @@ Codex adapter는 다음을 제공할 수 있다.
 - optional hook script 생성
 - optional custom agent TOML template 생성
 - MCP install command proposal 생성
+- first-party Activation Runtime plugin bundle
+- Codex hook event input/output mapping
 
 Codex adapter가 하면 안 되는 것:
 
-- 자동 hook 활성화
+- lifecycle Kernel state logic 복제
+- hook trust를 확인하지 않고 active로 보고
 - 자동 MCP 설치
 - 자동 subagent 실행
 - project memory 전체 주입
+
+Activation Runtime에서 Codex host bridge는 Codex-native JSON만 반환한다. Route,
+Quest, evidence, memory, Stop verification 판단은 provider-neutral lifecycle Kernel이
+소유한다.
 
 ## 7. Subagent 정책
 
