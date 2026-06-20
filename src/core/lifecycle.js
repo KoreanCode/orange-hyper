@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { generateCapsule } from "./capsule.js";
-import { isInitialized } from "./config.js";
+import { initWorkspace, isInitialized } from "./config.js";
 import { runDoctor } from "./doctor.js";
 import { listGraphNodes } from "./graph.js";
 import { proposeMemoryDelta } from "./memory.js";
@@ -35,9 +35,6 @@ export function runLifecycleEvent(cwd = process.cwd(), event, input = {}, option
   const normalizedInput = normalizeInput(input, event);
   if (!isLifecycleActivated(cwd, normalizedInput.host)) {
     return inactiveResult(cwd, event, normalizedInput);
-  }
-  if (!isInitialized(cwd)) {
-    return degradedResult(cwd, event, normalizedInput, "Project has activation policy but is not initialized.");
   }
   const heartbeat = recordHeartbeat(cwd, eventNameForCodex(event), normalizedInput, options);
   switch (event) {
@@ -147,6 +144,8 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
     return { ...result, heartbeat };
   }
   if (contract.layer === "L4") {
+    ensureProjectWorkspace(cwd);
+    const requestRecord = lifecycleRequestRecord(prompt, contract);
     const result = {
       ...baseResult,
       blocked: true,
@@ -157,7 +156,7 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
         "Pause for explicit user confirmation before destructive, security, payment, auth, migration, production, or external side-effect work."
       ].join("\n"))
     };
-    appendRouteTrace(cwd, prompt, contract, { clock: options.clock });
+    appendRouteTrace(cwd, requestRecord, contract, { clock: options.clock });
     writeTurn(cwd, turnKey, input, result, {
       processed: true,
       layer: contract.layer,
@@ -171,6 +170,11 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
 
   const intentSignature = normalizedIntentSignature(prompt);
   const scopeSignature = scopeSignatureFor(prompt);
+  const requestRecord = lifecycleRequestRecord(prompt, contract, {
+    intentSignature,
+    scopeSignature
+  });
+  ensureProjectWorkspace(cwd);
   const continuity = resolveQuestContinuity(cwd, input, {
     intentSignature,
     scopeSignature,
@@ -178,18 +182,18 @@ function lifecycleUserPromptSubmit(cwd, input, heartbeat, options) {
   });
   const questId = continuity.action === "continue_existing"
     ? continuity.quest_id
-    : `quest_${shortHash(turnKey)}_${slugify(prompt).slice(0, 48) || "codex-turn"}`;
+    : `quest_${shortHash(turnKey)}_${contract.layer.toLowerCase()}_${slugify(contract.output_contract) || "codex-turn"}`;
   const existingQuest = findQuestOrNull(cwd, questId);
-  const quest = existingQuest || createQuest(cwd, prompt, {
+  const quest = existingQuest || createQuest(cwd, requestRecord, {
     id: questId,
-    title: makeLifecycleTitle(prompt),
+    title: makeLifecycleTitle(contract, intentSignature),
     layer: contract.layer,
     outputContract: contract.output_contract,
     expectedVerification: expectedVerificationFor(contract),
     clock: options.clock
   });
   if (!existingQuest) {
-    appendRouteTrace(cwd, prompt, contract, { questId: quest.data.id, clock: options.clock });
+    appendRouteTrace(cwd, requestRecord, contract, { questId: quest.data.id, clock: options.clock });
   }
   const capsule = generateCapsule(cwd, quest.data.id, { clock: options.clock });
   const memory = smallMemorySlice(cwd, contract);
@@ -455,6 +459,12 @@ function buildSessionContext(cwd, input) {
     text: compactContext(lines.join("\n")),
     warnings
   };
+}
+
+function ensureProjectWorkspace(cwd) {
+  if (!isInitialized(cwd)) {
+    initWorkspace(cwd);
+  }
 }
 
 function smallMemorySlice(cwd, contract) {
@@ -772,9 +782,20 @@ function isL5Prompt(text) {
     || /자율\s*루프|레이드\s*모드/.test(text);
 }
 
-function makeLifecycleTitle(prompt) {
-  const title = prompt.replace(/\s+/g, " ").trim().slice(0, 80);
-  return title || "Codex lifecycle turn";
+function makeLifecycleTitle(contract, intentSignature) {
+  return `Codex lifecycle ${contract.layer} ${contract.output_contract} ${intentSignature.slice(0, 8)}`;
+}
+
+function lifecycleRequestRecord(prompt, contract, signatures = {}) {
+  const intentSignature = signatures.intentSignature || normalizedIntentSignature(prompt);
+  const scopeSignature = signatures.scopeSignature || scopeSignatureFor(prompt);
+  return [
+    "Lifecycle request summary",
+    `layer=${contract.layer}`,
+    `output_contract=${contract.output_contract}`,
+    `intent_signature=${intentSignature}`,
+    `scope_signature=${scopeSignature}`
+  ].join("; ");
 }
 
 function findQuestOrNull(cwd, selector) {
