@@ -587,11 +587,27 @@ function verificationPassed(command, response, exitStatus) {
   if (!isNodeInlineVerificationCommand(command)) {
     return false;
   }
-  return hasVerificationSuccessMarker(responseText(response));
+  const output = responseText(response);
+  if (hasVerificationSuccessMarker(output)) {
+    return true;
+  }
+  return hasFailFastInlineGuard(command) && hasGuardedVerificationSuccessMarker(output);
 }
 
 function hasVerificationSuccessMarker(value) {
   return /\bverification\s+passed\b|\bassertions?\s+(?:completed|passed)\b|\ball\s+assertions?\s+passed\b/i.test(String(value || ""));
+}
+
+function hasFailFastInlineGuard(command) {
+  return /throw\s+new\s+Error\b|process\.exit\s*\(\s*1\s*\)/i.test(String(command || ""));
+}
+
+function hasGuardedVerificationSuccessMarker(value) {
+  const text = String(value || "");
+  if (/\b(fail(?:ed|ure)?|error|exception|traceback)\b/i.test(text)) {
+    return false;
+  }
+  return /\b(?:verified|passed|ok)\b/i.test(text);
 }
 
 function exitStatusFromResponse(response) {
