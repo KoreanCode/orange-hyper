@@ -484,11 +484,11 @@ function buildToolEvidence(cwd, input, options) {
   const now = nowIso(options.clock);
   const toolName = safeString(input.tool_name) || "unknown";
   const toolInput = input.tool_input && typeof input.tool_input === "object" ? input.tool_input : {};
-  const toolResponse = input.tool_response && typeof input.tool_response === "object" ? input.tool_response : {};
+  const toolResponse = normalizeToolResponse(input.tool_response);
   const command = safeString(toolInput.command || toolInput.cmd || toolInput.description) || "";
   const exitStatus = exitStatusFromResponse(toolResponse);
-  const passed = exitStatus === 0;
   const isVerification = toolName === "Bash" && isVerificationCommand(command);
+  const passed = isVerification ? verificationPassed(command, toolResponse, exitStatus) : false;
   const touchedPaths = toolName === "apply_patch" ? parsePatchTouchedPaths(command) : [];
   const summary = summarizeToolResponse(command, toolResponse, {
     isVerification,
@@ -518,6 +518,16 @@ function buildToolEvidence(cwd, input, options) {
   };
 }
 
+function normalizeToolResponse(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (value && typeof value === "object") {
+    return value;
+  }
+  return {};
+}
+
 function summarizeToolResponse(command, response, options) {
   const commandLabel = command ? redact(command).slice(0, 160) : options.toolName;
   if (options.isVerification) {
@@ -530,30 +540,135 @@ function summarizeToolResponse(command, response, options) {
 }
 
 function boundedOutputSummary(response) {
-  const stdout = safeString(response.stdout || response.output || response.text || "");
-  const stderr = safeString(response.stderr || "");
-  const joined = [stdout, stderr].filter(Boolean).join("\n");
+  const joined = responseText(response);
   return redact(joined).replace(/\s+/g, " ").trim().slice(0, MAX_SUMMARY_CHARS);
 }
 
-function exitStatusFromResponse(response) {
-  for (const key of ["exit_code", "exitCode", "status", "code"]) {
-    if (Number.isInteger(response[key])) {
-      return response[key];
+function responseText(response) {
+  if (typeof response === "string") {
+    return response;
+  }
+  if (!response || typeof response !== "object") {
+    return "";
+  }
+  const parts = [];
+  collectTextFields(response, parts);
+  return parts.join("\n");
+}
+
+function collectTextFields(value, parts, seen = new Set(), depth = 0) {
+  if (depth > 6 || value == null) {
+    return;
+  }
+  if (typeof value === "string") {
+    if (value) {
+      parts.push(value);
+    }
+    return;
+  }
+  if (typeof value !== "object" || seen.has(value)) {
+    return;
+  }
+  seen.add(value);
+  for (const key of ["stdout", "stderr", "output", "text", "message"]) {
+    if (typeof value[key] === "string" && value[key]) {
+      parts.push(value[key]);
     }
   }
-  if (response.ok === true) {
+  for (const entry of Array.isArray(value) ? value : Object.values(value)) {
+    collectTextFields(entry, parts, seen, depth + 1);
+  }
+}
+
+function verificationPassed(command, response, exitStatus) {
+  if (exitStatus !== null) {
+    return exitStatus === 0;
+  }
+  if (!isNodeInlineVerificationCommand(command)) {
+    return false;
+  }
+  return hasVerificationSuccessMarker(responseText(response));
+}
+
+function hasVerificationSuccessMarker(value) {
+  return /\bverification\s+passed\b|\bassertions?\s+(?:completed|passed)\b|\ball\s+assertions?\s+passed\b/i.test(String(value || ""));
+}
+
+function exitStatusFromResponse(response) {
+  const explicit = findExitStatus(response);
+  if (explicit !== null) {
+    return explicit;
+  }
+  if (response?.ok === true) {
     return 0;
   }
-  if (response.ok === false) {
+  if (response?.ok === false) {
     return 1;
   }
   return null;
 }
 
+function findExitStatus(value, seen = new Set(), depth = 0) {
+  if (depth > 6 || value == null) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return exitStatusFromText(value);
+  }
+  if (typeof value !== "object") {
+    return null;
+  }
+  if (seen.has(value)) {
+    return null;
+  }
+  seen.add(value);
+
+  for (const key of ["exit_code", "exitCode", "exit_status", "exitStatus", "status", "code"]) {
+    if (Number.isInteger(value[key])) {
+      return value[key];
+    }
+  }
+  for (const entry of Array.isArray(value) ? value : Object.values(value)) {
+    const nested = findExitStatus(entry, seen, depth + 1);
+    if (nested !== null) {
+      return nested;
+    }
+  }
+  return null;
+}
+
+function exitStatusFromText(value) {
+  const text = String(value || "");
+  const patterns = [
+    /\bexit\s+code\s*:?\s*(-?\d+)\b/i,
+    /\bexit\s+status\s*:?\s*(-?\d+)\b/i,
+    /\bexited\s+with\s+(?:code|status)\s*:?\s*(-?\d+)\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return Number.parseInt(match[1], 10);
+    }
+  }
+  return null;
+}
+
 function isVerificationCommand(command) {
-  return /\b(npm|pnpm|yarn|node|bun|deno|cargo|go|pytest|python|ruff|eslint|tsc|vitest|jest|mocha|make)\b/i.test(command)
-    && /\b(test|check|typecheck|lint|build|verify|coverage|--test)\b/i.test(command);
+  const source = String(command || "");
+  return /\b(npm|pnpm|yarn|node|bun|deno|cargo|go|pytest|python|ruff|eslint|tsc|vitest|jest|mocha|make)\b/i.test(source)
+    && /\b(test|check|typecheck|lint|build|verify|coverage|--test)\b/i.test(source)
+    || isNodeInlineVerificationCommand(source);
+}
+
+function isNodeInlineVerificationCommand(command) {
+  if (!/\bnode\b/i.test(command)) {
+    return false;
+  }
+  const isEvalCommand = /(?:^|\s)(?:-e|--eval)(?:\s|=|$)/i.test(command);
+  if (!isEvalCommand) {
+    return false;
+  }
+  return /\bnode:assert\b|\bassert(?:\b|[.(])|throw\s+new\s+Error\b|process\.exit\s*\(\s*1\s*\)/i.test(command);
 }
 
 function parsePatchTouchedPaths(command) {

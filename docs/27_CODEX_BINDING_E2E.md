@@ -112,29 +112,31 @@ Environment:
 
 - Date: 2026-06-20 KST.
 - Platform: macOS arm64 (`Darwin 25.5.0 arm64`).
-- Codex version: `codex-cli 0.133.0`.
+- Codex version: `codex-cli 0.141.0`.
 - Orange version: `1.1.0-alpha.8`.
 - Codex plugin version: `1.1.0-alpha.8`.
-- Validation base commit: `8439d6215eafb915068a288e5885fa0dc1468a2d`.
-- Diagnostic commit: pending final merge commit.
+- Validation base commit: `92890995467a98107700daa424c8bdf7fd1343f0`.
+- Diagnostic commit: `Diagnose Codex plugin hooks for alpha.8`.
 - Binding fingerprint:
-  `71a074d4e20b26184428247323db0b2fbf1e644f72695f2305c804d771a29edb`.
+  `df05c483c1e949a3065df56a4531108da6c3a1a2542eeb6583e45511a1835bd1`.
 
 Setup:
 
 1. A current alpha.8 standalone candidate was built and used through
    `ORANGE_HYPER_BIN`.
-2. The E2E target was an isolated temporary git repository with no
-   `package.json`, `package-lock.json`, or `node_modules`.
-3. `binding status` started as `absent`; `binding plan` was read-only.
-4. `binding install` prepared user-scoped binding state and the marketplace at
+2. The E2E target was an isolated temporary git repository with only a minimal
+   README and small CommonJS source fixture before activation.
+3. The test project did not contain `package.json`, `package-lock.json`, or
+   `node_modules` before or after activation.
+4. `binding status` started as `absent`; `binding plan` was read-only.
+5. `binding install` prepared user-scoped binding state and the marketplace at
    `.agents/plugins/marketplace.json`.
-5. Codex plugin manager reported
+6. Codex plugin manager reported
    `orange-hyper-codex@orange-hyper-user` as installed, enabled, and version
    `1.1.0-alpha.8`.
-6. `activate apply` initially created only
-   `.orange-hyper/local/activation.json` and reported
-   `waiting_for_host_binding`, not `active`.
+7. `activate plan` was read-only.
+8. `activate apply` created project-local activation/runtime state and reported
+   `waiting_for_host_binding`, not `active`, before any lifecycle heartbeat.
 
 Real `/hooks` discovery and review:
 
@@ -146,37 +148,73 @@ Real `/hooks` discovery and review:
 | `Stop` | `Plugin - orange-hyper-codex@orange-hyper-user` | `"$PLUGIN_ROOT/hooks/run-orange.sh" stop` | Found and trusted |
 
 After review, Codex `/hooks` reported one installed and one active hook for
-each of `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`.
+each of `SessionStart`, `UserPromptSubmit`, `PostToolUse`, and `Stop`. The
+source for each reviewed hook was the installed Orange plugin, not the
+marketplace entry alone.
 
-Observed real lifecycle:
+Defects found in trusted real Codex runs:
+
+1. Stop success output used the wrong Codex schema.
+   - Symptom: after verification succeeded, Codex rejected the Stop hook output
+     as invalid because Orange returned `{"continue":true}`.
+   - Cause: Codex Stop accepts blocking continuation output, but successful Stop
+     completion must return an empty JSON object.
+   - Fix: native Stop success and degraded Stop fallback now return `{}`.
+2. Successful direct Node verification was not recognized when Codex omitted an
+   exit status from `PostToolUse`.
+   - Symptom: a direct Node assertion printed a success marker, but Orange
+     stored `exit_status: null`, `passed: false`, and `success_evidence: false`.
+   - Cause: the lifecycle evidence path discarded string `tool_response` values,
+     only recognized some runner-shaped verification commands, and required an
+     exit code even when Codex provided a bounded success marker but no exit
+     status.
+   - Fix: string and nested text tool responses are summarized safely; direct
+     `node -e` assertion commands are verification commands; exit status still
+     wins when present; without exit status, only a direct Node assertion with an
+     explicit verification/assertion success marker can become success evidence.
+
+Final patched real lifecycle:
 
 | Item | Result |
 | --- | --- |
-| New Codex thread after hook review | Pass |
-| `SessionStart` heartbeat | Pass at `2026-06-20T02:00:43.539Z` |
-| L1 `UserPromptSubmit` heartbeat | Pass at `2026-06-20T02:00:43.585Z` |
-| L1 `PostToolUse` heartbeat | Pass |
-| L1 `Stop` heartbeat | Pass at `2026-06-20T02:02:20.238Z` |
-| Same session and binding fingerprint | Pass |
-| `activate status` transition | Pass: `active`; binding `operational` |
-| L1 Quest/Capsule behavior | Pass: no Quest or Capsule created |
-| L2 `UserPromptSubmit` heartbeat | Pass |
+| New Codex thread after hook review and rebuild | Pass |
+| Candidate binary forced with `ORANGE_HYPER_BIN` | Pass |
+| `SessionStart` heartbeat | Pass at `2026-06-20T03:31:24.117Z` |
+| `UserPromptSubmit` heartbeat | Pass at `2026-06-20T03:31:24.193Z` |
+| `PostToolUse` heartbeat | Pass at `2026-06-20T03:31:59.303Z` |
+| `Stop` heartbeat | Pass at `2026-06-20T03:32:01.200Z` |
+| Same binding fingerprint | Pass |
+| `activate status` transition | Pass: `active`; binding `operational`; lifecycle `current` |
 | L2 route | Pass: `L2/P2/T2/V2/A0/M0/MB2` |
 | L2 Quest and Capsule | Pass: Quest created and current Capsule generated |
-| L2 `PostToolUse` heartbeat | Pass |
-| L2 verification failure classification | Pass: failed verification was not success evidence |
-| L2 `Stop` heartbeat | Blocked: not observed before the interactive session was interrupted |
-| L2 continuation count | Blocked: real `Stop` did not complete, so continuation count was not observed |
-| Same-work follow-up continuity in real Codex | Blocked |
-| Different L2 request creates new Quest in real Codex | Blocked |
-| `stop_hook_active` suppression in real Codex | Blocked |
+| Evidence-free first Stop | Pass: continuation requested |
+| Continuation count | Pass: exactly one continuation for the turn |
+| `stop_hook_active` suppression | Pass: no second continuation after evidence |
+| Verification evidence | Pass: direct Node assertion success marker recorded as success evidence |
+| Quest completion | Pass: active Quest count returned to `0` after the second Stop |
+| Raw output storage | Pass: evidence kept `raw_output_stored: false` and bounded summaries |
+| Project npm files | Pass: no `package.json`, `package-lock.json`, or `node_modules` |
+
+Final patched lifecycle counters:
+
+- Cumulative trusted-run event count in the isolated project:
+  `SessionStart=2`, `UserPromptSubmit=2`, `PostToolUse=29`, `Stop=4`.
+- Final patched turn:
+  `quest_c26af715e32c_l2_implementation`,
+  `continuation_requested=true`, `incomplete=false`,
+  `success_evidence=true`, `active_quests=0`.
+- Final `activate status`:
+  `active`, `complete_lifecycle_fresh`, current fingerprint
+  `df05c483c1e949a3065df56a4531108da6c3a1a2542eeb6583e45511a1835bd1`.
 
 Fixture coverage that passed:
 
 - marketplace standard location.
 - plugin bundle includes `hooks/hooks.json`.
+- manifest/default hook discovery assets are bundled.
 - POSIX launcher uses `ORANGE_HYPER_BIN` before PATH lookup.
 - POSIX and PowerShell launchers have safe JSON failure behavior.
+- Stop success and degraded fallback satisfy the Codex Stop schema.
 - inactive repositories no-op without creating Orange state.
 - current-fingerprint heartbeat status.
 - same-session complete lifecycle.
@@ -186,65 +224,47 @@ Fixture coverage that passed:
 - unrelated L1 Stop does not complete a previous L2 Quest.
 - missing verification evidence requests continuation exactly once.
 - `stop_hook_active` does not request another continuation.
+- evidence-free verification is not marked verified.
 - explicit unverified reason is required before unverified completion.
 - raw prompt text is not stored in Quest, Capsule, route trace, or runtime
   artifacts.
 
-Automatic validation that passed on the diagnostic branch:
+Automatic validation on the diagnostic branch:
 
-- `npm test`.
-- `npm run typecheck`.
-- `npm run check:readme-sync`.
-- `git diff --check`.
-- `node bin/orange.js --version`.
-- `node bin/orange.js env --json`.
-- `node bin/orange.js binding status --host codex --json`.
-- `node bin/orange.js activate status --host codex --json`.
-- `node bin/orange.js doctor --json`.
-- `npm run build:standalone`.
-- `dist/standalone/orange.cjs --version`.
-- `dist/standalone/orange.cjs binding status --host codex --json`.
-- `npm run build:sea`.
-- `dist/standalone/orange-macos-arm64 --version`.
-- `dist/standalone/orange-macos-arm64 binding status --host codex --json`.
-- `npm pack --dry-run`.
+- Focused lifecycle regression: `node --test tests/activation-runtime.test.js`
+  passed with 28 tests after the final evidence fix.
+- Full validation passed:
+  - `npm test`: 170 tests passed.
+  - `npm run typecheck`: passed.
+  - `npm run check:readme-sync`: passed.
+  - `git diff --check`: passed.
+  - `node bin/orange.js --version`: `1.1.0-alpha.8`.
+  - `node bin/orange.js env --json`: passed.
+  - `node bin/orange.js binding status --host codex --json`: passed.
+  - `node bin/orange.js activate status --host codex --json`: passed.
+  - `node bin/orange.js doctor --json`: passed.
+  - `npm run build:standalone`: passed.
+  - `dist/standalone/orange.cjs --version`: `1.1.0-alpha.8`.
+  - `dist/standalone/orange.cjs binding status --host codex --json`:
+    passed.
+  - `npm run build:sea`: passed for `dist/standalone/orange-macos-arm64`.
+  - `dist/standalone/orange-macos-arm64 --version`: `1.1.0-alpha.8`.
+  - `dist/standalone/orange-macos-arm64 binding status --host codex --json`:
+    passed.
+  - `npm pack --dry-run`: passed with a temporary npm cache after the default
+    user npm cache reported an `EPERM` cache ownership problem outside Orange.
 
-Defects found and fixed:
+Items not re-verified in real Codex after the final evidence fix:
 
-- The marketplace path defect was fixed in the preserved
-  `codex/activation-runtime-alpha8-e2e` branch and merged before this run.
-- `activate apply` initialized the full project memory tree before the first
-  L2 lifecycle event. It now writes only activation-local state; L2+ lifecycle
-  events initialize the project workspace only when Quest/Capsule artifacts are
-  actually needed.
-- L2 lifecycle artifacts previously used raw prompt text in durable Quest and
-  Capsule content. They now store a bounded summary with intent and scope
-  signatures instead of raw prompt text.
-- The regression suite now executes the POSIX hook launcher against a fake
-  candidate `ORANGE_HYPER_BIN`, proving the launcher does not silently select an
-  older PATH binary first.
-
-Root cause for the original no-heartbeat observation:
-
-- The hook definitions were pending real Codex `/hooks` review. After reviewing
-  and trusting the current definitions, Orange recorded `SessionStart`,
-  `UserPromptSubmit`, `PostToolUse`, and `Stop` heartbeats from the installed
-  plugin source. No plugin discovery, bundle path, executable permission,
-  launcher JSON, or Host Bridge failure was confirmed in the trusted-hook run.
-
-Items not verified in real Codex:
-
-- L2 `Stop` after successful verification evidence.
-- Evidence-free L2 `Stop` continuation exactly once.
-- `stop_hook_active` no-second-continuation behavior.
-- Same-work real follow-up continuing the same Quest.
-- Clearly different real L2 work creating a new Quest.
-- Real completed L2 Quest with verification evidence or explicit unverified
-  reason.
+- Same-work follow-up continuing the same Quest in an interactive Codex thread.
+- An unrelated L1 turn failing to complete a previous L2 Quest in an
+  interactive Codex thread.
+- Operational status when `PostToolUse` is absent in a real interactive thread.
 
 Release decision:
 
-- Keep the `v1.1.0-alpha.8` release gate blocked. The hook trust blocker is
-  resolved, but a full real Codex L2 Stop/continuation lifecycle was not
-  observed before session interruption. The automated fixture suite covers the
-  behavior, but fixture success is not real Codex E2E success.
+- Keep the `v1.1.0-alpha.8` release gate blocked for this diagnostic task.
+  The original hook-trust blocker is resolved, and the final patched run
+  proves trusted hooks, one-shot Stop continuation, verification evidence, and
+  active status. The release gate still requires the remaining interactive
+  Quest-continuity/isolation checks.

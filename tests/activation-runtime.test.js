@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { codexNativeOutput, safeCodexHookFailure } from "../src/adapters/codex/host.js";
 import { CODEX_PLUGIN_FILES, CODEX_PLUGIN_VERSION } from "../src/adapters/codex/pluginAssets.js";
 import { computeCodexBindingFingerprint, evaluateHookExecution } from "../src/core/binding.js";
 import { ORANGE_HYPER_VERSION } from "../src/core/origin.js";
@@ -462,9 +463,28 @@ test("Codex hook bundle includes Windows launchers with safe JSON behavior", () 
   assert.match(psTemplate, /ConvertTo-Json -Depth 8 -Compress/);
   assert.match(psTemplate, /ORANGE_HYPER_BIN/);
   assert.match(psTemplate, /orange\.exe/);
+  assert.match(psTemplate, /\$HookEvent -eq "Stop"/);
   assert.match(shTemplate, /ORANGE_HYPER_BIN/);
   assert.match(shTemplate, /printf '\{"continue":true/);
+  assert.match(shTemplate, /\$hook_event" = "Stop"/);
+  assert.match(shTemplate, /printf '\{\}\\n'/);
   assert.equal(fs.readFileSync(path.join(process.cwd(), "adapters", "codex", "plugin", "hooks", "run-orange.ps1"))[0], 112);
+});
+
+test("Codex Stop native output uses the Codex Stop schema", () => {
+  assert.deepEqual(codexNativeOutput("stop", {
+    continuation_required: true,
+    continuation_reason: "verification required"
+  }), {
+    decision: "block",
+    reason: "verification required"
+  });
+  assert.deepEqual(codexNativeOutput("stop", {
+    active: true,
+    completed: true,
+    continuation_required: false
+  }), {});
+  assert.deepEqual(safeCodexHookFailure("stop", new Error("bridge failed")), {});
 });
 
 test("Codex POSIX hook launcher executes the candidate ORANGE_HYPER_BIN", () => {
@@ -498,6 +518,33 @@ test("Codex POSIX hook launcher executes the candidate ORANGE_HYPER_BIN", () => 
       additionalContext: "candidate-bin"
     }
   });
+});
+
+test("Codex POSIX Stop launcher degraded fallback stays valid for Stop", () => {
+  const cwd = tempWorkspace();
+  const fakeBin = path.join(cwd, "candidate-orange");
+  fs.writeFileSync(fakeBin, [
+    "#!/usr/bin/env sh",
+    "printf '%s\\n' 'not-json'"
+  ].join("\n"));
+  fs.chmodSync(fakeBin, 0o755);
+
+  const launched = spawnSync("sh", [
+    path.join(process.cwd(), "adapters", "codex", "plugin", "hooks", "run-orange.sh"),
+    "stop"
+  ], {
+    cwd,
+    env: {
+      ...process.env,
+      ORANGE_HYPER_BIN: fakeBin,
+      PATH: "/usr/bin:/bin"
+    },
+    input: "{}",
+    encoding: "utf8"
+  });
+
+  assert.equal(launched.status, 0, launched.stderr);
+  assert.deepEqual(JSON.parse(launched.stdout), {});
 });
 
 test("UserPromptSubmit keeps L0/L1 light, creates L2 Quest/Capsule once, and blocks L4/L5", () => {
@@ -661,6 +708,152 @@ test("PostToolUse records bounded evidence, redacts secrets, and is idempotent",
   assert.ok(evidence.every((item) => String(item.output_summary || "").length <= 900));
 });
 
+test("PostToolUse treats direct Node assertions as verification evidence", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "node-assert",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  const command = "node --input-type=module -e \"const assert = await import('node:assert/strict'); assert.equal(1 + 1, 2);\"";
+  const result = host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "node-assert",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-assert",
+    tool_input: { command },
+    tool_response: {
+      content: [
+        { type: "text", text: "Exit code: 0\nAssertion completed." }
+      ]
+    }
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.match(result.hookSpecificOutput.additionalContext, /verification evidence candidate/);
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, 0);
+  assert.equal(evidence.passed, true);
+  assert.equal(evidence.success_evidence, true);
+  assert.equal(evidence.raw_output_stored, false);
+});
+
+test("PostToolUse parses string tool responses without storing raw output", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "string-response",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "string-response",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-string",
+    tool_input: {
+      command: "node --input-type=module -e \"import assert from 'node:assert/strict'; assert.equal(1 + 1, 2);\""
+    },
+    tool_response: "ok\nExit code: 0"
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, 0);
+  assert.equal(evidence.passed, true);
+  assert.equal(evidence.success_evidence, true);
+  assert.equal(evidence.output_summary, "ok Exit code: 0");
+  assert.equal(evidence.raw_output_stored, false);
+});
+
+test("PostToolUse accepts direct Node assertion success marker when Codex omits exit status", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "node-success-marker",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "node-success-marker",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-marker",
+    tool_input: {
+      command: "node -e \"const assert = require('node:assert/strict'); assert.equal(1 + 1, 2); console.log('verification passed: arithmetic');\""
+    },
+    tool_response: "verification passed: arithmetic"
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, null);
+  assert.equal(evidence.passed, true);
+  assert.equal(evidence.success_evidence, true);
+  assert.equal(evidence.output_summary, "verification passed: arithmetic");
+  assert.equal(evidence.raw_output_stored, false);
+});
+
+test("PostToolUse does not infer verification success from generic output without exit status", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "node-no-marker",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "node-no-marker",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-no-marker",
+    tool_input: {
+      command: "node -e \"const assert = require('node:assert/strict'); assert.equal(1 + 1, 2); console.log('done');\""
+    },
+    tool_response: "done"
+  });
+
+  const evidenceDir = path.join(cwd, ".orange-hyper", "local", "runtime", "evidence");
+  const evidence = JSON.parse(fs.readFileSync(path.join(evidenceDir, fs.readdirSync(evidenceDir)[0]), "utf8"));
+  assert.equal(evidence.evidence_kind, "verification");
+  assert.equal(evidence.exit_status, null);
+  assert.equal(evidence.passed, false);
+  assert.equal(evidence.success_evidence, false);
+  assert.equal(evidence.raw_output_stored, false);
+});
+
 test("Stop continues once for missing verification and keeps Quest incomplete without explicit reason", () => {
   const cwd = tempWorkspace();
   apply(cwd);
@@ -692,11 +885,69 @@ test("Stop continues once for missing verification and keeps Quest incomplete wi
   });
   assert.equal(first.decision, "block");
   assert.match(first.reason, /verification evidence를 관찰하지 못했습니다/);
-  assert.equal(second.continue, true);
-  assert.equal(second.hookSpecificOutput.hookEventName, "Stop");
-  assert.match(second.hookSpecificOutput.additionalContext, /Quest는 incomplete 상태/);
+  assert.deepEqual(second, {});
+  const turnDir = path.join(cwd, ".orange-hyper", "local", "runtime", "turns");
+  const turn = JSON.parse(fs.readFileSync(path.join(turnDir, fs.readdirSync(turnDir)[0]), "utf8"));
+  assert.match(turn.incomplete_reason, /Quest는 incomplete 상태/);
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "completed")), 0);
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 1);
+});
+
+test("Stop completes after continuation when direct Node verification succeeds", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "t1",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Implement bounded parser behavior",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  const first = host(cwd, "stop", {
+    session_id: "s1",
+    turn_id: "t1",
+    cwd,
+    hook_event_name: "Stop",
+    stop_hook_active: false,
+    last_assistant_message: "done"
+  });
+  host(cwd, "post-tool-use", {
+    session_id: "s1",
+    turn_id: "t1",
+    cwd,
+    hook_event_name: "PostToolUse",
+    tool_name: "Bash",
+    tool_use_id: "tool-node-assert",
+    tool_input: {
+      command: "node --input-type=module -e \"import assert from 'node:assert/strict'; assert.equal(1 + 1, 2);\""
+    },
+    tool_response: "Command finished. Exit code 0."
+  });
+  const second = host(cwd, "stop", {
+    session_id: "s1",
+    turn_id: "t1",
+    cwd,
+    hook_event_name: "Stop",
+    stop_hook_active: true,
+    last_assistant_message: "verified"
+  });
+
+  const turnDir = path.join(cwd, ".orange-hyper", "local", "runtime", "turns");
+  const turn = JSON.parse(fs.readFileSync(path.join(turnDir, fs.readdirSync(turnDir)[0]), "utf8"));
+  const completedDir = path.join(cwd, ".orange-hyper", "quests", "completed");
+  const completed = fs.readFileSync(path.join(completedDir, fs.readdirSync(completedDir)[0]), "utf8");
+
+  assert.equal(first.decision, "block");
+  assert.deepEqual(second, {});
+  assert.equal(turn.continuation_requested, true);
+  assert.equal(turn.incomplete, undefined);
+  assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 0);
+  assert.equal(countFiles(completedDir), 1);
+  assert.match(completed, /verification_status: verified/);
+  assert.match(completed, /node --input-type=module -e/);
 });
 
 test("Stop records unverified completion only with explicit reason", () => {
@@ -731,7 +982,7 @@ test("Stop records unverified completion only with explicit reason", () => {
   const completedDir = path.join(cwd, ".orange-hyper", "quests", "completed");
   const completed = fs.readFileSync(path.join(completedDir, fs.readdirSync(completedDir)[0]), "utf8");
 
-  assert.equal(second.continue, true);
+  assert.deepEqual(second, {});
   assert.match(completed, /verification_status: unverified/);
   assert.match(completed, /Tests not run because the fixture runner is unavailable/);
 });
@@ -788,7 +1039,7 @@ test("follow-up continues current Quest, different component creates new Quest, 
   assert.equal(first.hookSpecificOutput.hookEventName, "UserPromptSubmit");
   assert.equal(followUp.hookSpecificOutput.hookEventName, "UserPromptSubmit");
   assert.equal(followUp.hookSpecificOutput.additionalContext.includes(first.hookSpecificOutput.additionalContext.match(/Quest: (quest_[^\n]+)/)[1]), true);
-  assert.equal(l1Stop.continue, true);
+  assert.deepEqual(l1Stop, {});
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "completed")), 0);
   assert.equal(other.hookSpecificOutput.hookEventName, "UserPromptSubmit");
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 2);

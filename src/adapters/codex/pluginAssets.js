@@ -126,6 +126,10 @@ find_orange() {
 degraded() {
   hook_event="$1"
   message="$2"
+  if [ "$hook_event" = "Stop" ]; then
+    printf '{}\\n'
+    return 0
+  fi
   printf '{"continue":true,"systemMessage":"Orange Hyper binding degraded: %s","hookSpecificOutput":{"hookEventName":"%s","additionalContext":""}}\\n' "$message" "$hook_event"
 }
 
@@ -191,6 +195,10 @@ function Hook-Event-Name([string]$Name) {
 }
 
 function Write-Degraded([string]$HookEvent, [string]$Message) {
+  if ($HookEvent -eq "Stop") {
+    [Console]::Out.WriteLine("{}")
+    return
+  }
   $payload = @{
     continue = $true
     systemMessage = "Orange Hyper binding degraded: $Message"
