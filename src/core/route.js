@@ -30,7 +30,7 @@ function isDirectResponseOnlyInstruction(text) {
   }
   const clauses = normalized.split(/[;\n]+/).map((part) => part.trim()).filter(Boolean);
   const firstClause = clauses[0] || "";
-  const directResponse = firstClause.match(/^(?:please\s+)?(?:just\s+)?(?:reply|respond|say|answer|output|print)\s+(.+)$/);
+  const directResponse = firstClause.match(/^(?:please\s+)?(?:just\s+)?(?:reply|respond|say|answer|output|print)(?:\s+(?:with\s+)?(?:exactly|only))?\s*:?\s+(.+)$/);
   if (!directResponse) {
     return false;
   }
@@ -38,7 +38,8 @@ function isDirectResponseOnlyInstruction(text) {
   if (!literal || literal.length > 80 || /\b(after|when|once|if)\b/.test(literal)) {
     return false;
   }
-  const firstClauseLooksLiteral = /\bonly\b/.test(literal) || /^[`'"]?[\w.-]{1,32}[`'"]?$/.test(literal);
+  const explicitLiteralResponse = /\b(?:exactly|only)\b/.test(firstClause);
+  const firstClauseLooksLiteral = explicitLiteralResponse || /\bonly\b/.test(literal) || /^[`'"]?[\w.-]{1,32}[`'"]?$/.test(literal);
   if (!firstClauseLooksLiteral) {
     return false;
   }

@@ -28,13 +28,13 @@ orange env --json
 macOS/Linux:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.8"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
 ```
 
 설치기는 checksum을 검증하고 실패 시 중단한다. 설치 위치는 사용자 범위다:
@@ -50,18 +50,18 @@ Windows: $env:LOCALAPPDATA\OrangeHyper\bin\orange.exe
 ## npm Fallback
 
 npm은 기본 설치가 아니다. 사용자가 명시적으로 npm fallback을 요청했을 때만
-정확한 버전 또는 `@alpha`를 지정한다.
+정확한 버전 또는 `@beta`를 지정한다.
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
-npx -y --package orange-hyper@alpha orange --help
+npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@beta orange --help
 ```
 
 프로젝트에 dev dependency로 설치하는 방식은 Node 프로젝트에서 사용자가 명시적으로
 요청한 경우에만 사용한다.
 
 ```bash
-npm install -D orange-hyper@1.1.0-alpha.8
+npm install -D orange-hyper@1.1.0-beta.1
 ```
 
 ## Source Checkout
@@ -134,7 +134,7 @@ orange doctor
 - `orange activate status --host codex --json`은 project activation과 current fingerprint의 필수 lifecycle heartbeat 전까지 active를 보고하면 안 된다.
 - AI는 `npm init -y`를 자동 실행하지 않는다.
 - AI는 `npm install -D orange-hyper`를 기본 설치로 사용하지 않는다.
-- fallback npm 명령은 `@alpha` 또는 exact version을 지정한다.
+- fallback npm 명령은 `@beta` 또는 exact version을 지정한다.
 - 설치 과정은 현재 프로젝트 `package.json`, `package-lock.json`,
   `node_modules`를 만들거나 수정하지 않는다.
 - MCP는 자동 설치하지 않는다.

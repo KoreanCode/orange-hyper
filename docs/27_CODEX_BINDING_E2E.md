@@ -98,6 +98,104 @@ Fixture success is not real Codex E2E success. If plugin install, enablement,
 hook review, required lifecycle events, or active status were not observed in
 the real Codex UI, report them as `not externally verified`.
 
+## 2026-06-22 beta.1 Closed Beta Candidate E2E
+
+Release gate status after this run: `pass` for the `v1.1.0-beta.1` Closed Beta
+candidate.
+
+Environment:
+
+- Date: 2026-06-22 KST.
+- Platform: macOS arm64.
+- Codex version: `OpenAI Codex v0.141.0`.
+- Orange version: `1.1.0-beta.1`.
+- Codex plugin version: `1.1.0-beta.1`.
+- Adapter contract version: `0.1`.
+- Binding fingerprint:
+  `0bf28c8d7b3d937cceaecb7b5fed27da7f73e30121f3ec4fef4dee049a7eb179`.
+- Candidate binary: current platform standalone SEA built from the beta.1
+  candidate source tree and forced through `ORANGE_HYPER_BIN`.
+
+Setup:
+
+1. The E2E target was an isolated temporary git repository, not this
+   repository.
+2. The target fixture contained only a minimal README and one small source
+   file before activation.
+3. The target project did not contain `package.json`, `package-lock.json`, or
+   `node_modules` before activation, after activation, or after lifecycle
+   execution.
+4. `binding plan --host codex --scope user --json` was read-only and planned
+   only the user-scoped plugin source, marketplace, and binding metadata under
+   the temporary Orange home.
+5. `binding install --host codex --scope user --json` reported
+   `installed_user_scope_only: true` and `pending_install`.
+6. Codex plugin management reported
+   `orange-hyper-codex@orange-hyper-user` as installed, enabled, and version
+   `1.1.0-beta.1`.
+7. The installed hook bundle exposed `SessionStart`, `UserPromptSubmit`,
+   `PostToolUse`, and `Stop`; every hook had POSIX and Windows command
+   launchers.
+8. Codex config contained trusted hook entries for the four installed plugin
+   hooks.
+
+Lifecycle results:
+
+| Item | Result |
+| --- | --- |
+| Inactive repository thread | Pass: hooks ran and Orange no-oped without creating project state |
+| Project activation | Pass: `activate apply` created only project-local activation/runtime state |
+| Status before lifecycle | Pass: `waiting_for_host_binding`, not active |
+| L0 literal direct response | Pass: no Quest, no Stop continuation |
+| Current lifecycle status | Pass: `active`, binding `operational`, lifecycle `current` |
+| Observed required events | Pass: `SessionStart`, `UserPromptSubmit`, `Stop` |
+| Observed optional events | Pass: `PostToolUse` |
+| Final complete lifecycle time | `2026-06-22T02:14:03.400Z` |
+
+Observed Quest and continuation behavior:
+
+| Item | Result |
+| --- | --- |
+| L2 bounded source edit | Pass: `quest_df5c08e0fedd_l2_validation` created with current Capsule |
+| L2 source verification | Pass: Node module check recorded success evidence |
+| L2 source Quest completion | Pass: Quest completed with `verification_status: verified` |
+| L2 README edit | Pass: `quest_1edf4adbe51b_l2_edit` created |
+| First evidence-free Stop | Pass: Stop was blocked and requested continuation |
+| Continuation count | Pass: one continuation; no second continuation from active Stop |
+| Weak verification guard | Pass: simple heading output did not mark the Quest verified |
+| Same-work follow-up | Pass: new Codex session continued `quest_1edf4adbe51b_l2_edit` |
+| Follow-up verification | Pass: fail-fast Node heading check recorded success evidence |
+| README Quest completion | Pass: same Quest completed with `verification_status: verified` |
+
+Artifact hygiene:
+
+- Route traces stored lifecycle summaries, route metadata, intent signatures,
+  and scope signatures, not raw prompt text.
+- Evidence records used bounded output summaries and did not store full tool
+  output.
+- Searches for raw prompt fragments, transcript markers, session headers, and
+  token summaries under `.orange-hyper` returned no matches.
+- Pending Memory Proposals were created for verified Quests.
+- No accepted memory directory or accepted memory artifact was created.
+- No MCP server was installed or run by Orange.
+- No project-specific Skill or Agent was materialized.
+- No project `package.json`, `package-lock.json`, or `node_modules` was
+  created.
+
+Candidate fixes validated by this beta.1 E2E:
+
+1. Literal direct-response prompts using an explicit `with exactly` shape now
+   route as L0 and do not create Quest ceremony.
+2. Same-work follow-up in a fresh Codex session can continue a recent active
+   Quest when the prompt is explicit and the Quest is still active.
+
+Release decision:
+
+- The beta.1 Codex Host Binding and lifecycle gate is open for the normal
+  tag-driven release workflow.
+- The alpha.8 tag and package remain unchanged.
+- `contract_version` remains `0.1`.
+
 ## 2026-06-20 alpha.8 Hook Trust Diagnostics
 
 Initial diagnostic status: `blocked` before the independent Stop-continuation

@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+## v1.1.0-beta.1
+
+Official Closed Beta prerelease.
+
+- Package version is `1.1.0-beta.1`.
+- Codex plugin version is `1.1.0-beta.1`.
+- README version is `1.1-doc.10`.
+- Release date is `2026-06-22`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- GitHub Release metadata is prerelease, and npm publication uses the `beta`
+  dist-tag. npm `latest` remains the existing stable channel, and npm `alpha`
+  remains `1.1.0-alpha.8`.
+
+- Revalidated Activation Runtime and the trusted Codex hook lifecycle for the
+  beta.1 plugin fingerprint before release.
+- Kept the user-scoped Codex Host Binding separate from project-scoped
+  Activation. Binding prepares the user marketplace/plugin source; Activation
+  records only repo-local runtime state.
+- Preserved lightweight L0/L1 behavior so simple questions and small edits do
+  not create Quest ceremony.
+- Preserved L2 Quest, Capsule, and verification evidence lifecycle for bounded
+  implementation work, including same-task Quest continuity.
+- Preserved the Stop soft gate: when required verification evidence is not
+  observed, Stop requests one continuation and does not mark evidence-free work
+  as verified.
+- Preserved working memory and proposal-first durable memory. Pending Memory
+  Proposals may be created, but accept remains manual.
+- Kept standalone distribution as the default user-facing install path. The
+  installer must not create project `package.json`, `package-lock.json`, or
+  `node_modules`.
+- Updated Closed Beta Program, Beta Test Checklist, Codex Binding E2E notes,
+  README channel guidance, and GitHub Issue Forms for beta.1.
+- Known limitations: macOS arm64 is the primary real E2E validated environment;
+  macOS x64, Linux x64, Windows x64, and other Codex minor versions remain
+  exploratory until real interactive hook E2E evidence exists for each. The
+  beta does not add MCP auto-install, subagent orchestration, branch/PR/SPEC
+  automation, telemetry, raw transcript storage, or Memory Proposal auto-accept.
+
 ## v1.1.0-alpha.8
 
 Activation Runtime Release Candidate.
