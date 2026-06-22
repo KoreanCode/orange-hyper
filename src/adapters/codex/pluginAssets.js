@@ -1,5 +1,5 @@
 export const CODEX_PLUGIN_NAME = "orange-hyper-codex";
-export const CODEX_PLUGIN_VERSION = "1.1.0-alpha.8";
+export const CODEX_PLUGIN_VERSION = "1.1.0-beta.1";
 export const CODEX_HOST_BRIDGE_SCHEMA_VERSION = "codex-host-bridge-v1";
 export const CODEX_PLUGIN_RELATIVE_ROOT = ".agents/plugins/orange-hyper-codex";
 export const CODEX_MARKETPLACE_RELATIVE_PATH = ".agents/plugins/marketplace.json";

@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.9`
+- README version: `1.1-doc.10`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -89,19 +89,19 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 1. Standalone binary：从 GitHub Release 安装平台对应的 `orange` 执行文件到 user-local 目录。
 2. Future package manager：Homebrew、Scoop 等用户范围 package manager 是后续渠道。
-3. `npx` exact-version fallback：只用于临时确认，并指定 `orange-hyper@1.1.0-alpha.8` 或 `@alpha`。
+3. `npx` exact-version fallback：只用于临时确认，并指定 `orange-hyper@1.1.0-beta.1` 或 `@beta`。
 4. Project-local npm install：只有用户明确要求时才使用的 advanced/manual option。
 
 macOS/Linux user-local 安装：
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
 ```
 
 Windows PowerShell user-local 安装：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.8"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
 ```
 
 安装器会验证 SHA-256 checksum，验证失败会停止安装。它不使用 npm，不创建 package 文件，不创建 `node_modules`，也不修改当前项目。
@@ -111,10 +111,44 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/K
 如果只想用 fallback 快速确认包是否可用，请指定 exact version：
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
+npx -y --package orange-hyper@1.1.0-beta.1 orange --help
 ```
 
 这不是默认安装方式。AI 不应该自动运行 `npm init -y` 或 `npm install -D orange-hyper`。npm package 继续作为 developer/fallback channel 保留。
+
+## Closed Beta 渠道
+
+当前推荐测试渠道是 `v1.1.0-beta.1`。这个 build 是官方 Closed Beta prerelease，不是 npm `latest` stable 渠道。
+
+Primary validated 环境是 macOS arm64、Codex CLI、standalone binary、user-scoped Codex Host Binding、project-scoped Activation，以及 interactive Codex `/hooks` review。macOS x64、Linux x64、Windows x64 和其他 Codex minor version 在积累真实用户验证前仍是 exploratory 环境。
+
+在这个 Beta 中，用户不需要直接运营 Orange，而是继续像平常一样向 AI 提出工作请求。AI 会在用户环境中安装一次 Codex Host Binding，并只激活需要使用 Orange 的 repository。Codex `/plugins` 中安装并 enable plugin，再在 Codex `/hooks` 中 review current definition 后，lifecycle 会自动连接。L0/L1 工作会安静通过；L2 以上工作会在 policy 范围内管理 Quest、Capsule 和 verification evidence。如果没有观察到 verification evidence，Stop 只请求一次 continuation。Working memory 和 pending Memory Proposal 可以创建，但 durable memory accept 不会自动化。
+
+Beta quick start:
+
+1. 将 standalone `v1.1.0-beta.1` 安装到 user-local 位置。
+2. 安装 Codex Host Binding。
+3. 在 Codex `/plugins` 中安装并 enable Orange plugin。
+4. 在 Codex `/hooks` 中 review current definition。
+5. 在需要使用 Orange 的 repository 中应用 project activation。
+6. 用 `orange activate status --host codex --json` 确认 `active` 状态。
+7. 之后继续像平常一样向 AI 提出工作请求。
+
+更长的命令和状态解释放在 [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)、[Activation Runtime](docs/26_ACTIVATION_RUNTIME.md)、[Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)。
+
+不会自动化的安全边界：
+
+- Memory Proposal accept
+- MCP 安装或执行
+- project-specific Skill/Agent 创建
+- subagent 执行
+- branch/PR/SPEC workflow
+- telemetry 或 network upload
+- raw prompt 和 transcript 存储
+
+Beta 参与者应使用 [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)、[Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)、[Beta Bug](.github/ISSUE_TEMPLATE/beta-bug.yml)、[Beta Feedback](.github/ISSUE_TEMPLATE/beta-feedback.yml)、[Codex Binding E2E Checklist](docs/27_CODEX_BINDING_E2E.md)。
+
+如果你使用过 alpha.8，安装 beta.1 后，由于 plugin version 和 binding fingerprint 变化，可能需要在 Codex `/hooks` 中重新 review hook definition。现有 accepted project memory 不会自动删除或 reset。alpha.8 不会重新发布；beta.1 是新的 Closed Beta 分发渠道。
 
 ## 第一次告诉 AI 的 Prompt
 
@@ -133,7 +167,7 @@ Then work normally.
 
 不要运行 `npm init -y`。不要把 `npm install -D orange-hyper` 当作默认安装方式。不要创建或修改项目的 `package.json`、`package-lock.json`、`node_modules`。
 
-只有在我明确要求时才使用 npm fallback；使用时也要指定 `orange-hyper@alpha` 或 `orange-hyper@1.1.0-alpha.8`。
+只有在我明确要求时才使用 npm fallback；使用时也要指定 `orange-hyper@beta` 或 `orange-hyper@1.1.0-beta.1`。
 
 如果当前 Codex 环境还没有 Orange Host Binding，请先运行 `orange binding plan --host codex --scope user --json`，把 read-only binding plan 给我看。
 

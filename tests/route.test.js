@@ -21,3 +21,10 @@ test("route line is a compact public contract", () => {
   const contract = buildRouteContract("implement quest capsules", { layer: "L2" });
   assert.equal(formatRouteLine(contract), "Orange route: L2 · P2 · T2 · V2 · A0 · M0 · MB2");
 });
+
+test("literal direct-response prompts stay L0", () => {
+  const contract = buildRouteContract("Reply with exactly: beta1-l0-noquest-ok");
+  assert.equal(contract.layer, "L0");
+  assert.equal(contract.output_contract, "answer");
+  assert.equal(contract.quest_policy, "not_recommended");
+});

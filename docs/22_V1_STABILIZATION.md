@@ -15,15 +15,18 @@ v1.1.0-alpha.7 adds the standalone distribution foundation: a bundled CommonJS
 entry, Node SEA binary release workflow, checksum-verifying user-local
 installers, and `orange env --json`.
 v1.1.0-alpha.8 adds Orange Activation Runtime v0.1 and the first-party Codex
-Host Binding as a limited opt-in runtime surface. It still does not add an MCP
-runner, custom subagent execution, role system, planner, LLM judge, telemetry
-path, graph editing surface, or Memory Proposal auto-accept.
+Host Binding as a limited opt-in runtime surface. v1.1.0-beta.1 promotes that
+runtime path to the official Closed Beta prerelease channel after the
+source/release metadata, beta docs, and real Codex hook lifecycle are
+revalidated. It still does not add an MCP runner, custom subagent execution,
+role system, planner, LLM judge, telemetry path, graph editing surface, or
+Memory Proposal auto-accept.
 
 Version axes remain separate:
 
-- package version: `1.1.0-alpha.8`
-- Codex plugin version: `1.1.0-alpha.8`
-- README version: `1.1-doc.9`
+- package version: `1.1.0-beta.1`
+- Codex plugin version: `1.1.0-beta.1`
+- README version: `1.1-doc.10`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model
@@ -356,9 +359,9 @@ feature expansion queue.
 
 Official npm publishing remains tag-triggered GitHub Actions Trusted Publishing.
 The publish workflow has `id-token: write`, uses npm provenance through
-`publishConfig.provenance: true`, publishes `v*-alpha.*` tags with the npm
-`alpha` dist-tag, and publishes non-alpha `vX.Y.Z` tags with the default
-`latest` dist-tag.
+`publishConfig.provenance: true`, publishes `v*-alpha.*`, `v*-beta.*`, and
+`v*-rc.*` tags with matching prerelease npm dist-tags, and publishes stable
+`vX.Y.Z` tags with the default `latest` dist-tag.
 
 Local `npm publish` is not the official path. Local package checks should use
 `npm pack --dry-run` and fresh temp smoke tests; the actual publication path is

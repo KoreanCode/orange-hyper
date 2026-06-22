@@ -74,11 +74,11 @@ channels. They must keep the same no-project-mutation policy.
 Allowed fallback examples:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
-npx -y --package orange-hyper@alpha orange --help
+npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@beta orange --help
 ```
 
-Do not use unpinned `@latest` for alpha onboarding. It can resolve to an older
+Do not use unpinned `@latest` for beta onboarding. It can resolve to an older
 stable release and hide the intended prerelease behavior.
 
 ### 2.4 Advanced: Project-Local npm
@@ -87,7 +87,7 @@ Project-local npm install remains available only when the user explicitly asks
 for a Node-project-local dependency.
 
 ```bash
-npm install -D orange-hyper@1.1.0-alpha.8
+npm install -D orange-hyper@1.1.0-beta.1
 ```
 
 This path is advanced/manual because it intentionally writes project npm files.

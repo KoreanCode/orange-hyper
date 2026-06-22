@@ -942,6 +942,10 @@ function resolveQuestContinuity(cwd, input, context) {
   const currentQuestId = state?.current_turn?.quest_id || state?.recent_quest_ids?.[0] || null;
   const currentQuest = currentQuestId ? findQuestOrNull(cwd, currentQuestId) : null;
   if (!currentQuest || currentQuest.data.status !== "active") {
+    const recentActive = resolveRecentActiveQuestContinuity(cwd, context);
+    if (recentActive) {
+      return recentActive;
+    }
     return {
       action: "create_new",
       confidence: "high",
@@ -991,6 +995,72 @@ function resolveQuestContinuity(cwd, input, context) {
     scope_signature: previousScope,
     reason: "Prompt is ambiguous, so Orange keeps continuity with the active Quest."
   };
+}
+
+function resolveRecentActiveQuestContinuity(cwd, context) {
+  if (isExplicitNewWork(context.prompt)) {
+    return null;
+  }
+  const paths = workspacePaths(cwd);
+  if (!fs.existsSync(paths.runtimeSessions)) {
+    return null;
+  }
+  const files = fs.readdirSync(paths.runtimeSessions)
+    .filter((name) => name.endsWith(".json"))
+    .map((name) => {
+      const filePath = path.join(paths.runtimeSessions, name);
+      return { filePath, mtimeMs: fs.statSync(filePath).mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const candidates = [];
+  for (const { filePath } of files) {
+    let state;
+    try {
+      state = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    } catch {
+      continue;
+    }
+    const currentTurn = state?.current_turn || {};
+    const questIds = [
+      currentTurn.quest_id,
+      ...(state?.recent_quest_ids || [])
+    ].filter(Boolean);
+    for (const questId of [...new Set(questIds)]) {
+      const quest = findQuestOrNull(cwd, questId);
+      if (!quest || quest.data.status !== "active") {
+        continue;
+      }
+      candidates.push({
+        quest_id: questId,
+        scope_signature: currentTurn.quest_id === questId ? currentTurn.scope_signature || "general" : "general"
+      });
+    }
+  }
+  const scopedMatch = candidates.find((candidate) =>
+    candidate.scope_signature !== "general"
+    && context.scopeSignature !== "general"
+    && candidate.scope_signature === context.scopeSignature
+  );
+  if (scopedMatch) {
+    return {
+      action: "continue_existing",
+      confidence: "medium",
+      quest_id: scopedMatch.quest_id,
+      scope_signature: scopedMatch.scope_signature,
+      reason: "Prompt scope matches a recent active Quest from another session."
+    };
+  }
+  if (isExplicitFollowUp(context.prompt) && candidates.length) {
+    const scoped = candidates.find((candidate) => candidate.scope_signature !== "general") || candidates[0];
+    return {
+      action: "continue_existing",
+      confidence: "medium",
+      quest_id: scoped.quest_id,
+      scope_signature: scoped.scope_signature,
+      reason: "Prompt is an explicit follow-up and a recent active Quest is available."
+    };
+  }
+  return null;
 }
 
 function readSessionState(cwd, input) {

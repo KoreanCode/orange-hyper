@@ -15,7 +15,7 @@
       "id": "orange_version",
       "attributes": {
         "label": "Orange version",
-        "description": "Example: 1.1.0-alpha.8"
+        "description": "Example: 1.1.0-beta.1"
       },
       "validations": { "required": true }
     },
@@ -42,7 +42,7 @@
       "id": "install_channel",
       "attributes": {
         "label": "Install channel",
-        "options": ["standalone installer", "npm exact-version fallback", "npm alpha fallback", "other"]
+        "options": ["standalone installer", "npm exact-version fallback", "npm beta fallback", "other"]
       },
       "validations": { "required": true }
     },

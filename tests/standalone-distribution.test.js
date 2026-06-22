@@ -9,7 +9,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const BUNDLE = path.join(ROOT, "dist", "standalone", "orange.cjs");
-const VERSION = "1.1.0-alpha.8";
+const VERSION = "1.1.0-beta.1";
 
 test("standalone CommonJS bundle preserves JSON contracts in a fresh non-Node project", () => {
   buildStandaloneBundle();
@@ -61,7 +61,7 @@ test("release manifest records platform assets and checksums", () => {
     "--version",
     VERSION,
     "--release-url",
-    "https://example.test/releases/v1.1.0-alpha.8"
+    "https://example.test/releases/v1.1.0-beta.1"
   ], {
     cwd: ROOT,
     encoding: "utf8"
@@ -77,7 +77,7 @@ test("release manifest records platform assets and checksums", () => {
     assert.match(asset.arch, /^(x64|arm64)$/);
     assert.match(asset.filename, /^orange-/);
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
-    assert.match(asset.download_url, /^https:\/\/example\.test\/releases\/v1\.1\.0-alpha\.8\/orange-/);
+    assert.match(asset.download_url, new RegExp(`^https://example\\.test/releases/${escapeRegExp(`v${VERSION}`)}/orange-`));
     assert.equal(typeof asset.signed, "boolean");
     assert.equal(typeof asset.experimental, "boolean");
   }
@@ -117,7 +117,7 @@ test("release asset gate requires installers, metadata, and all supported binari
         arch: filename.includes("arm64") ? "arm64" : "x64",
         filename,
         sha256: "0".repeat(64),
-        download_url: `https://example.test/releases/v1.1.0-alpha.8/${filename}`,
+        download_url: `https://example.test/releases/v1.1.0-beta.1/${filename}`,
         signed: false,
         experimental: filename === "orange-macos-x64"
       }))
@@ -137,7 +137,7 @@ test("release asset gate requires installers, metadata, and all supported binari
     "--manifest",
     manifestPath,
     "--release-url",
-    "https://example.test/releases/v1.1.0-alpha.8",
+    "https://example.test/releases/v1.1.0-beta.1",
     "--version",
     VERSION
   ], {
@@ -162,7 +162,7 @@ test("release asset gate requires installers, metadata, and all supported binari
     encoding: "utf8"
   });
   assert.notEqual(wrongVersion.status, 0);
-  assert.match(wrongVersion.stderr, /release-manifest\.json version must be 1\.1\.0-alpha\.8/);
+  assert.match(wrongVersion.stderr, new RegExp(`release-manifest\\.json version must be ${escapeRegExp(VERSION)}`));
 
   writeManifest((manifest) => {
     manifest.assets[0].sha256 = "";
@@ -304,4 +304,8 @@ function currentReleaseFilename() {
 
 function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

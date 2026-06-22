@@ -84,8 +84,8 @@ npm install -D orange-hyper
 ```
 
 The npm path is allowed only when the user explicitly asks for it. If npm
-fallback is used for a temporary check, specify `orange-hyper@alpha` or an exact
-version such as `orange-hyper@1.1.0-alpha.8`.
+fallback is used for a temporary check, specify `orange-hyper@beta` or an exact
+version such as `orange-hyper@1.1.0-beta.1`.
 
 After install or PATH confirmation, the adapter should use `orange init --json`
 and then the `project-sync` recipe when the user wants generated structure and

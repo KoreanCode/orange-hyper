@@ -587,6 +587,15 @@ test("UserPromptSubmit keeps L0/L1 light, creates L2 Quest/Capsule once, and blo
     model: "gpt-5",
     permission_mode: "default"
   });
+  host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "direct-response-exactly",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Reply with exactly: beta1-l0-noquest-ok",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 0);
 
   const l2 = host(cwd, "user-prompt-submit", {
@@ -1132,6 +1141,34 @@ test("follow-up continues current Quest, different component creates new Quest, 
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "completed")), 0);
   assert.equal(other.hookSpecificOutput.hookEventName, "UserPromptSubmit");
   assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 2);
+});
+
+test("follow-up in a new Codex session continues recent active Quest", () => {
+  const cwd = tempWorkspace();
+  apply(cwd);
+
+  const first = host(cwd, "user-prompt-submit", {
+    session_id: "s1",
+    turn_id: "readme-edit",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "In README.md, change the first heading to exactly '# Orange beta.1 E2E fixture smoke'.",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+  const questId = first.hookSpecificOutput.additionalContext.match(/Quest: (quest_[^\n]+)/)[1];
+  const followUp = host(cwd, "user-prompt-submit", {
+    session_id: "s2",
+    turn_id: "readme-verify",
+    cwd,
+    hook_event_name: "UserPromptSubmit",
+    prompt: "Continue the README heading task without changing files. Verify with exactly: node -e \"console.log('verification passed: README heading')\"",
+    model: "gpt-5",
+    permission_mode: "default"
+  });
+
+  assert.equal(followUp.hookSpecificOutput.additionalContext.includes(`Quest: ${questId}`), true);
+  assert.equal(countFiles(path.join(cwd, ".orange-hyper", "quests", "active")), 1);
 });
 
 test("Stop completes verified Quest and creates only quality-gated pending proposals", () => {

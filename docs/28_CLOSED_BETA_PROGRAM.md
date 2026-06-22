@@ -1,10 +1,10 @@
 # Closed Beta Program
 
-Closed Beta status: `open` for `v1.1.0-alpha.8`.
+Closed Beta status: `open` for `v1.1.0-beta.1`.
 
-This program prepares Orange Hyper `v1.1.0-alpha.8` for a small private
-technical beta. It does not add a new Runtime, Skill, Agent, MCP server,
-Subagent lane, telemetry path, support-bundle command, or network upload.
+This program is the official Orange Hyper `v1.1.0-beta.1` Closed Beta channel.
+It does not add a new Runtime, Skill, Agent, MCP server, Subagent lane,
+telemetry path, support-bundle command, or network upload.
 
 ## Purpose
 
@@ -12,10 +12,9 @@ The closed beta checks whether technical users can install, bind, activate,
 use, diagnose, and remove Orange Hyper without turning their projects into
 Orange-specific or npm-specific projects.
 
-The beta also collects enough real-world evidence to decide whether a later
-`v1.1.0-beta.1` should be proposed. It does not publish `beta.1` and does not
-claim token savings, model improvement, user productivity improvement, or
-overall success-rate improvement.
+The beta also collects real-world evidence for whether this channel should be
+widened. It does not claim token savings, model improvement, user productivity
+improvement, or overall success-rate improvement.
 
 ## Initial Audience
 
@@ -53,17 +52,20 @@ events, project activation, and cleanup behavior.
 
 ## Current Release State
 
-Use `v1.1.0-alpha.8` as the closed beta build.
+Use `v1.1.0-beta.1` as the closed beta build. This is a prerelease Closed Beta
+channel, not npm `latest`.
 
 Verified release inputs:
 
-- Package version: `1.1.0-alpha.8`.
+- Package version: `1.1.0-beta.1`.
 - Adapter JSON contract version: `0.1`.
-- Git tag: `v1.1.0-alpha.8`.
-- GitHub Release: <https://github.com/KoreanCode/orange-hyper/releases/tag/v1.1.0-alpha.8>
+- Git tag: `v1.1.0-beta.1`.
+- GitHub Release: <https://github.com/KoreanCode/orange-hyper/releases/tag/v1.1.0-beta.1>
 - GitHub Release prerelease metadata: `true`.
 - GitHub Release assets: 8 required assets.
-- npm alpha dist-tag: `orange-hyper@alpha -> 1.1.0-alpha.8`.
+- npm beta dist-tag: `orange-hyper@beta -> 1.1.0-beta.1`.
+- npm alpha dist-tag remains `orange-hyper@alpha -> 1.1.0-alpha.8`.
+- npm latest dist-tag remains the existing stable channel.
 
 Required GitHub Release assets:
 
@@ -85,21 +87,26 @@ install `orange-hyper` into the project by default, and do not create
 macOS and Linux:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-alpha.8/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-alpha.8"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
 ```
 
-Use npm only as an explicit fallback check, and pin either the alpha dist-tag or
+Use npm only as an explicit fallback check, and pin either the beta dist-tag or
 the exact version:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-alpha.8 orange --help
+npx -y --package orange-hyper@1.1.0-beta.1 orange --help
 ```
+
+Alpha.8 users should install beta.1 as a new channel. The alpha.8 package and
+tag are not republished, and existing accepted project memory is not deleted or
+reset automatically. Because the plugin version and binding fingerprint change,
+Codex `/hooks` may need to be reviewed again after the plugin is updated.
 
 ## Host Binding vs Project Activation
 
@@ -172,7 +179,7 @@ fresh `SessionStart`, `UserPromptSubmit`, and `Stop` evidence.
 Closed beta testers can give this short prompt to their AI assistant:
 
 ```text
-Use Orange Hyper v1.1.0-alpha.8 for this repository.
+Use Orange Hyper v1.1.0-beta.1 for this repository.
 
 First check `orange --version` and `orange env --json` from PATH.
 Prefer the standalone installer. Do not create or modify project `package.json`,
@@ -255,7 +262,7 @@ proprietary source code.
 
 ## Known Limitations
 
-- Only macOS arm64 has real trusted-hook interactive E2E evidence for alpha.8.
+- macOS arm64 has real trusted-hook interactive E2E evidence for beta.1.
 - macOS x64, Linux x64, and Windows x64 are exploratory until real interactive
   Codex hook E2E evidence exists for each.
 - Codex plugin install, enablement, and hook trust are user-visible Codex
@@ -333,13 +340,14 @@ Current gate status: `open`.
 
 | Gate item | Status | Evidence |
 | --- | --- | --- |
-| alpha.8 install assets and checksums exist | pass | GitHub Release has 8 required assets including `checksums.txt` |
-| npm alpha dist-tag is correct | pass | `orange-hyper@alpha` points to `1.1.0-alpha.8` |
+| beta.1 install assets and checksums exist | pass | GitHub Release has 8 required assets including `checksums.txt` |
+| npm beta dist-tag is correct | pass | `orange-hyper@beta` points to `1.1.0-beta.1` |
+| npm alpha dist-tag is preserved | pass | `orange-hyper@alpha` still points to `1.1.0-alpha.8` |
 | trusted-hook E2E evidence exists | pass | `docs/27_CODEX_BINDING_E2E.md` records real Codex `/hooks` review |
-| L1 no-Quest behavior confirmed | pass | alpha.8 E2E and regression tests |
-| L2 Quest/Capsule behavior confirmed | pass | alpha.8 E2E and regression tests |
+| L1 no-Quest behavior confirmed | pass | beta.1 E2E and regression tests |
+| L2 Quest/Capsule behavior confirmed | pass | beta.1 E2E and regression tests |
 | Stop continuation once confirmed | pass | independent Stop continuation recheck |
-| verified completion confirmed | pass | alpha.8 E2E verified Quest completion |
+| verified completion confirmed | pass | beta.1 E2E verified Quest completion |
 | Memory Proposal auto-accept absent | pass | pending proposal policy and regression coverage |
 | uninstall/deactivate procedure exists | pass | this document and activation/binding docs |
 | privacy boundary documented | pass | this document and issue forms |
@@ -347,10 +355,10 @@ Current gate status: `open`.
 | known limitations public | pass | this document |
 | prerelease metadata correct | pass | GitHub Release metadata is prerelease |
 
-## Public Beta Promotion Criteria
+## Wider Beta Promotion Criteria
 
-Propose `v1.1.0-beta.1` only after evidence from the closed beta supports it.
-Reaching the numbers below does not automatically publish a release.
+Widen this Closed Beta channel only after evidence from the closed beta supports
+it. Reaching the numbers below does not automatically publish a stable release.
 
 Minimum target:
 
@@ -367,4 +375,5 @@ Minimum target:
 - Route, Quest, Stop, and verification misclassification cases are analyzed
   and major blockers are resolved.
 
-The `beta.1` decision requires a separate release approval step.
+Any stable release or broader public beta requires a separate release approval
+step.

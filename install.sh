@@ -2,7 +2,7 @@
 set -eu
 
 REPO="${ORANGE_HYPER_REPO:-KoreanCode/orange-hyper}"
-VERSION="${ORANGE_HYPER_VERSION:-1.1.0-alpha.8}"
+VERSION="${ORANGE_HYPER_VERSION:-1.1.0-beta.1}"
 INSTALL_DIR="${ORANGE_HYPER_INSTALL_DIR:-"$HOME/.local/bin"}"
 TMP_DIR="${TMPDIR:-/tmp}/orange-hyper-install-$$"
 

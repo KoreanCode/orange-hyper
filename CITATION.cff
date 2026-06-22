@@ -7,6 +7,6 @@ authors:
 repository-code: "https://github.com/KoreanCode/orange-hyper"
 url: "https://github.com/KoreanCode/orange-hyper"
 license: "MIT"
-version: "1.1.0-alpha.8"
-date-released: "2026-06-19"
+version: "1.1.0-beta.1"
+date-released: "2026-06-22"
 abstract: "Lightweight quest and capsule kernel for coding agents."

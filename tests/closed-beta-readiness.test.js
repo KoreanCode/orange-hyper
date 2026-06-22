@@ -9,7 +9,7 @@ import { resolveReleaseMetadata } from "../scripts/resolve-release-metadata.js";
 const ROOT = process.cwd();
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.9";
+const EXPECTED_README_VERSION = "1.1-doc.10";
 const ISSUE_FORM_FILES = [
   ".github/ISSUE_TEMPLATE/beta-bug.yml",
   ".github/ISSUE_TEMPLATE/beta-feedback.yml"
