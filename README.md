@@ -13,7 +13,7 @@
 <summary>Version metadata 상세보기</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.10`
+- README version: `1.1-doc.11`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -98,15 +98,19 @@ macOS/Linux user-local 설치:
 
 ```bash
 curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+"$HOME/.local/bin/orange" --version
 ```
 
 Windows PowerShell user-local 설치:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
+$Installer = Join-Path $env:TEMP "orange-install.ps1"
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+& (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
-설치기는 checksum을 검증하고 실패하면 설치를 중단한다. `npm`, `package.json`, `package-lock.json`, `node_modules`를 사용하지 않으며 현재 프로젝트 파일을 수정하지 않는다.
+Windows에서 `-AddToPath`를 사용한 뒤 새 PowerShell 창을 열면 `orange --version`을 PATH에서 실행할 수 있다. 설치기는 checksum을 검증하고 실패하면 설치를 중단한다. `npm`, `package.json`, `package-lock.json`, `node_modules`를 사용하지 않으며 현재 프로젝트 파일을 수정하지 않는다.
 
 비공개 기술 베타 참가자는 전체 온보딩과 안전 진단 절차를 [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md)에서 확인하고, 실제 테스트 결과는 [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md)에 맞춰 기록한다.
 

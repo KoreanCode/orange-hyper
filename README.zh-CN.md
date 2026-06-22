@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.10`
+- README version: `1.1-doc.11`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -96,15 +96,19 @@ macOS/Linux user-local 安装：
 
 ```bash
 curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+"$HOME/.local/bin/orange" --version
 ```
 
 Windows PowerShell user-local 安装：
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
+$Installer = Join-Path $env:TEMP "orange-install.ps1"
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+& (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
-安装器会验证 SHA-256 checksum，验证失败会停止安装。它不使用 npm，不创建 package 文件，不创建 `node_modules`，也不修改当前项目。
+Windows 使用 `-AddToPath` 后，新的 PowerShell 窗口可以从 PATH 运行 `orange --version`。安装器会验证 SHA-256 checksum，验证失败会停止安装。它不使用 npm，不创建 package 文件，不创建 `node_modules`，也不修改当前项目。
 
 私有技术 beta 参与者应在 [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md) 中查看 onboarding 和安全诊断边界，并用 [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md) 记录实际测试结果。
 

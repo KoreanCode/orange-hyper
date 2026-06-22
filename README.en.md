@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.10`
+- README version: `1.1-doc.11`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -98,15 +98,19 @@ macOS/Linux user-local install:
 
 ```bash
 curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+"$HOME/.local/bin/orange" --version
 ```
 
 Windows PowerShell user-local install:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
+$Installer = Join-Path $env:TEMP "orange-install.ps1"
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+& (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
-The installer verifies SHA-256 checksums and stops on mismatch. It does not use npm, create package files, create `node_modules`, or modify the current project.
+After using `-AddToPath` on Windows, a new PowerShell window can run `orange --version` from PATH. The installer verifies SHA-256 checksums and stops on mismatch. It does not use npm, create package files, create `node_modules`, or modify the current project.
 
 Closed technical beta participants should use [Closed Beta Program](docs/28_CLOSED_BETA_PROGRAM.md) for onboarding and safe diagnostics, then record actual test results with [Beta Test Checklist](docs/29_BETA_TEST_CHECKLIST.md).
 

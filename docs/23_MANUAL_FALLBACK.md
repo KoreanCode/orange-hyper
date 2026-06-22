@@ -29,15 +29,21 @@ macOS/Linux:
 
 ```bash
 curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+"$HOME/.local/bin/orange" --version
 ```
 
 Windows PowerShell:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -Command "iwr https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1 -OutFile $env:TEMP\orange-install.ps1; & $env:TEMP\orange-install.ps1 -Version 1.1.0-beta.1"
+$Installer = Join-Path $env:TEMP "orange-install.ps1"
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+& (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
-설치기는 checksum을 검증하고 실패 시 중단한다. 설치 위치는 사용자 범위다:
+Windows에서 `-AddToPath`를 사용한 뒤 새 PowerShell 창을 열면 PATH에서
+`orange --version`을 실행할 수 있다. 설치기는 checksum을 검증하고 실패 시
+중단한다. 설치 위치는 사용자 범위다:
 
 ```text
 macOS/Linux: ~/.local/bin/orange
