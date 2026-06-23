@@ -293,7 +293,7 @@ When a user asks an AI to set up Orange Hyper, the AI should:
    `node_modules`.
 7. Use npm only when the user explicitly requests the npm path.
 8. If npm fallback is used, specify `orange-hyper@beta` or an exact version
-   such as `orange-hyper@1.1.0-beta.1`.
+   such as `orange-hyper@1.1.0-beta.2`.
 9. After install, run `orange init --json`, then the Project Sync recipe:
    `orange sync plan --json`, explicit user approval, `orange sync apply --json`,
    and `orange sync status --json`.
@@ -319,7 +319,7 @@ The npm package is not removed. It remains the developer and fallback channel.
   "contract_version": "0.1",
   "command": "environment.show",
   "data": {
-    "version": "1.1.0-beta.1",
+    "version": "1.1.0-beta.2",
     "distribution": "standalone",
     "executable": "/path/to/orange",
     "platform": "darwin",

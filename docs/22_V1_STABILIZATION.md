@@ -18,15 +18,16 @@ v1.1.0-alpha.8 adds Orange Activation Runtime v0.1 and the first-party Codex
 Host Binding as a limited opt-in runtime surface. v1.1.0-beta.1 promotes that
 runtime path to the official Closed Beta prerelease channel after the
 source/release metadata, beta docs, and real Codex hook lifecycle are
-revalidated. It still does not add an MCP runner, custom subagent execution,
-role system, planner, LLM judge, telemetry path, graph editing surface, or
-Memory Proposal auto-accept.
+revalidated. v1.1.0-beta.2 hardens the Identity HTML graph-lab surface while
+preserving the same read-only/runtime boundaries. It still does not add an MCP
+runner, custom subagent execution, role system, planner, LLM judge, telemetry
+path, graph editing surface, or Memory Proposal auto-accept.
 
 Version axes remain separate:
 
-- package version: `1.1.0-beta.1`
-- Codex plugin version: `1.1.0-beta.1`
-- README version: `1.1-doc.10`
+- package version: `1.1.0-beta.2`
+- Codex plugin version: `1.1.0-beta.2`
+- README version: `1.1-doc.12`
 - Adapter JSON contract version: `0.1`
 
 ## AI-first Usage Model

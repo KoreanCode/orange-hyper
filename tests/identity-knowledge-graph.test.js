@@ -36,7 +36,7 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   const identityGraph = summary.identityGraph;
   const visualGraph = summary.visualGraph;
 
-  assert.equal(preview.schemaVersion, "1.1.0-beta.1");
+  assert.equal(preview.schemaVersion, "1.1.0-beta.2");
   assert.equal(preview.readOnly, true);
   assert.equal(preview.editingSupported, false);
   assert.equal(preview.acceptedMemoryNodes, 3);
@@ -64,7 +64,7 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
     assert.equal(edge.readOnly, true);
   }
 
-  assert.equal(sourceGraph.schemaVersion, "1.1.0-beta.1");
+  assert.equal(sourceGraph.schemaVersion, "1.1.0-beta.2");
   assert.equal(sourceGraph.readOnly, true);
   assert.equal(sourceGraph.editingSupported, false);
   assert.equal(sourceGraph.source, ".orange-hyper/graph");
@@ -95,14 +95,14 @@ test("identity build embeds read-only Knowledge Graph dashboard state", () => {
   assert.deepEqual(new Set(memoryGraph.nodes.map((node) => node.id)), acceptedNodeIds);
   assert.deepEqual(memoryGraph.nodes, sourceGraph.nodes);
 
-  assert.equal(identityGraph.schemaVersion, "1.1.0-beta.1");
+  assert.equal(identityGraph.schemaVersion, "1.1.0-beta.2");
   assert.equal(identityGraph.source, "structure-plus-accepted-memory");
   assert.equal(identityGraph.nodes.some((node) => node.id === "project.root" && node.layoutRole === "center"), true);
   assert.equal(identityGraph.nodes.some((node) => node.type === "memory"), true);
   assert.equal(identityGraph.nodes.some((node) => node.type === "component"), true);
   assert.equal(identityGraph.edges.some((edge) => edge.relation === "documents" && acceptedNodeIds.has(edge.from)), true);
 
-  assert.equal(visualGraph.schemaVersion, "1.1.0-beta.1");
+  assert.equal(visualGraph.schemaVersion, "1.1.0-beta.2");
   assert.equal(visualGraph.readOnly, true);
   assert.equal(visualGraph.editingSupported, false);
   assert.equal(visualGraph.displayOnly, true);
@@ -178,15 +178,32 @@ test("identity HTML contains canvas graph view, modes, responsive drawers, and t
   assert.match(html, /id="node-detail-drawer"/);
   assert.match(html, /id="control-drawer"/);
   assert.match(html, /id="graph-search"/);
+  assert.match(html, /id="graph-search-popover" class="graph-search-popover" data-open="false"/);
+  assert.match(html, /id="graph-search-toggle"/);
   assert.match(html, /id="graph-view-mode"/);
   assert.match(html, /<option value="combined" selected>Combined<\/option>/);
   assert.match(html, /<option value="structure">Structure<\/option>/);
   assert.match(html, /<option value="memory">Memory<\/option>/);
+  assert.match(html, /class="floating-dock" aria-label="Graph action dock"/);
+  assert.match(html, /class="dock-button primary" type="button" aria-label="Fit graph"/);
+  assert.match(html, /id="graph-controls-toggle"/);
+  assert.match(html, /id="graph-status-badge" class="graph-status-badge"/);
+  assert.match(html, /id="graph-minimap-canvas" class="graph-minimap"/);
+  assert.match(html, /function drawMinimap\(\)/);
+  assert.match(html, /function selectedHighlightIds\(\)/);
+  assert.match(html, /function updateStatusBadge\(\)/);
+  assert.match(html, /selectionActive = true/);
   assert.match(html, /id="reset-view"/);
   assert.match(html, /id="fit-view"/);
+  assert.equal((html.match(/id="fit-view"/g) || []).length, 1);
+  assert.equal((html.match(/id="reset-view"/g) || []).length, 1);
   assert.match(html, /\.side-drawer, \.control-drawer, \.node-detail-drawer \{[^}]*height: 100dvh;[^}]*max-height: 100dvh;[^}]*overflow: auto;[^}]*overflow-x: hidden/s);
   assert.match(html, /\.side-drawer \{[^}]*width: min\(460px, 100dvw\);[^}]*max-width: 100dvw/s);
   assert.match(html, /\.side-drawer, \.control-drawer, \.node-detail-drawer \{ width: 100dvw; max-width: 100dvw; height: 100dvh; max-height: 100dvh; \}/);
+  assert.match(html, /\.floating-dock \{[^}]*border-radius: 999px;[^}]*backdrop-filter: blur\(16px\)/s);
+  assert.match(html, /\.graph-status-badge \{[^}]*bottom: 14px;[^}]*overflow-wrap: anywhere/s);
+  assert.match(html, /\.minimap-card \{[^}]*right: 14px;[^}]*width: 172px/s);
+  assert.match(html, /\.minimap-card \{ display: none; \}/);
   assert.match(html, /overflow-wrap: anywhere/);
   assert.match(html, /word-break: break-word/);
   assert.match(html, /#ffb454/);
@@ -207,6 +224,7 @@ test("identity HTML contains canvas graph view, modes, responsive drawers, and t
   assert.doesNotMatch(html, /<link[^>]+href=["']https?:/i);
   assert.doesNotMatch(html, /\bfetch\s*\(/i);
   assert.doesNotMatch(html, /\bXMLHttpRequest\b|\bimport\s*\(/i);
+  assert.doesNotMatch(html, /\blocalStorage\b/i);
   assert.doesNotMatch(html, /contenteditable|data-graph-edit|graph-editor|<button[^>]*>\s*(?:Edit|Delete|Create|Save)/i);
 });
 

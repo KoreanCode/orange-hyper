@@ -13,7 +13,7 @@
 <summary>Version metadata details</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.11`
+- README version: `1.1-doc.12`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -89,7 +89,7 @@ Installation priority:
 
 1. Standalone binary: install the platform-specific `orange` executable from GitHub Releases into a user-local directory.
 2. Future package managers: Homebrew, Scoop, and similar user-scope package managers are future channels.
-3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-beta.1` or `@beta`.
+3. `npx` exact-version fallback: use only for temporary checks, and specify `orange-hyper@1.1.0-beta.2` or `@beta`.
 4. Project-local npm install: an advanced/manual option only when the user explicitly asks for it.
 
 Release policy: one `v*` tag push runs the single Release workflow. That workflow performs the test gate, standalone binary matrix build, `install.sh`/`install.ps1`, `checksums.txt`, `release-manifest.json`, GitHub Release asset upload, npm publish, asset gate, and installer smoke together. Existing GitHub Release backfills use the same pipeline through the `workflow_dispatch` `tag` input, so routine releases do not require manual `gh release upload`.
@@ -97,7 +97,7 @@ Release policy: one `v*` tag push runs the single Release workflow. That workflo
 macOS/Linux user-local install:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.sh | sh
 "$HOME/.local/bin/orange" --version
 ```
 
@@ -105,8 +105,8 @@ Windows PowerShell user-local install:
 
 ```powershell
 $Installer = Join-Path $env:TEMP "orange-install.ps1"
-Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.2" -AddToPath
 & (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
@@ -117,14 +117,14 @@ Closed technical beta participants should use [Closed Beta Program](docs/28_CLOS
 For fallback package visibility checks, pin the exact version:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@1.1.0-beta.2 orange --help
 ```
 
 This is not the default installation path. AI should not automatically run `npm init -y` or `npm install -D orange-hyper`. The npm package remains available as a developer/fallback channel.
 
 ## Closed Beta Channel
 
-The recommended test channel is now `v1.1.0-beta.1`. This build is an official Closed Beta prerelease and is not the npm `latest` stable channel.
+The recommended test channel is now `v1.1.0-beta.2`. This build is an official Closed Beta prerelease and is not the npm `latest` stable channel.
 
 The primary validated environment is macOS arm64, Codex CLI, the standalone binary, user-scoped Codex Host Binding, project-scoped Activation, and interactive Codex `/hooks` review. macOS x64, Linux x64, Windows x64, and other Codex minor versions remain exploratory until real user validation accumulates.
 
@@ -132,7 +132,7 @@ In this Beta, users keep asking their AI for work normally instead of operating 
 
 Beta quick start:
 
-1. Install standalone `v1.1.0-beta.1` into a user-local location.
+1. Install standalone `v1.1.0-beta.2` into a user-local location.
 2. Install the Codex Host Binding.
 3. Install and enable the Orange plugin in Codex `/plugins`.
 4. Review the current definitions in Codex `/hooks`.
@@ -173,7 +173,7 @@ If `orange` is missing, suggest standalone binary installation and install it in
 
 Do not run `npm init -y`. Do not use `npm install -D orange-hyper` as the default install path. Do not create or modify project `package.json`, `package-lock.json`, or `node_modules`.
 
-Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@beta` or `orange-hyper@1.1.0-beta.1`.
+Use npm fallback only if I explicitly ask for it, and then specify `orange-hyper@beta` or `orange-hyper@1.1.0-beta.2`.
 
 If the Orange Codex Host Binding is not installed in this Codex environment, run `orange binding plan --host codex --scope user --json` and show me the read-only binding plan.
 
@@ -256,7 +256,7 @@ If you tell the AI "refresh Identity HTML", the AI can use the Orange Kernel to 
 
 Identity HTML is the primary product surface for Orange Hyper Identity. The v1.1 target is a first screen that is a full-screen Knowledge Graph Dashboard, not a document-style report.
 
-Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboard. The first screen is a Canvas graph stage that combines generated Structure Graph nodes with accepted memory, with Combined, Structure, and Memory views. Layout coordinates are computed at build time, so the same revision keeps the same initial positions, and search/view filters do not mutate source state. It is not a graph editor, and Obsidian/JSON Canvas export is a future interoperability layer, not the default product experience.
+Identity HTML currently provides a read-only full-screen Knowledge Graph Dashboard. The first screen is a Canvas graph stage that combines generated Structure Graph nodes with accepted memory, with a floating action dock, search popover, selected-node badge, minimap, and click-to-inspect node drawer. In addition to the default Combined view, Structure and Memory views are available. Layout coordinates are computed at build time, so the same revision keeps the same initial positions, and search/view filters plus fit/reset/pan/zoom do not mutate source state. It is not a graph editor, and Obsidian/JSON Canvas export is a future interoperability layer, not the default product experience.
 
 ## Detailed Docs Links
 

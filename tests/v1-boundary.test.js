@@ -15,8 +15,8 @@ import { completeQuest, createQuest } from "../src/core/quest.js";
 
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.11";
-const EXPECTED_PACKAGE_VERSION = "1.1.0-beta.1";
+const EXPECTED_README_VERSION = "1.1-doc.12";
+const EXPECTED_PACKAGE_VERSION = "1.1.0-beta.2";
 const COMMAND_SURFACE = [
   "init",
   "activate",
@@ -171,7 +171,7 @@ test("README and readiness command surface stay consistent with CLI help", () =>
   }
 });
 
-test("README version metadata stays synchronized at 1.1-doc.11", () => {
+test("README version metadata stays synchronized at 1.1-doc.12", () => {
   for (const file of README_FILES) {
     const source = fs.readFileSync(path.join(process.cwd(), file), "utf8");
     const match = source.match(/README version:\s*`([^`]+)`/);
@@ -196,10 +196,10 @@ test("release version surfaces stay aligned without changing adapter contract", 
   assert.equal(pluginFixture.version, EXPECTED_PACKAGE_VERSION);
   assert.equal(pluginTemplate.version, EXPECTED_PACKAGE_VERSION);
   assert.equal(env.data.version, EXPECTED_PACKAGE_VERSION);
-  assert.match(releaseNotes, /## v1\.1\.0-beta\.1/);
-  assert.match(releaseNotes, /Package version is `1\.1\.0-beta\.1`/);
-  assert.match(releaseNotes, /Codex plugin version is `1\.1\.0-beta\.1`/);
-  assert.match(releaseNotes, /README version is `1\.1-doc\.10`/);
+  assert.match(releaseNotes, /## v1\.1\.0-beta\.2/);
+  assert.match(releaseNotes, /Package version is `1\.1\.0-beta\.2`/);
+  assert.match(releaseNotes, /Codex plugin version is `1\.1\.0-beta\.2`/);
+  assert.match(releaseNotes, /README version is `1\.1-doc\.12`/);
   assert.match(releaseNotes, /Adapter JSON `contract_version` remains `"0\.1"`/);
   assert.equal(JSON_CONTRACT_VERSION, "0.1");
 });

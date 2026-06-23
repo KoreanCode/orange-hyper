@@ -515,11 +515,11 @@ v1.1의 첫 화면은 document가 아니라 full-screen graph stage다.
 ┌────────────────────────────────────────────────────────────┐
 │  full-screen dark neural field (100vw x 100vh)             │
 │                                                            │
-│  [hamburger]        memory / concept / source clusters     │
+│  [hamburger]        memory / structure clusters            │
 │                                                            │
 │                         selected node -> detail drawer     │
 │                                                            │
-│                         search/filter drawer hidden        │
+│     status badge       floating dock       minimap         │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -543,6 +543,17 @@ Node Detail Drawer:
 Search/Filter Drawer:
   hidden until requested
   supports type/category/search filtering
+
+Floating Action Dock:
+  search popover
+  fit/reset view
+  graph controls drawer
+
+Graph Status Badge:
+  selected node or visible node/edge count
+
+Minimap:
+  compact read-only viewport overview on desktop
 
 Fallback:
   table remains available only in sidebar/fallback/no-JS mode
@@ -602,7 +613,10 @@ fit the full-screen Identity HTML target without external dependencies.
 - edge type filter
 - stale/conflict/risk 강조
 - orphan node 표시
-- search
+- floating search popover
+- minimap
+- selected-node badge
+- fit/reset/pan/zoom controls
 ```
 
 Node type:
@@ -1045,7 +1059,7 @@ orange identity build --include-local
 3. graph stage spans 100vw
 4. sidebar is hidden by default behind hamburger control
 5. node detail opens on click
-6. search and Structure/Memory/Combined view selector are visible on the top bar
+6. Structure/Memory/Combined view selector is visible on the graph stage
 7. no document-style main content is visible on first screen
 8. no always-visible table is present in the main graph stage
 9. table is fallback/sidebar/no-JS only
@@ -1061,6 +1075,10 @@ orange identity build --include-local
 19. sync apply refreshes Identity HTML
 20. mobile drawers stay within 100dvw/100dvh
 21. long IDs and paths wrap inside drawer panels
+22. floating action dock exposes search, fit, reset, and graph controls
+23. search opens as an overlay popover instead of consuming the graph-first first screen
+24. selected node or visible graph count is visible in a compact graph status badge
+25. desktop view includes a compact read-only minimap
 ```
 
 ## 11. 구현 단계

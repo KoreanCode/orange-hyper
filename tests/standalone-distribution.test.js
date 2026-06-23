@@ -9,7 +9,7 @@ import path from "node:path";
 const ROOT = process.cwd();
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const BUNDLE = path.join(ROOT, "dist", "standalone", "orange.cjs");
-const VERSION = "1.1.0-beta.1";
+const VERSION = "1.1.0-beta.2";
 
 test("standalone CommonJS bundle preserves JSON contracts in a fresh non-Node project", () => {
   buildStandaloneBundle();
@@ -61,7 +61,7 @@ test("release manifest records platform assets and checksums", () => {
     "--version",
     VERSION,
     "--release-url",
-    "https://example.test/releases/v1.1.0-beta.1"
+    "https://example.test/releases/v1.1.0-beta.2"
   ], {
     cwd: ROOT,
     encoding: "utf8"
@@ -117,7 +117,7 @@ test("release asset gate requires installers, metadata, and all supported binari
         arch: filename.includes("arm64") ? "arm64" : "x64",
         filename,
         sha256: "0".repeat(64),
-        download_url: `https://example.test/releases/v1.1.0-beta.1/${filename}`,
+        download_url: `https://example.test/releases/v1.1.0-beta.2/${filename}`,
         signed: false,
         experimental: filename === "orange-macos-x64"
       }))
@@ -137,7 +137,7 @@ test("release asset gate requires installers, metadata, and all supported binari
     "--manifest",
     manifestPath,
     "--release-url",
-    "https://example.test/releases/v1.1.0-beta.1",
+    "https://example.test/releases/v1.1.0-beta.2",
     "--version",
     VERSION
   ], {

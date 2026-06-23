@@ -1,8 +1,8 @@
 # Closed Beta Program
 
-Closed Beta status: `open` for `v1.1.0-beta.1`.
+Closed Beta status: `open` for `v1.1.0-beta.2`.
 
-This program is the official Orange Hyper `v1.1.0-beta.1` Closed Beta channel.
+This program is the official Orange Hyper `v1.1.0-beta.2` Closed Beta channel.
 It does not add a new Runtime, Skill, Agent, MCP server, Subagent lane,
 telemetry path, support-bundle command, or network upload.
 
@@ -52,18 +52,18 @@ events, project activation, and cleanup behavior.
 
 ## Current Release State
 
-Use `v1.1.0-beta.1` as the closed beta build. This is a prerelease Closed Beta
+Use `v1.1.0-beta.2` as the closed beta build. This is a prerelease Closed Beta
 channel, not npm `latest`.
 
 Verified release inputs:
 
-- Package version: `1.1.0-beta.1`.
+- Package version: `1.1.0-beta.2`.
 - Adapter JSON contract version: `0.1`.
-- Git tag: `v1.1.0-beta.1`.
-- GitHub Release: <https://github.com/KoreanCode/orange-hyper/releases/tag/v1.1.0-beta.1>
+- Git tag: `v1.1.0-beta.2`.
+- GitHub Release: <https://github.com/KoreanCode/orange-hyper/releases/tag/v1.1.0-beta.2>
 - GitHub Release prerelease metadata: `true`.
 - GitHub Release assets: 8 required assets.
-- npm beta dist-tag: `orange-hyper@beta -> 1.1.0-beta.1`.
+- npm beta dist-tag: `orange-hyper@beta -> 1.1.0-beta.2`.
 - npm alpha dist-tag remains `orange-hyper@alpha -> 1.1.0-alpha.8`.
 - npm latest dist-tag remains the existing stable channel.
 
@@ -87,7 +87,7 @@ install `orange-hyper` into the project by default, and do not create
 macOS and Linux:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.sh | sh
 "$HOME/.local/bin/orange" --version
 ```
 
@@ -95,8 +95,8 @@ Windows PowerShell:
 
 ```powershell
 $Installer = Join-Path $env:TEMP "orange-install.ps1"
-Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.2" -AddToPath
 & (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
@@ -107,7 +107,7 @@ Use npm only as an explicit fallback check, and pin either the beta dist-tag or
 the exact version:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@1.1.0-beta.2 orange --help
 ```
 
 Alpha.8 users should install beta.1 as a new channel. The alpha.8 package and
@@ -186,7 +186,7 @@ fresh `SessionStart`, `UserPromptSubmit`, and `Stop` evidence.
 Closed beta testers can give this short prompt to their AI assistant:
 
 ```text
-Use Orange Hyper v1.1.0-beta.1 for this repository.
+Use Orange Hyper v1.1.0-beta.2 for this repository.
 
 First check `orange --version` and `orange env --json` from PATH.
 Prefer the standalone installer. Do not create or modify project `package.json`,
@@ -348,7 +348,7 @@ Current gate status: `open`.
 | Gate item | Status | Evidence |
 | --- | --- | --- |
 | beta.1 install assets and checksums exist | pass | GitHub Release has 8 required assets including `checksums.txt` |
-| npm beta dist-tag is correct | pass | `orange-hyper@beta` points to `1.1.0-beta.1` |
+| npm beta dist-tag is correct | pass | `orange-hyper@beta` points to `1.1.0-beta.2` |
 | npm alpha dist-tag is preserved | pass | `orange-hyper@alpha` still points to `1.1.0-alpha.8` |
 | trusted-hook E2E evidence exists | pass | `docs/27_CODEX_BINDING_E2E.md` records real Codex `/hooks` review |
 | L1 no-Quest behavior confirmed | pass | beta.1 E2E and regression tests |

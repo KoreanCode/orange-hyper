@@ -13,7 +13,7 @@
 <summary>版本元数据详情</summary>
 
 - Base README: [README.md](README.md)
-- README version: `1.1-doc.11`
+- README version: `1.1-doc.12`
 - Package version: see [package.json](package.json)
 - Adapter JSON contract: `0.1`
 - Base language: `ko`
@@ -89,13 +89,13 @@ Orange Hyper 是面向 coding agent 的 repo-local project-memory kernel。
 
 1. Standalone binary：从 GitHub Release 安装平台对应的 `orange` 执行文件到 user-local 目录。
 2. Future package manager：Homebrew、Scoop 等用户范围 package manager 是后续渠道。
-3. `npx` exact-version fallback：只用于临时确认，并指定 `orange-hyper@1.1.0-beta.1` 或 `@beta`。
+3. `npx` exact-version fallback：只用于临时确认，并指定 `orange-hyper@1.1.0-beta.2` 或 `@beta`。
 4. Project-local npm install：只有用户明确要求时才使用的 advanced/manual option。
 
 macOS/Linux user-local 安装：
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.sh | sh
 "$HOME/.local/bin/orange" --version
 ```
 
@@ -103,8 +103,8 @@ Windows PowerShell user-local 安装：
 
 ```powershell
 $Installer = Join-Path $env:TEMP "orange-install.ps1"
-Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.2" -AddToPath
 & (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
@@ -115,14 +115,14 @@ Windows 使用 `-AddToPath` 后，新的 PowerShell 窗口可以从 PATH 运行 
 如果只想用 fallback 快速确认包是否可用，请指定 exact version：
 
 ```bash
-npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@1.1.0-beta.2 orange --help
 ```
 
 这不是默认安装方式。AI 不应该自动运行 `npm init -y` 或 `npm install -D orange-hyper`。npm package 继续作为 developer/fallback channel 保留。
 
 ## Closed Beta 渠道
 
-当前推荐测试渠道是 `v1.1.0-beta.1`。这个 build 是官方 Closed Beta prerelease，不是 npm `latest` stable 渠道。
+当前推荐测试渠道是 `v1.1.0-beta.2`。这个 build 是官方 Closed Beta prerelease，不是 npm `latest` stable 渠道。
 
 Primary validated 环境是 macOS arm64、Codex CLI、standalone binary、user-scoped Codex Host Binding、project-scoped Activation，以及 interactive Codex `/hooks` review。macOS x64、Linux x64、Windows x64 和其他 Codex minor version 在积累真实用户验证前仍是 exploratory 环境。
 
@@ -130,7 +130,7 @@ Primary validated 环境是 macOS arm64、Codex CLI、standalone binary、user-s
 
 Beta quick start:
 
-1. 将 standalone `v1.1.0-beta.1` 安装到 user-local 位置。
+1. 将 standalone `v1.1.0-beta.2` 安装到 user-local 位置。
 2. 安装 Codex Host Binding。
 3. 在 Codex `/plugins` 中安装并 enable Orange plugin。
 4. 在 Codex `/hooks` 中 review current definition。
@@ -171,7 +171,7 @@ Then work normally.
 
 不要运行 `npm init -y`。不要把 `npm install -D orange-hyper` 当作默认安装方式。不要创建或修改项目的 `package.json`、`package-lock.json`、`node_modules`。
 
-只有在我明确要求时才使用 npm fallback；使用时也要指定 `orange-hyper@beta` 或 `orange-hyper@1.1.0-beta.1`。
+只有在我明确要求时才使用 npm fallback；使用时也要指定 `orange-hyper@beta` 或 `orange-hyper@1.1.0-beta.2`。
 
 如果当前 Codex 环境还没有 Orange Host Binding，请先运行 `orange binding plan --host codex --scope user --json`，把 read-only binding plan 给我看。
 
@@ -254,7 +254,7 @@ Orange Hyper 的 Knowledge Graph 不是 code dependency graph。它是 accepted 
 
 Identity HTML 是 Orange Hyper Identity 的 primary product surface。v1.1 的目标是让第一屏成为 full-screen Knowledge Graph Dashboard，而不是 document-style report。
 
-当前 Identity HTML 提供 read-only full-screen Knowledge Graph Dashboard。第一屏是 Canvas graph stage，把 generated Structure Graph 和 accepted memory 合成在一起，并提供 Combined、Structure、Memory 视图。layout 坐标在 build 时确定，所以同一 revision 会保持同一初始位置，search/view filter 不会修改 source state。它不是 graph editor；Obsidian/JSON Canvas export 是 future interoperability layer，不是默认产品体验。
+当前 Identity HTML 提供 read-only full-screen Knowledge Graph Dashboard。第一屏是 Canvas graph stage，把 generated Structure Graph 和 accepted memory 合成在一起，并提供 floating action dock、search popover、selected-node badge、minimap，以及 click-to-inspect node drawer。除了默认的 Combined 视图，也可以选择 Structure 和 Memory 视图。layout 坐标在 build 时确定，所以同一 revision 会保持同一初始位置；search/view filter 以及 fit/reset/pan/zoom 都不会修改 source state。它不是 graph editor；Obsidian/JSON Canvas export 是 future interoperability layer，不是默认产品体验。
 
 ## 详细文档链接
 

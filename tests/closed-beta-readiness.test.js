@@ -9,7 +9,7 @@ import { resolveReleaseMetadata } from "../scripts/resolve-release-metadata.js";
 const ROOT = process.cwd();
 const ORANGE_BIN = new URL("../bin/orange.js", import.meta.url);
 const README_FILES = ["README.md", "README.en.md", "README.zh-CN.md", "README.ja.md"];
-const EXPECTED_README_VERSION = "1.1-doc.11";
+const EXPECTED_README_VERSION = "1.1-doc.12";
 const ISSUE_FORM_FILES = [
   ".github/ISSUE_TEMPLATE/beta-bug.yml",
   ".github/ISSUE_TEMPLATE/beta-feedback.yml"
@@ -28,9 +28,9 @@ test("release metadata marks alpha, beta, and rc tags as GitHub prereleases", ()
     npm_tag: "alpha",
     is_prerelease: true
   });
-  assert.deepEqual(resolveReleaseMetadata("v1.1.0-beta.1"), {
-    release_tag: "v1.1.0-beta.1",
-    version: "1.1.0-beta.1",
+  assert.deepEqual(resolveReleaseMetadata("v1.1.0-beta.2"), {
+    release_tag: "v1.1.0-beta.2",
+    version: "1.1.0-beta.2",
     npm_tag: "beta",
     is_prerelease: true
   });
@@ -59,7 +59,7 @@ test("closed beta docs are linked from all READMEs and expose gate boundaries", 
   assert.match(program, /orange activate status --host codex --json/);
   assert.match(program, /raw prompts?/i);
   assert.match(program, /Do not measure or infer:/);
-  assert.match(program, /v1\.1\.0-beta\.1/);
+  assert.match(program, /v1\.1\.0-beta\.2/);
 
   const checklist = read("docs/29_BETA_TEST_CHECKLIST.md");
   const scenarioRows = checklist

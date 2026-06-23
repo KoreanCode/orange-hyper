@@ -35,7 +35,7 @@ code. Prefer selected JSON fields and short notes.
 | # | Scenario | Status | Expected evidence | Notes |
 | --- | --- | --- | --- | --- |
 | 1 | Standalone install | not verified | Installer completes and checksum verification passes |  |
-| 2 | `orange --version` | not verified | Prints `1.1.0-beta.1` |  |
+| 2 | `orange --version` | not verified | Prints `1.1.0-beta.2` |  |
 | 3 | Binding plan | not verified | `orange binding plan --host codex --scope user --json` is read-only |  |
 | 4 | Binding install | not verified | `orange binding install --host codex --scope user --json` writes only user-scoped binding state |  |
 | 5 | Plugin install and enable | not verified | Codex `/plugins` shows Orange installed and enabled |  |

@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+## v1.1.0-beta.2
+
+Identity Graph Dashboard polish prerelease.
+
+- Package version is `1.1.0-beta.2`.
+- Codex plugin version is `1.1.0-beta.2`.
+- README version is `1.1-doc.12`.
+- Release date is `2026-06-23`.
+- Adapter JSON `contract_version` remains `"0.1"`.
+- GitHub Release metadata is prerelease, and npm publication uses the `beta`
+  dist-tag. npm `latest` remains the existing stable channel, and npm `alpha`
+  remains `1.1.0-alpha.8`.
+
+- Upgraded the generated Identity HTML first screen toward a graph-lab quality
+  surface while keeping it a single self-contained read-only artifact.
+- Added a floating graph action dock, search popover, selected-node status
+  badge, desktop minimap, selected-neighborhood emphasis, and keyboard pan/zoom
+  affordances to the Canvas graph runtime.
+- Kept source state immutable: search, view mode, fit, reset, pan, zoom, node
+  selection, badge, and minimap behavior do not mutate `.orange-hyper` graph,
+  structure, memory, or identity state.
+- Preserved the existing graph boundaries: pending/rejected proposals remain
+  excluded, low-quality keyword concept nodes remain absent by default, and no
+  graph editing, export, CDN, fetch, or external runtime dependency was added.
+- Updated the Identity Dashboard spec, README translations, closed beta docs,
+  and regression tests around the new read-only graph surface.
+
 ## v1.1.0-beta.1
 
 Official Closed Beta prerelease.

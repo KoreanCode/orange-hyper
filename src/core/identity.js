@@ -26,7 +26,7 @@ const IDENTITY_STATUS_MESSAGES = [
   "Accepted memory nodes are candidate project memory."
 ];
 
-const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-beta.1";
+const GRAPH_DASHBOARD_SCHEMA_VERSION = "1.1.0-beta.2";
 
 const NODE_TYPE_COLORS = {
   decision: "#ffb454",
@@ -1163,33 +1163,62 @@ ${acceptedMemoryRows}
   <meta name="source-repository" content="${escapeHtml(model.source_repository || "")}">
   <title>Orange Hyper Identity - ${escapeHtml(model.projectName)} Knowledge Graph Dashboard</title>
   <style>
-    :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0a0c10; color: #f4f7fb; }
+    :root { color-scheme: dark; --ink: #f4f7fb; --muted: #b9c4d3; --line: rgba(244, 247, 251, .16); --panel: rgba(16, 17, 21, .82); --panel-solid: #111318; --graph-bg: #101014; --accent: #ffb454; --cyan: #67e8f9; --violet: #a78bfa; --rose: #fb7185; --green: #86efac; --shadow: 0 22px 70px rgba(0, 0, 0, .42); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--graph-bg); color: var(--ink); }
     * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; }
-    body { margin: 0; overflow: hidden; background: #0a0c10; color: #f4f7fb; }
+    body { margin: 0; overflow: hidden; background:
+      radial-gradient(circle at 18% 16%, rgba(103, 232, 249, .12), transparent 30%),
+      radial-gradient(circle at 76% 70%, rgba(167, 139, 250, .11), transparent 28%),
+      linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, .025) 1px, transparent 1px),
+      var(--graph-bg); background-size: 24px 24px; color: var(--ink); }
     button, input, select { font: inherit; letter-spacing: 0; }
-    button { min-height: 38px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(17, 19, 24, .86); color: #f4f7fb; cursor: pointer; }
-    button:hover, button:focus-visible, input:focus-visible, select:focus-visible { border-color: rgba(255, 180, 84, .82); outline: 0; }
+    button { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; background: rgba(24, 25, 31, .86); color: var(--ink); cursor: pointer; transition: border-color .14s ease, background .14s ease, transform .14s ease; }
+    button:hover { border-color: rgba(255, 180, 84, .82); background: rgba(38, 39, 47, .94); transform: translateY(-1px); }
+    button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid rgba(255, 180, 84, .2); outline-offset: 2px; }
     a { color: #ffcf8a; }
-    .identity-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: #0a0c10; }
-    .graph-stage { position: absolute; inset: 0; width: 100vw; height: 100vh; overflow: hidden; background: #0a0c10; }
+    .identity-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: var(--graph-bg); }
+    .graph-stage { position: absolute; inset: 0; width: 100vw; height: 100vh; overflow: hidden; background:
+      radial-gradient(circle at 50% 44%, rgba(255, 180, 84, .08), transparent 34%),
+      radial-gradient(circle at 36% 58%, rgba(103, 232, 249, .075), transparent 28%),
+      var(--graph-bg); }
     .graph-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .35; background-image:
-      linear-gradient(rgba(244, 247, 251, .07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(244, 247, 251, .05) 1px, transparent 1px);
-      background-size: 64px 64px, 64px 64px; }
+      radial-gradient(circle at center, rgba(255,255,255,.12) 0 1px, transparent 1px),
+      linear-gradient(rgba(244, 247, 251, .04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244, 247, 251, .035) 1px, transparent 1px);
+      background-size: 18px 18px, 72px 72px, 72px 72px; }
+    .graph-stage::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, transparent 0 46%, rgba(0,0,0,.34) 100%); }
     .knowledge-graph-canvas { position: absolute; inset: 0; display: block; width: 100vw; height: 100vh; cursor: grab; touch-action: none; }
     .knowledge-graph-canvas.is-panning { cursor: grabbing; }
-    .topbar { position: absolute; z-index: 4; top: 14px; left: 14px; right: 14px; display: grid; grid-template-columns: 42px minmax(120px, .8fr) minmax(160px, 1fr) 132px auto; gap: 10px; align-items: center; pointer-events: none; }
+    .topbar { position: absolute; z-index: 4; top: 14px; left: 14px; right: 14px; display: grid; grid-template-columns: 42px minmax(160px, .8fr) 160px; gap: 10px; align-items: center; pointer-events: none; }
     .topbar > * { pointer-events: auto; }
     .icon-button { width: 42px; height: 42px; display: inline-grid; place-items: center; padding: 0; }
     .hamburger-lines { width: 18px; display: grid; gap: 4px; }
-    .hamburger-lines span { display: block; height: 2px; border-radius: 999px; background: #f4f7fb; }
-    .project-chip { min-width: 0; padding: 9px 12px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(10, 12, 16, .72); backdrop-filter: blur(12px); }
+    .hamburger-lines span { display: block; height: 2px; border-radius: 999px; background: var(--ink); }
+    .project-chip { min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); backdrop-filter: blur(14px); box-shadow: 0 12px 32px rgba(0,0,0,.24); }
     .project-chip strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; letter-spacing: 0; }
-    .graph-search, .view-select { width: 100%; min-height: 42px; border: 1px solid rgba(244, 247, 251, .18); border-radius: 8px; background: rgba(10, 12, 16, .72); color: #f4f7fb; padding: 9px 11px; backdrop-filter: blur(12px); }
-    .desktop-actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .stage-button { min-width: 64px; padding: 0 12px; background: rgba(10, 12, 16, .72); backdrop-filter: blur(12px); }
+    .view-select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 9px 11px; backdrop-filter: blur(14px); }
+    .graph-search { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 999px; background: rgba(10, 11, 15, .78); color: var(--ink); padding: 0 14px; }
     .mobile-menu-button { display: none; }
+    .graph-search-popover { position: absolute; z-index: 5; left: 50%; bottom: 94px; width: min(380px, calc(100vw - 28px)); padding: 8px; border: 1px solid var(--line); border-radius: 999px; background: rgba(17, 18, 23, .86); box-shadow: var(--shadow); backdrop-filter: blur(16px); transform: translateX(-50%) translateY(8px); opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; }
+    .graph-search-popover[data-open="true"] { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
+    .floating-dock { position: absolute; z-index: 5; left: 50%; bottom: 22px; display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 7px; border: 1px solid var(--line); border-radius: 999px; background: rgba(17, 18, 23, .78); box-shadow: var(--shadow); backdrop-filter: blur(16px); transform: translateX(-50%); }
+    .dock-button { width: 44px; height: 44px; min-height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.055); }
+    .dock-button[data-active="true"], .dock-button.primary { border-color: rgba(255, 180, 84, .82); background: rgba(255, 180, 84, .16); color: #fff7ed; }
+    .dock-icon { position: relative; width: 20px; height: 20px; display: block; }
+    .icon-search::before { content: ""; position: absolute; width: 10px; height: 10px; left: 2px; top: 2px; border: 2px solid currentColor; border-radius: 50%; }
+    .icon-search::after { content: ""; position: absolute; width: 8px; height: 2px; right: 2px; bottom: 3px; background: currentColor; transform: rotate(45deg); transform-origin: center; }
+    .icon-fit::before, .icon-fit::after { content: ""; position: absolute; inset: 2px; border: 2px solid currentColor; border-radius: 3px; }
+    .icon-fit::after { inset: 6px; border-width: 1px; opacity: .42; }
+    .icon-reset::before { content: ""; position: absolute; inset: 3px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; }
+    .icon-reset::after { content: ""; position: absolute; right: 2px; top: 3px; width: 0; height: 0; border-top: 5px solid currentColor; border-left: 5px solid transparent; transform: rotate(28deg); }
+    .icon-controls::before, .icon-controls::after { content: ""; position: absolute; left: 2px; right: 2px; height: 2px; border-radius: 999px; background: currentColor; box-shadow: 0 7px 0 currentColor, 0 14px 0 currentColor; }
+    .icon-controls::after { left: 4px; right: auto; width: 5px; top: -1px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 8px 7px 0 var(--cyan), 3px 14px 0 var(--violet); }
+    .graph-status-badge, .minimap-card { position: absolute; z-index: 4; border: 1px solid var(--line); border-radius: 8px; background: rgba(17, 18, 23, .78); box-shadow: 0 14px 36px rgba(0,0,0,.28); backdrop-filter: blur(14px); }
+    .graph-status-badge { left: 14px; bottom: 14px; max-width: min(420px, calc(100vw - 28px)); padding: 9px 11px; color: var(--muted); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; pointer-events: none; }
+    .minimap-card { right: 14px; bottom: 14px; width: 172px; padding: 8px; display: grid; gap: 6px; }
+    .graph-minimap { display: block; width: 156px; height: 104px; border-radius: 6px; background: rgba(7, 8, 11, .62); }
+    .minimap-label { color: var(--muted); font-size: 11px; line-height: 1.2; }
     .graph-empty-message { position: absolute; z-index: 2; inset: 0; display: grid; place-items: center; padding: 24px; color: #d7e4f5; text-align: center; }
     .graph-empty-message[hidden] { display: none; }
     .side-drawer, .control-drawer, .node-detail-drawer { position: fixed; z-index: 6; top: 0; height: 100dvh; max-height: 100dvh; overflow: auto; overflow-x: hidden; border-color: rgba(244, 247, 251, .16); background: rgba(12, 14, 18, .96); color: #f4f7fb; backdrop-filter: blur(18px); transition: left .18s ease, right .18s ease; overflow-wrap: anywhere; word-break: break-word; pointer-events: none; }
@@ -1229,10 +1258,11 @@ ${acceptedMemoryRows}
     @media (max-width: 760px) {
       .topbar { top: 10px; left: 10px; right: 10px; grid-template-columns: 42px minmax(0, 1fr) 42px; gap: 8px; }
       .project-chip { grid-column: 2 / 3; }
-      .graph-search { grid-column: 1 / 4; grid-row: 2; }
-      .view-select { grid-column: 1 / 3; grid-row: 3; }
-      .desktop-actions { display: none; }
-      .mobile-menu-button { display: inline-grid; grid-column: 3; grid-row: 3; min-width: 42px; }
+      .view-select { grid-column: 1 / 3; grid-row: 2; }
+      .mobile-menu-button { display: inline-grid; grid-column: 3; grid-row: 2; min-width: 42px; }
+      .floating-dock { bottom: 14px; }
+      .graph-status-badge { left: 10px; right: 10px; bottom: 82px; max-width: none; }
+      .minimap-card { display: none; }
       .side-drawer, .control-drawer, .node-detail-drawer { width: 100dvw; max-width: 100dvw; height: 100dvh; max-height: 100dvh; }
       .drawer-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -1246,17 +1276,26 @@ ${acceptedMemoryRows}
       <div class="topbar" aria-label="Graph controls">
         <button id="sidebar-toggle" class="icon-button" type="button" aria-label="Open sidebar" aria-controls="identity-sidebar" aria-expanded="false"><span class="hamburger-lines" aria-hidden="true"><span></span><span></span><span></span></span></button>
         <div class="project-chip"><strong>${escapeHtml(model.projectName)}</strong></div>
-        <input id="graph-search" class="graph-search" type="search" autocomplete="off" placeholder="Search">
         <select id="graph-view-mode" class="view-select" aria-label="Layer view">
           <option value="combined" selected>Combined</option>
           <option value="structure">Structure</option>
           <option value="memory">Memory</option>
         </select>
-        <div class="desktop-actions">
-          <button id="fit-view" class="stage-button" type="button">Fit</button>
-          <button id="reset-view" class="stage-button" type="button">Reset</button>
-        </div>
         <button id="mobile-menu-toggle" class="icon-button mobile-menu-button" type="button" aria-label="Open graph controls" aria-controls="control-drawer" aria-expanded="false">...</button>
+      </div>
+      <div id="graph-search-popover" class="graph-search-popover" data-open="false">
+        <input id="graph-search" class="graph-search" type="search" autocomplete="off" placeholder="Search nodes">
+      </div>
+      <div class="floating-dock" aria-label="Graph action dock">
+        <button id="graph-search-toggle" class="dock-button" type="button" aria-label="Search nodes" aria-controls="graph-search-popover" aria-expanded="false"><span class="dock-icon icon-search" aria-hidden="true"></span></button>
+        <button id="fit-view" class="dock-button primary" type="button" aria-label="Fit graph"><span class="dock-icon icon-fit" aria-hidden="true"></span></button>
+        <button id="reset-view" class="dock-button" type="button" aria-label="Reset view"><span class="dock-icon icon-reset" aria-hidden="true"></span></button>
+        <button id="graph-controls-toggle" class="dock-button" type="button" aria-label="Open graph controls" aria-controls="control-drawer" aria-expanded="false"><span class="dock-icon icon-controls" aria-hidden="true"></span></button>
+      </div>
+      <div id="graph-status-badge" class="graph-status-badge">No graph node selected</div>
+      <div class="minimap-card" aria-label="Graph minimap">
+        <canvas id="graph-minimap-canvas" class="graph-minimap" width="156" height="104" aria-hidden="true"></canvas>
+        <span class="minimap-label">Identity map</span>
       </div>
       <p id="graph-live-status" class="visually-hidden" aria-live="polite"></p>
     </section>
@@ -1331,9 +1370,15 @@ ${graphDashboardState}
   const liveStatus = document.getElementById("graph-live-status");
   const search = document.getElementById("graph-search");
   const modeSelect = document.getElementById("graph-view-mode");
-  if (!stateElement || !canvas || !sidebar || !controls || !detailDrawer || !detailBody || !search || !modeSelect) return;
+  const searchPopover = document.getElementById("graph-search-popover");
+  const searchToggle = document.getElementById("graph-search-toggle");
+  const controlsToggle = document.getElementById("graph-controls-toggle");
+  const graphStatusBadge = document.getElementById("graph-status-badge");
+  const minimapCanvas = document.getElementById("graph-minimap-canvas");
+  if (!stateElement || !canvas || !sidebar || !controls || !detailDrawer || !detailBody || !search || !modeSelect || !searchPopover || !graphStatusBadge) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
+  const minimapCtx = minimapCanvas ? minimapCanvas.getContext("2d") : null;
   const state = JSON.parse(stateElement.textContent || "{}");
   const graph = state.identityGraph || {};
   const allNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
@@ -1343,10 +1388,12 @@ ${graphDashboardState}
   let visibleNodes = [];
   let visibleEdges = [];
   let selectedId = (allNodes.find((node) => node.id === "project.root") || allNodes[0] || {}).id || null;
+  let selectionActive = false;
   let hoveredId = null;
   let dragging = null;
   let frame = 0;
   let frameFallback = 0;
+  let searchOpen = false;
   const view = { x: 0, y: 0, scale: 1 };
 
   function setDrawer(drawer, open, button) {
@@ -1364,15 +1411,17 @@ ${graphDashboardState}
 
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const mobileMenuToggle = document.getElementById("mobile-menu-toggle");
+  const controlButtons = [mobileMenuToggle, controlsToggle].filter(Boolean);
   const fitButtons = [document.getElementById("fit-view"), document.getElementById("drawer-fit-view")].filter(Boolean);
   const resetButtons = [document.getElementById("reset-view"), document.getElementById("drawer-reset-view")].filter(Boolean);
   sidebarToggle.addEventListener("click", () => setDrawer(sidebar, sidebar.dataset.open !== "true", sidebarToggle));
   document.getElementById("sidebar-close").addEventListener("click", () => setDrawer(sidebar, false, sidebarToggle));
-  mobileMenuToggle.addEventListener("click", () => setDrawer(controls, controls.dataset.open !== "true", mobileMenuToggle));
-  document.getElementById("control-close").addEventListener("click", () => setDrawer(controls, false, mobileMenuToggle));
+  for (const button of controlButtons) button.addEventListener("click", () => setControlsDrawer(controls.dataset.open !== "true"));
+  document.getElementById("control-close").addEventListener("click", () => setControlsDrawer(false));
   document.getElementById("detail-close").addEventListener("click", () => setDrawer(detailDrawer, false));
   for (const button of fitButtons) button.addEventListener("click", fitToView);
   for (const button of resetButtons) button.addEventListener("click", resetView);
+  if (searchToggle) searchToggle.addEventListener("click", () => setSearchOpen(!searchOpen));
   for (const tab of document.querySelectorAll(".drawer-tab")) {
     tab.addEventListener("click", () => {
       const target = tab.dataset.tab;
@@ -1390,6 +1439,24 @@ ${graphDashboardState}
     resetView();
   }
 
+  function setControlsDrawer(open) {
+    setDrawer(controls, open);
+    for (const button of controlButtons) {
+      button.setAttribute("aria-expanded", open ? "true" : "false");
+      button.dataset.active = open ? "true" : "false";
+    }
+  }
+
+  function setSearchOpen(open) {
+    searchOpen = open;
+    searchPopover.dataset.open = open ? "true" : "false";
+    if (searchToggle) {
+      searchToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      searchToggle.dataset.active = open || search.value.trim() ? "true" : "false";
+    }
+    if (open) search.focus();
+  }
+
   function updateVisible() {
     const query = search.value.trim().toLowerCase();
     const mode = modeSelect.value || "combined";
@@ -1398,10 +1465,14 @@ ${graphDashboardState}
     const edges = allEdges.filter((edge) => ids.has(edge.from) && ids.has(edge.to) && edgeModeMatch(edge, mode));
     visibleNodes = nodes;
     visibleEdges = edges;
-    if (!ids.has(selectedId)) selectedId = nodes.find((node) => node.id === "project.root")?.id || nodes[0]?.id || null;
+    if (!ids.has(selectedId)) {
+      selectedId = nodes.find((node) => node.id === "project.root")?.id || nodes[0]?.id || null;
+      selectionActive = false;
+    }
     empty.hidden = nodes.length !== 0;
     renderDetail(nodeById.get(selectedId) || null);
     if (liveStatus) liveStatus.textContent = mode + " view, " + nodes.length + " nodes, " + edges.length + " edges.";
+    updateStatusBadge();
     scheduleDraw();
   }
 
@@ -1467,12 +1538,15 @@ ${graphDashboardState}
   function draw() {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
+    const highlightedIds = selectedHighlightIds();
     ctx.clearRect(0, 0, width, height);
     drawGrid(width, height);
     drawClusters();
     for (const edge of visibleEdges) drawEdge(edge);
     const sorted = [...visibleNodes].sort((left, right) => nodeDrawRank(left) - nodeDrawRank(right));
-    for (const node of sorted) drawNode(node);
+    for (const node of sorted) drawNode(node, highlightedIds);
+    drawMinimap();
+    updateStatusBadge();
     window.__orangeHyperRendererStats = {
       renderer: "canvas",
       mode: modeSelect.value || "combined",
@@ -1528,25 +1602,36 @@ ${graphDashboardState}
     if (!from || !to) return;
     const a = toScreen(from);
     const b = toScreen(to);
+    const hasSelection = selectionActive && selectedId;
+    const connected = !hasSelection || edge.from === selectedId || edge.to === selectedId;
     ctx.save();
-    ctx.globalAlpha = edge.source === "memory-scope" ? 0.72 : 0.48;
+    ctx.globalAlpha = (edge.source === "memory-scope" ? 0.72 : 0.48) * (connected ? 1 : 0.28);
     ctx.strokeStyle = edge.source === "memory-scope" ? "#ffb454" : edge.source === "memory-graph" ? "#c084fc" : "#9aa6b2";
-    ctx.lineWidth = Math.max(0.7, Number(edge.strength || 0.5) * 1.8);
+    ctx.lineWidth = Math.max(0.7, Number(edge.strength || 0.5) * (connected ? 2.05 : 1.2));
     if (edge.source === "memory-scope") ctx.setLineDash([6, 5]);
     line(a.x, a.y, b.x, b.y);
     ctx.restore();
   }
 
-  function drawNode(node) {
+  function drawNode(node, highlightedIds) {
     const p = toScreen(node);
     const radius = radiusForNode(node);
     const selected = node.id === selectedId;
     const hovered = node.id === hoveredId;
+    const highlighted = highlightedIds.has(node.id);
+    const dim = selectionActive && selectedId && !highlighted;
     ctx.save();
-    ctx.globalAlpha = node.derived ? 0.82 : 1;
+    ctx.globalAlpha = (node.derived ? 0.82 : 1) * (dim ? 0.22 : 1);
     ctx.fillStyle = node.color || colors[node.node_type] || colors[node.type] || "${DEFAULT_NODE_COLOR}";
-    ctx.strokeStyle = selected ? "#ffffff" : hovered ? "#ffcf8a" : "rgba(255,255,255,.64)";
+    ctx.strokeStyle = selected ? "#ffffff" : hovered ? "#ffcf8a" : highlighted ? "rgba(255,255,255,.78)" : "rgba(255,255,255,.52)";
     ctx.lineWidth = selected || hovered ? 2.6 : 1.2;
+    if (selected || hovered) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius + 8, 0, Math.PI * 2);
+      ctx.fillStyle = selected ? "rgba(255,180,84,.14)" : "rgba(103,232,249,.12)";
+      ctx.fill();
+      ctx.fillStyle = node.color || colors[node.node_type] || colors[node.type] || "${DEFAULT_NODE_COLOR}";
+    }
     if (node.type === "module" || node.type === "domain") {
       roundRect(p.x - radius, p.y - radius, radius * 2, radius * 2, 6);
       ctx.fill();
@@ -1557,7 +1642,7 @@ ${graphDashboardState}
       ctx.fill();
       ctx.stroke();
     }
-    if (shouldLabel(node, selected, hovered)) drawLabel(node, p, radius);
+    if (shouldLabel(node, selected, hovered, highlighted)) drawLabel(node, p, radius);
     ctx.restore();
   }
 
@@ -1573,11 +1658,100 @@ ${graphDashboardState}
     ctx.fillText(text, p.x, p.y + radius + 7);
   }
 
-  function shouldLabel(node, selected, hovered) {
+  function shouldLabel(node, selected, hovered, highlighted) {
+    if (selectionActive && selectedId && !highlighted) return false;
     if (selected || hovered || node.id === "project.root") return true;
     if (visibleNodes.length > 320) return node.type === "module" || node.type === "domain";
     if (visibleNodes.length > 120) return node.type === "module" || node.type === "domain" || node.type === "memory";
     return node.type !== "document" && node.type !== "infrastructure";
+  }
+
+  function selectedHighlightIds() {
+    const ids = new Set();
+    if (!selectionActive || !selectedId) return new Set(visibleNodes.map((node) => node.id));
+    ids.add(selectedId);
+    for (const edge of visibleEdges) {
+      if (edge.from === selectedId) ids.add(edge.to);
+      if (edge.to === selectedId) ids.add(edge.from);
+    }
+    return ids;
+  }
+
+  function degreeForNode(id) {
+    return allEdges.filter((edge) => edge.from === id || edge.to === id).length;
+  }
+
+  function updateStatusBadge() {
+    if (!visibleNodes.length) {
+      graphStatusBadge.textContent = "No visible graph nodes";
+      return;
+    }
+    const node = selectionActive ? nodeById.get(selectedId) : null;
+    if (!node) {
+      graphStatusBadge.textContent = visibleNodes.length + " nodes shown · " + visibleEdges.length + " edges";
+      return;
+    }
+    graphStatusBadge.textContent = trimLabel(node.label || node.id, 42) + " · " + (node.type || "node") + " · " + degreeForNode(node.id) + " links · " + visibleNodes.length + " shown";
+  }
+
+  function drawMinimap() {
+    if (!minimapCanvas || !minimapCtx) return;
+    const width = minimapCanvas.clientWidth || 156;
+    const height = minimapCanvas.clientHeight || 104;
+    const ratio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+    const pixelWidth = Math.floor(width * ratio);
+    const pixelHeight = Math.floor(height * ratio);
+    if (minimapCanvas.width !== pixelWidth || minimapCanvas.height !== pixelHeight) {
+      minimapCanvas.width = pixelWidth;
+      minimapCanvas.height = pixelHeight;
+    }
+    minimapCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    minimapCtx.clearRect(0, 0, width, height);
+    minimapCtx.fillStyle = "rgba(7,8,11,.72)";
+    minimapCtx.fillRect(0, 0, width, height);
+    if (!visibleNodes.length) return;
+    const bounds = graphBounds(visibleNodes, 44);
+    const scale = Math.min(width / Math.max(1, bounds.width), height / Math.max(1, bounds.height));
+    const tx = (width - bounds.width * scale) / 2 - bounds.minX * scale;
+    const ty = (height - bounds.height * scale) / 2 - bounds.minY * scale;
+    const toMini = (node) => ({ x: Number(node.x || 0) * scale + tx, y: Number(node.y || 0) * scale + ty });
+    minimapCtx.save();
+    minimapCtx.strokeStyle = "rgba(185,196,211,.28)";
+    minimapCtx.lineWidth = 1;
+    for (const edge of visibleEdges) {
+      const from = nodeById.get(edge.from);
+      const to = nodeById.get(edge.to);
+      if (!from || !to) continue;
+      const a = toMini(from);
+      const b = toMini(to);
+      minimapCtx.beginPath();
+      minimapCtx.moveTo(a.x, a.y);
+      minimapCtx.lineTo(b.x, b.y);
+      minimapCtx.stroke();
+    }
+    for (const node of visibleNodes) {
+      const p = toMini(node);
+      minimapCtx.beginPath();
+      minimapCtx.arc(p.x, p.y, node.id === selectedId ? 3.8 : 2.4, 0, Math.PI * 2);
+      minimapCtx.fillStyle = node.color || colors[node.node_type] || colors[node.type] || "${DEFAULT_NODE_COLOR}";
+      minimapCtx.fill();
+      if (node.id === selectedId) {
+        minimapCtx.strokeStyle = "#ffffff";
+        minimapCtx.lineWidth = 1.2;
+        minimapCtx.stroke();
+      }
+    }
+    minimapCtx.restore();
+  }
+
+  function graphBounds(nodes, padding = 0) {
+    const xs = nodes.map((node) => Number(node.x || 0));
+    const ys = nodes.map((node) => Number(node.y || 0));
+    const minX = Math.min(...xs) - padding;
+    const maxX = Math.max(...xs) + padding;
+    const minY = Math.min(...ys) - padding;
+    const maxY = Math.max(...ys) + padding;
+    return { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY };
   }
 
   function toScreen(node) {
@@ -1610,6 +1784,7 @@ ${graphDashboardState}
   function selectNode(node) {
     if (!node) return;
     selectedId = node.id;
+    selectionActive = true;
     renderDetail(node);
     setDrawer(detailDrawer, true);
     scheduleDraw();
@@ -1745,11 +1920,43 @@ ${graphDashboardState}
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       setDrawer(sidebar, false, sidebarToggle);
-      setDrawer(controls, false, mobileMenuToggle);
+      setControlsDrawer(false);
       setDrawer(detailDrawer, false);
+      setSearchOpen(false);
+      return;
+    }
+    if (event.target && event.target.matches && event.target.matches("input, select, textarea")) return;
+    const step = event.shiftKey ? 64 : 26;
+    if (event.key === "+" || event.key === "=") {
+      view.scale = clamp(view.scale * 1.1, 0.16, 3.5);
+      scheduleDraw();
+    } else if (event.key === "-" || event.key === "_") {
+      view.scale = clamp(view.scale * 0.9, 0.16, 3.5);
+      scheduleDraw();
+    } else if (event.key === "ArrowLeft") {
+      view.x += step;
+      scheduleDraw();
+    } else if (event.key === "ArrowRight") {
+      view.x -= step;
+      scheduleDraw();
+    } else if (event.key === "ArrowUp") {
+      view.y += step;
+      scheduleDraw();
+    } else if (event.key === "ArrowDown") {
+      view.y -= step;
+      scheduleDraw();
     }
   });
-  search.addEventListener("input", updateVisible);
+  search.addEventListener("input", () => {
+    if (searchToggle) searchToggle.dataset.active = searchOpen || search.value.trim() ? "true" : "false";
+    updateVisible();
+  });
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      setSearchOpen(false);
+    }
+  });
   modeSelect.addEventListener("change", updateVisible);
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();

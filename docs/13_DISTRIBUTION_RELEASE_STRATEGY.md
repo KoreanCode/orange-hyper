@@ -74,7 +74,7 @@ channels. They must keep the same no-project-mutation policy.
 Allowed fallback examples:
 
 ```bash
-npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@1.1.0-beta.2 orange --help
 npx -y --package orange-hyper@beta orange --help
 ```
 
@@ -87,7 +87,7 @@ Project-local npm install remains available only when the user explicitly asks
 for a Node-project-local dependency.
 
 ```bash
-npm install -D orange-hyper@1.1.0-beta.1
+npm install -D orange-hyper@1.1.0-beta.2
 ```
 
 This path is advanced/manual because it intentionally writes project npm files.

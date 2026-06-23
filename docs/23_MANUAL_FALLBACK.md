@@ -28,7 +28,7 @@ orange env --json
 macOS/Linux:
 
 ```bash
-curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.sh | sh
+curl -fsSL https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.sh | sh
 "$HOME/.local/bin/orange" --version
 ```
 
@@ -36,8 +36,8 @@ Windows PowerShell:
 
 ```powershell
 $Installer = Join-Path $env:TEMP "orange-install.ps1"
-Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.1/install.ps1" -OutFile $Installer
-powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.1" -AddToPath
+Invoke-WebRequest "https://github.com/KoreanCode/orange-hyper/releases/download/v1.1.0-beta.2/install.ps1" -OutFile $Installer
+powershell -NoProfile -ExecutionPolicy Bypass -File $Installer -Version "1.1.0-beta.2" -AddToPath
 & (Join-Path $env:LOCALAPPDATA "OrangeHyper\bin\orange.exe") --version
 ```
 
@@ -59,7 +59,7 @@ npm은 기본 설치가 아니다. 사용자가 명시적으로 npm fallback을 
 정확한 버전 또는 `@beta`를 지정한다.
 
 ```bash
-npx -y --package orange-hyper@1.1.0-beta.1 orange --help
+npx -y --package orange-hyper@1.1.0-beta.2 orange --help
 npx -y --package orange-hyper@beta orange --help
 ```
 
@@ -67,7 +67,7 @@ npx -y --package orange-hyper@beta orange --help
 요청한 경우에만 사용한다.
 
 ```bash
-npm install -D orange-hyper@1.1.0-beta.1
+npm install -D orange-hyper@1.1.0-beta.2
 ```
 
 ## Source Checkout
